@@ -1,0 +1,8 @@
+﻿*.mat binary
+*.fig binary
+*.mlx binary
+*.mlapp binary
+*.slx binary
+*.mdl binary
+*.sldd binary
+*.p binary

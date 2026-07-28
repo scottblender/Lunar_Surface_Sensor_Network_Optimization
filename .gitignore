@@ -1,0 +1,21 @@
+﻿# MATLAB temporary files
+*.asv
+*.autosave
+*.m~
+
+# MATLAB generated folders
+slprj/
+codegen/
+cache/
+*.mex*
+
+# Local results and data
+results/*
+!results/.gitkeep
+
+data/*
+!data/.gitkeep
+
+# Operating-system files
+.DS_Store
+Thumbs.db
