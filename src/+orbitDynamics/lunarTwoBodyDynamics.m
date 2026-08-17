@@ -1,4 +1,5 @@
 function stateDerivative = lunarTwoBodyDynamics(~, state, moonMu)
+% LUNARTWOBODYDYNAMICS Two-body dynamics in the Moon-centered inertial frame.
 % Inputs:
 %   state  - 6x1 MCI state [position; velocity], km and km/s
 %   moonMu - lunar gravitational parameter, km^3/s^2
