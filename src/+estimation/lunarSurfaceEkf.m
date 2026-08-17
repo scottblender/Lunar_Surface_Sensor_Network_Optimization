@@ -1,5 +1,5 @@
-function [stateHistory, covarianceHistory, innovationHistory, measurementInformationHistory] = lunarAnglesOnlyEkf(initialTime, observationTimes, rightAscension, declination, observerPositionsMci, measurementAvailable, initialState, initialCovariance, measurementCovariance, accelerationNoiseIntensity, moonMu)
-% LUNARANGLESONLYEKF Run an RA/Dec EKF in the MCI frame.
+function [stateHistory, covarianceHistory, innovationHistory, measurementInformationHistory] = lunarSurfaceEkf(initialTime, observationTimes, rightAscension, declination, observerPositionsMci, measurementAvailable, initialState, initialCovariance, measurementCovariance, accelerationNoiseIntensity, moonMu)
+% LUNARSURFACEEKF Run an RA/Dec EKF in the MCI frame.
 %
 % Inputs:
 %   initialTime                - Epoch associated with x0 and P0, s
