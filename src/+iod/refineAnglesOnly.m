@@ -1,0 +1,129 @@
+function [refinedState, diagnostics] = refineAnglesOnly(referenceTime, times, rightAscension, declination, observerPositionsMci, initialState, measurementCovariance, moonMu)
+% REFINEANGLESONLY Refine an MCI state using all RA/Dec observations.
+%
+% Inputs:
+%   referenceTime         - Epoch of the estimated state, s
+%   times                 - Nx1 observation times, s
+%   rightAscension        - Nx1 right ascension measurements, rad
+%   declination           - Nx1 declination measurements, rad
+%   observerPositionsMci  - Nx3 observer positions in MCI, km
+%   initialState          - 6x1 initial state estimate at referenceTime
+%   measurementCovariance - 2x2 RA/Dec covariance, rad^2
+%   moonMu                - Lunar gravitational parameter, km^3/s^2
+%
+% Outputs:
+%   refinedState - 6x1 refined state at referenceTime
+%   diagnostics  - Least-squares convergence information
+%
+% Requires Optimization Toolbox.
+
+arguments
+    referenceTime (1,1) double
+    times (:,1) double
+    rightAscension (:,1) double
+    declination (:,1) double
+    observerPositionsMci (:,3) double
+    initialState (6,1) double
+    measurementCovariance (2,2) double
+    moonMu (1,1) double {mustBePositive} = 4902.800066
+end
+
+numberOfObservations = length(times);
+
+if length(rightAscension) ~= numberOfObservations || ...
+        length(declination) ~= numberOfObservations || ...
+        size(observerPositionsMci,1) ~= numberOfObservations
+
+    error("refineAnglesOnly:InvalidDimensions", ...
+        "Every observation requires a time, RA, Dec, and observer position.");
+end
+
+noiseFactor = chol(measurementCovariance,"lower");
+
+residualFunction = @(state) calculateResiduals( ...
+    state, ...
+    referenceTime, ...
+    times, ...
+    rightAscension, ...
+    declination, ...
+    observerPositionsMci, ...
+    noiseFactor, ...
+    moonMu);
+
+options = optimoptions("lsqnonlin", ...
+    "Display","off", ...
+    "FunctionTolerance",1e-10, ...
+    "StepTolerance",1e-10, ...
+    "OptimalityTolerance",1e-10, ...
+    "MaxFunctionEvaluations",2000);
+
+[refinedState,residualNorm,residuals,exitFlag,output,~,jacobian] = ...
+    lsqnonlin(residualFunction,initialState,[],[],options);
+
+diagnostics = struct( ...
+    "referenceTime",referenceTime, ...
+    "residualNorm",residualNorm, ...
+    "residuals",residuals, ...
+    "exitFlag",exitFlag, ...
+    "output",output, ...
+    "jacobian",jacobian);
+
+end
+
+function residualVector = calculateResiduals(referenceState, referenceTime, times, rightAscension, declination, observerPositionsMci, noiseFactor, moonMu)
+
+numberOfObservations = length(times);
+residualVector = zeros(2*numberOfObservations,1);
+
+odeOptions = odeset( ...
+    "RelTol",1e-11, ...
+    "AbsTol",1e-12);
+
+for observationIndex = 1:numberOfObservations
+
+    observationTime = times(observationIndex);
+
+    if observationTime == referenceTime
+        propagatedState = referenceState;
+    else
+        [~,stateHistory] = ode45( ...
+            @(time,state) orbitDynamics.lunarTwoBodyDynamics( ...
+                time,state,moonMu), ...
+            [referenceTime,observationTime], ...
+            referenceState, ...
+            odeOptions);
+
+        propagatedState = stateHistory(end,:).';
+    end
+
+    relativePosition = ...
+        propagatedState(1:3) - ...
+        observerPositionsMci(observationIndex,:).';
+
+    x = relativePosition(1);
+    y = relativePosition(2);
+    z = relativePosition(3);
+
+    predictedRightAscension = atan2(y,x);
+    predictedDeclination = atan2(z,hypot(x,y));
+
+    rightAscensionResidual = atan2( ...
+        sin(predictedRightAscension - ...
+            rightAscension(observationIndex)), ...
+        cos(predictedRightAscension - ...
+            rightAscension(observationIndex)));
+
+    declinationResidual = ...
+        predictedDeclination - declination(observationIndex);
+
+    whitenedResidual = noiseFactor \ [ ...
+        rightAscensionResidual;
+        declinationResidual];
+
+    residualIndices = ...
+        2*observationIndex - 1 : 2*observationIndex;
+
+    residualVector(residualIndices) = whitenedResidual;
+end
+
+end
