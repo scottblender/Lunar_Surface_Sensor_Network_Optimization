@@ -1,4 +1,4 @@
-﻿# MATLAB temporary files
+# MATLAB temporary files
 *.asv
 *.autosave
 *.m~
@@ -19,3 +19,8 @@ data/*
 # Operating-system files
 .DS_Store
 Thumbs.db
+
+# Images
+*.eps
+*.pdf
+*.png
