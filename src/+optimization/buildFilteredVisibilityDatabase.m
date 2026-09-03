@@ -13,8 +13,7 @@ function [filteredAvailability,diagnostics] = ...
         horizonMargin, ...
         earthRadius, ...
         sunRadius, ...
-        earthLimbMargin, ...
-        sunLimbMargin, ...
+        minimumAngularSeparation, ...
         moonRadius, ...
         theta0, ...
         angularRate)
@@ -34,8 +33,7 @@ function [filteredAvailability,diagnostics] = ...
 %   horizonMargin               - Additional terrain-horizon margin, rad
 %   earthRadius                 - Earth radius, km
 %   sunRadius                   - Sun radius, km
-%   earthLimbMargin             - Keep-out angle beyond Earth limb, rad
-%   sunLimbMargin               - Keep-out angle beyond Sun limb, rad
+%   minimumAngularSeparation    - Minimum target/body-center angle, rad
 %   moonRadius                  - Lunar reference radius, km
 %   theta0                      - Initial Moon rotation angle, rad
 %   angularRate                 - Lunar rotation rate, rad/s
@@ -44,14 +42,18 @@ function [filteredAvailability,diagnostics] = ...
 %   filteredAvailability - SxNxO fully filtered measurement gate
 %   diagnostics          - Constraint masks and geometry histories
 %
+% Earth and Sun use one center-referenced minimum angular separation.
+% For each body, the required separation is
+%
+%   thetaRequired = max(thetaOccultation, minimumAngularSeparation).
+%
+% Thus minimumAngularSeparation = 0 degenerates exactly to physical
+% occultation. The Moon is not included in celestial screening because
+% lunar obstruction is already represented by the terrain/horizon LOS gate.
+%
 % The final gate is
 %
-%   G = Gterrain AND NOT(Goccultation) AND NOT(Gexclusion).
-%
-% Mutually exclusive rejection masks are also returned so that
-%
-%   geometric opportunities = terrain rejected + occlusion rejected
-%                           + exclusion rejected + accepted.
+%   G = Gterrain AND Gcelestial.
 
 arguments
     times (:,1) double
@@ -67,8 +69,7 @@ arguments
     horizonMargin (1,1) double {mustBeNonnegative} = 0
     earthRadius (1,1) double {mustBePositive} = 6378.1366
     sunRadius (1,1) double {mustBePositive} = 695700
-    earthLimbMargin (1,1) double {mustBeNonnegative} = 0
-    sunLimbMargin (1,1) double {mustBeNonnegative} = 0
+    minimumAngularSeparation (1,1) double {mustBeNonnegative} = 0
     moonRadius (1,1) double {mustBePositive} = 1737.4
     theta0 (1,1) double = 0
     angularRate (1,1) double = 2*pi/(27.321661*86400)
@@ -98,7 +99,6 @@ end
 
 if size(earthPositionsMci,2) ~= numberOfTimes || ...
         size(sunPositionsMci,2) ~= numberOfTimes
-
     error( ...
         "buildFilteredVisibilityDatabase:InvalidEphemerisDimensions", ...
         "Earth and Sun histories must contain one position per time.");
@@ -126,43 +126,27 @@ end
         angularRate);
 
 terrainAvailability = reshape( ...
-    terrainAvailability, ...
-    numberOfSensors,numberOfTimes,numberOfObjects);
-
+    terrainAvailability,numberOfSensors,numberOfTimes,numberOfObjects);
 targetAzimuths = reshape( ...
-    targetAzimuths, ...
-    numberOfSensors,numberOfTimes,numberOfObjects);
-
+    targetAzimuths,numberOfSensors,numberOfTimes,numberOfObjects);
 targetElevations = reshape( ...
-    targetElevations, ...
-    numberOfSensors,numberOfTimes,numberOfObjects);
-
+    targetElevations,numberOfSensors,numberOfTimes,numberOfObjects);
 targetRanges = reshape( ...
-    targetRanges, ...
-    numberOfSensors,numberOfTimes,numberOfObjects);
-
+    targetRanges,numberOfSensors,numberOfTimes,numberOfObjects);
 limitingTerrainElevations = reshape( ...
-    limitingTerrainElevations, ...
-    numberOfSensors,numberOfTimes,numberOfObjects);
+    limitingTerrainElevations,numberOfSensors,numberOfTimes,numberOfObjects);
 
 geometricAvailability = ...
     targetElevations >= instrumentMinimumElevation;
 
 %% Allocate celestial diagnostics
 
-earthOccluded = false(numberOfSensors,numberOfTimes,numberOfObjects);
-sunOccluded = false(numberOfSensors,numberOfTimes,numberOfObjects);
-earthExcluded = false(numberOfSensors,numberOfTimes,numberOfObjects);
-sunExcluded = false(numberOfSensors,numberOfTimes,numberOfObjects);
-
+earthBlocked = false(numberOfSensors,numberOfTimes,numberOfObjects);
+sunBlocked = false(numberOfSensors,numberOfTimes,numberOfObjects);
 earthSeparation = zeros(numberOfSensors,numberOfTimes,numberOfObjects);
 sunSeparation = zeros(numberOfSensors,numberOfTimes,numberOfObjects);
-
-earthRequiredSeparation = ...
-    zeros(numberOfSensors,numberOfTimes,numberOfObjects);
-
-sunRequiredSeparation = ...
-    zeros(numberOfSensors,numberOfTimes,numberOfObjects);
+earthMinimumSeparation = zeros(numberOfSensors,numberOfTimes,numberOfObjects);
+sunMinimumSeparation = zeros(numberOfSensors,numberOfTimes,numberOfObjects);
 
 %% Fixed sensor states in the Moon-rotating frame
 
@@ -203,11 +187,10 @@ for timeIndex = 1:numberOfTimes
         targetPosition = targetStateHistories(1:3,timeIndex,objectIndex);
 
         for sensorIndex = 1:numberOfSensors
-            [~,objectEarthOccluded,objectSunOccluded, ...
-                objectEarthExcluded,objectSunExcluded, ...
+            [~,objectEarthBlocked,objectSunBlocked, ...
                 objectEarthSeparation,objectSunSeparation, ...
-                objectEarthRequiredSeparation, ...
-                objectSunRequiredSeparation] = ...
+                objectEarthMinimumSeparation, ...
+                objectSunMinimumSeparation] = ...
                 constraints.celestialVisibility( ...
                     sensorPositionsMci(:,sensorIndex), ...
                     targetPosition, ...
@@ -215,96 +198,61 @@ for timeIndex = 1:numberOfTimes
                     sunPosition, ...
                     earthRadius, ...
                     sunRadius, ...
-                    earthLimbMargin, ...
-                    sunLimbMargin);
+                    minimumAngularSeparation);
 
-            earthOccluded(sensorIndex,timeIndex,objectIndex) = ...
-                objectEarthOccluded;
-
-            sunOccluded(sensorIndex,timeIndex,objectIndex) = ...
-                objectSunOccluded;
-
-            earthExcluded(sensorIndex,timeIndex,objectIndex) = ...
-                objectEarthExcluded;
-
-            sunExcluded(sensorIndex,timeIndex,objectIndex) = ...
-                objectSunExcluded;
-
+            earthBlocked(sensorIndex,timeIndex,objectIndex) = ...
+                objectEarthBlocked;
+            sunBlocked(sensorIndex,timeIndex,objectIndex) = ...
+                objectSunBlocked;
             earthSeparation(sensorIndex,timeIndex,objectIndex) = ...
                 objectEarthSeparation;
-
             sunSeparation(sensorIndex,timeIndex,objectIndex) = ...
                 objectSunSeparation;
-
-            earthRequiredSeparation(sensorIndex,timeIndex,objectIndex) = ...
-                objectEarthRequiredSeparation;
-
-            sunRequiredSeparation(sensorIndex,timeIndex,objectIndex) = ...
-                objectSunRequiredSeparation;
+            earthMinimumSeparation(sensorIndex,timeIndex,objectIndex) = ...
+                objectEarthMinimumSeparation;
+            sunMinimumSeparation(sensorIndex,timeIndex,objectIndex) = ...
+                objectSunMinimumSeparation;
         end
     end
 end
 
 %% Final and diagnostic gates
 
-occlusionFailure = earthOccluded | sunOccluded;
-exclusionFailure = earthExcluded | sunExcluded;
+celestialFailure = earthBlocked | sunBlocked;
+celestialAvailability = ~celestialFailure;
+filteredAvailability = terrainAvailability & celestialAvailability;
 
-celestialAvailability = ...
-    ~occlusionFailure & ~exclusionFailure;
-
-filteredAvailability = ...
-    terrainAvailability & celestialAvailability;
-
-% These masks are mutually exclusive and are defined only among epochs
-% that satisfy the basic geometric minimum-elevation requirement.
-terrainRejected = ...
-    geometricAvailability & ~terrainAvailability;
-
-occlusionRejected = ...
-    terrainAvailability & occlusionFailure;
-
-exclusionRejected = ...
-    terrainAvailability & ~occlusionFailure & exclusionFailure;
-
+% Mutually exclusive rejection masks among geometrically valid epochs.
+terrainRejected = geometricAvailability & ~terrainAvailability;
+celestialRejected = terrainAvailability & celestialFailure;
 accepted = filteredAvailability;
 
 reconstructedGeometricAvailability = ...
-    terrainRejected | occlusionRejected | exclusionRejected | accepted;
+    terrainRejected | celestialRejected | accepted;
 
-if ~isequal( ...
-        reconstructedGeometricAvailability, ...
-        geometricAvailability)
-
+if ~isequal(reconstructedGeometricAvailability,geometricAvailability)
     error( ...
         "buildFilteredVisibilityDatabase:GateAccountingFailure", ...
         "The mutually exclusive gate masks do not reconstruct geometric availability.");
 end
 
 diagnostics = struct();
-
 diagnostics.geometricAvailability = geometricAvailability;
 diagnostics.terrainAvailability = terrainAvailability;
 diagnostics.celestialAvailability = celestialAvailability;
-
-diagnostics.earthOccluded = earthOccluded;
-diagnostics.sunOccluded = sunOccluded;
-diagnostics.earthExcluded = earthExcluded;
-diagnostics.sunExcluded = sunExcluded;
-
+diagnostics.earthBlocked = earthBlocked;
+diagnostics.sunBlocked = sunBlocked;
 diagnostics.terrainRejected = terrainRejected;
-diagnostics.occlusionRejected = occlusionRejected;
-diagnostics.exclusionRejected = exclusionRejected;
+diagnostics.celestialRejected = celestialRejected;
 diagnostics.accepted = accepted;
-
 diagnostics.targetAzimuths = targetAzimuths;
 diagnostics.targetElevations = targetElevations;
 diagnostics.targetRanges = targetRanges;
 diagnostics.limitingTerrainElevations = limitingTerrainElevations;
-
 diagnostics.earthSeparation = earthSeparation;
 diagnostics.sunSeparation = sunSeparation;
-diagnostics.earthRequiredSeparation = earthRequiredSeparation;
-diagnostics.sunRequiredSeparation = sunRequiredSeparation;
+diagnostics.earthMinimumSeparation = earthMinimumSeparation;
+diagnostics.sunMinimumSeparation = sunMinimumSeparation;
+diagnostics.configuredMinimumAngularSeparation = minimumAngularSeparation;
 
 end
