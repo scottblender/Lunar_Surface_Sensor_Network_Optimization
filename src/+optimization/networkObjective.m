@@ -7,8 +7,10 @@ function [objectiveValue,details] = ...
 %
 % Inputs:
 %   sensorDecision - Vector of candidate indices defining the network.
-%                    Network size is arbitrary and is controlled by
-%                    database.study.networkSizes.
+%                    The network size is the length of this vector and may
+%                    be any positive integer up to the available candidate
+%                    count. Network-size study choices belong to the run
+%                    configuration, not to the precomputed database.
 %
 %   database       - Optimization database created by
 %                    optimization.buildOptimizationDatabase.
@@ -35,6 +37,10 @@ function [objectiveValue,details] = ...
 % Only the selected sensor rows/slices are passed to the information and
 % coverage objectives. Therefore, objective cost scales primarily with the
 % selected network size rather than the total number of candidate sites.
+%
+% database.study.networkSizes is retained as study metadata only. It does
+% not constrain evaluation, so one production database can be reused for
+% different network-size studies without rebuilding it.
 
 arguments
     sensorDecision double
@@ -165,22 +171,15 @@ if networkSize < 1
     return
 end
 
-if isfield(database.study,"networkSizes") && ...
-        ~isempty(database.study.networkSizes)
+if networkSize > numberOfCandidates
 
-    supportedNetworkSizes = ...
-        database.study.networkSizes(:);
+    details.reason = ...
+        "network_larger_than_candidate_set";
 
-    if ~ismember(networkSize,supportedNetworkSizes)
+    objectiveValue = ...
+        infeasiblePenalty;
 
-        details.reason = ...
-            "unsupported_network_size";
-
-        objectiveValue = ...
-            infeasiblePenalty;
-
-        return
-    end
+    return
 end
 
 %% ========================================================================
