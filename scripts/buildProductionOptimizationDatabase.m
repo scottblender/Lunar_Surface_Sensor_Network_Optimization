@@ -1,6 +1,11 @@
 %% buildProductionOptimizationDatabase.m
 % Build and save the production optimization database used for the
 % lunar-surface sensor-network global optimization study.
+%
+% The current study evaluates 3-, 5-, and 7-sensor networks, but the
+% network-size list is purely configuration. Change config.study.networkSizes
+% to evaluate any other positive network sizes supported by the candidate
+% set; no objective-function changes are required.
 
 clear;
 close all;
@@ -105,6 +110,7 @@ config.demSource = ...
     string(demPath);
 
 %% Study cases
+% Change only this vector to evaluate different network sizes later.
 
 config.study.networkSizes = ...
     [3,5,7];
@@ -229,7 +235,39 @@ config.measurement.rightAscensionSigmaRad = ...
 config.measurement.declinationSigmaRad = ...
     deg2rad(1/3600);
 
-%% Angles-only IOD
+%% Fixed-P0 angles-only IOD calibration
+% This reference acquisition is independent of the optimized candidate
+% network. It is used once to estimate one fixed P0 that is then applied
+% identically to every RSO and every network evaluation.
+
+config.iod.referencePeriapsisAltitudeKm = ...
+    50;
+
+config.iod.referenceEccentricity = ...
+    0;
+
+config.iod.referenceInclinationRad = ...
+    deg2rad(90);
+
+config.iod.referenceRaanRad = ...
+    deg2rad(37);
+
+config.iod.referenceArgumentOfPeriapsisRad = ...
+    0;
+
+config.iod.referenceTrueAnomalyRad = ...
+    0;
+
+config.iod.referenceSensorLatitudeRad = ...
+    deg2rad(-89.505332);
+
+config.iod.referenceSensorLongitudeRad = ...
+    deg2rad(102.857143);
+
+% Use a finer cadence than the 60-s optimization arc so the short
+% low-lunar-orbit acquisition pass contains the full requested sample set.
+config.iod.outputStepSeconds = ...
+    10;
 
 config.iod.desiredObservationCount = ...
     15;
@@ -274,11 +312,12 @@ config.objective.infeasiblePenalty = ...
 %  Prevent accidental overwrite
 %  ========================================================================
 
+outputExistsMessage = ...
+    "Optimization database already exists:\n%s\n" + ...
+    "Delete or rename it before rebuilding.";
+
 assert(~isfile(config.outputFile), ...
-    [ ...
-    "Optimization database already exists:\n%s\n" ...
-    "Delete or rename it before rebuilding." ...
-    ], ...
+    outputExistsMessage, ...
     config.outputFile);
 
 %% ========================================================================
@@ -298,6 +337,7 @@ fprintf("\n");
 fprintf("Production database ready.\n");
 fprintf("Output:\n  %s\n",config.outputFile);
 fprintf("\n");
+
 fprintf("Network sizes: ");
 fprintf("%d ",database.study.networkSizes);
 fprintf("\n");
@@ -305,3 +345,14 @@ fprintf("\n");
 fprintf("Objectives: ");
 fprintf("%s ",database.study.objectiveModes);
 fprintf("\n");
+
+fprintf("IOD cadence: %.1f s\n", ...
+    database.iod.calibration.outputStepSeconds);
+
+fprintf("IOD observations: %d/%d\n", ...
+    length(database.iod.calibration.acquisitionIndices), ...
+    database.iod.calibration.desiredObservationCount);
+
+fprintf("IOD MC convergence: %d/%d\n", ...
+    database.iod.calibration.diagnostics.numberOfSuccessfulSamples, ...
+    database.iod.calibration.diagnostics.numberOfRequestedSamples);
