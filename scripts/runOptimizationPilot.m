@@ -6,6 +6,11 @@ function studyState = runOptimizationPilot(userConfig)
 % deterministic with respect to the frozen database; the fixed-noise EKF
 % validation is performed after the search and is not counted in FE.
 %
+% Parallel-pool ownership is explicit. An existing compatible process pool
+% is reused and left running. If this function creates a process pool, that
+% pool is deleted after the optimization and EKF validation complete, and it
+% is also cleaned up automatically if the pilot exits because of an error.
+%
 % Default pilot
 %   addpath("scripts");
 %   studyState = runOptimizationPilot();
@@ -70,6 +75,14 @@ fprintf("Fixed EKF measurement-noise seed: %d\n", ...
 % Global Optimization Toolbox objective/constraint dispatch is not supported
 % for every thread-based parallel environment. If the user has an existing
 % ThreadPool, replace it with a local process-based pool before calling GA.
+%
+% If this function creates a process pool, retain an onCleanup object so the
+% pool is deleted both after a successful pilot and after an early error.
+% Existing compatible process pools are not owned by this function and are
+% therefore left running.
+
+createdPool = [];
+poolCleanup = [];
 
 if optimizationConfig.useParallel
 
@@ -88,7 +101,12 @@ if optimizationConfig.useParallel
 
         fprintf("\nStarting process-based parallel pool for GA...\n");
 
-        parpool("Processes");
+        createdPool = parpool("Processes");
+        poolCleanup = onCleanup(@() cleanupCreatedPool(createdPool));
+
+    else
+
+        fprintf("\nReusing existing process-based parallel pool.\n");
     end
 end
 
@@ -110,6 +128,14 @@ studyState.pilot.measurementNoiseSeed = ...
 
 summaryFile = fullfile(string(studyState.studyDirectory),"study_summary.mat");
 save(summaryFile,"studyState","-v7.3");
+
+%% Close only the pool created by this pilot
+
+if ~isempty(poolCleanup)
+    fprintf("\nOptimization and EKF validation complete.\n");
+    fprintf("Closing process-based parallel pool created by this pilot...\n");
+    clear poolCleanup
+end
 
 fprintf("\nPilot complete.\n");
 fprintf("Run the result/visualization test with:\n");
@@ -133,5 +159,22 @@ for fieldIndex = 1:numel(fields)
     else
         output.(fieldName) = overrideValue;
     end
+end
+end
+
+function cleanupCreatedPool(pool)
+% CLEANUPCREATEDPOOL Delete only the process pool owned by this pilot.
+
+if isempty(pool)
+    return
+end
+
+try
+    delete(pool);
+catch cleanupError
+    warning( ...
+        "runOptimizationPilot:PoolCleanupFailed", ...
+        "Unable to delete the pilot-created parallel pool: %s", ...
+        cleanupError.message);
 end
 end
