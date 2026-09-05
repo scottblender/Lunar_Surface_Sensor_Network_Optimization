@@ -65,6 +65,33 @@ fprintf("Optimizer seed sequence: %d through %d\n", ...
 fprintf("Fixed EKF measurement-noise seed: %d\n", ...
     config.validation.measurementNoiseSeed);
 
+%% Ensure GA uses a supported process-based parallel environment
+%
+% Global Optimization Toolbox objective/constraint dispatch is not supported
+% for every thread-based parallel environment. If the user has an existing
+% ThreadPool, replace it with a local process-based pool before calling GA.
+
+if optimizationConfig.useParallel
+
+    pool = gcp("nocreate");
+
+    if ~isempty(pool) && isa(pool,"parallel.ThreadPool")
+
+        fprintf("\nExisting thread-based pool detected.\n");
+        fprintf("Restarting parallel execution with process workers for GA...\n");
+
+        delete(pool);
+        pool = [];
+    end
+
+    if isempty(pool)
+
+        fprintf("\nStarting process-based parallel pool for GA...\n");
+
+        parpool("Processes");
+    end
+end
+
 studyState = runGlobalOptimization(optimizationConfig);
 
 %% Fixed-noise final EKF validation outside the search FE budget
