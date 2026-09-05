@@ -2,14 +2,17 @@ function studyState = runOptimizationPilot(userConfig)
 % RUNOPTIMIZATIONPILOT Run the standard 10 x 1200-FE GA pilot and EKF check.
 %
 % The pilot uses ten independent optimizer seeds while holding the final
-% EKF measurement-noise realization fixed. Optimization remains fully
-% deterministic with respect to the frozen database; the fixed-noise EKF
-% validation is performed after the search and is not counted in FE.
+% EKF measurement-noise realization fixed. Optimization remains deterministic
+% with respect to the frozen database; the fixed-noise EKF validation is
+% performed after the search and is not counted in FE.
 %
-% Parallel-pool ownership is explicit. An existing compatible process pool
-% is reused and left running. If this function creates a process pool, that
-% pool is deleted after the optimization and EKF validation complete, and it
-% is also cleaned up automatically if the pilot exits because of an error.
+% When parallel objective evaluation is enabled, the pilot deliberately uses
+% a fresh process-based parallel pool for every independent GA run. The prior
+% pool is deleted before the next run and the final pool is deleted when that
+% run finishes. This avoids repeated-GA worker-function dispatch failures seen
+% with reused pools in MATLAB R2026a. The frozen objective database is supplied
+% through parallel.pool.Constant so workers do not receive a large captured
+% database in the anonymous objective handle.
 %
 % Default pilot
 %   addpath("scripts");
@@ -60,6 +63,15 @@ assert(config.functionEvaluationBudget == 1200, ...
 
 optimizationConfig = rmfield(config,"validation");
 
+% Repeated GA calls in R2026a can fail when the same pool is reused. The
+% pilot therefore owns a fresh process pool for each independent run.
+optimizationConfig.parallelRestartEachRun = ...
+    logical(optimizationConfig.useParallel);
+optimizationConfig.closeParallelPoolAtEnd = ...
+    logical(optimizationConfig.useParallel);
+optimizationConfig.useParallelDatabaseConstant = ...
+    logical(optimizationConfig.useParallel);
+
 fprintf("\n");
 fprintf("============================================================\n");
 fprintf("10 x 1200-FE lunar optimization pilot\n");
@@ -70,44 +82,8 @@ fprintf("Optimizer seed sequence: %d through %d\n", ...
 fprintf("Fixed EKF measurement-noise seed: %d\n", ...
     config.validation.measurementNoiseSeed);
 
-%% Ensure GA uses a supported process-based parallel environment
-%
-% Global Optimization Toolbox objective/constraint dispatch is not supported
-% for every thread-based parallel environment. If the user has an existing
-% ThreadPool, replace it with a local process-based pool before calling GA.
-%
-% If this function creates a process pool, retain an onCleanup object so the
-% pool is deleted both after a successful pilot and after an early error.
-% Existing compatible process pools are not owned by this function and are
-% therefore left running.
-
-createdPool = [];
-poolCleanup = [];
-
 if optimizationConfig.useParallel
-
-    pool = gcp("nocreate");
-
-    if ~isempty(pool) && isa(pool,"parallel.ThreadPool")
-
-        fprintf("\nExisting thread-based pool detected.\n");
-        fprintf("Restarting parallel execution with process workers for GA...\n");
-
-        delete(pool);
-        pool = [];
-    end
-
-    if isempty(pool)
-
-        fprintf("\nStarting process-based parallel pool for GA...\n");
-
-        createdPool = parpool("Processes");
-        poolCleanup = onCleanup(@() cleanupCreatedPool(createdPool));
-
-    else
-
-        fprintf("\nReusing existing process-based parallel pool.\n");
-    end
+    fprintf("Parallel policy: fresh process pool for every GA run\n");
 end
 
 studyState = runGlobalOptimization(optimizationConfig);
@@ -119,23 +95,17 @@ studyState = validateOptimizationStudy(studyState,config.validation);
 %% Record the complete pilot configuration
 
 studyState.pilot = struct();
-studyState.pilot.version = "lunar_10x1200_pilot_v1";
+studyState.pilot.version = "lunar_10x1200_pilot_v2";
 studyState.pilot.config = config;
 studyState.pilot.optimizerSeeds = ...
     optimizationConfig.baseSeed + (0:optimizationConfig.numberOfRuns-1).';
 studyState.pilot.measurementNoiseSeed = ...
     config.validation.measurementNoiseSeed;
+studyState.pilot.parallelRestartEachRun = ...
+    optimizationConfig.parallelRestartEachRun;
 
 summaryFile = fullfile(string(studyState.studyDirectory),"study_summary.mat");
 save(summaryFile,"studyState","-v7.3");
-
-%% Close only the pool created by this pilot
-
-if ~isempty(poolCleanup)
-    fprintf("\nOptimization and EKF validation complete.\n");
-    fprintf("Closing process-based parallel pool created by this pilot...\n");
-    clear poolCleanup
-end
 
 fprintf("\nPilot complete.\n");
 fprintf("Run the result/visualization test with:\n");
@@ -159,22 +129,5 @@ for fieldIndex = 1:numel(fields)
     else
         output.(fieldName) = overrideValue;
     end
-end
-end
-
-function cleanupCreatedPool(pool)
-% CLEANUPCREATEDPOOL Delete only the process pool owned by this pilot.
-
-if isempty(pool)
-    return
-end
-
-try
-    delete(pool);
-catch cleanupError
-    warning( ...
-        "runOptimizationPilot:PoolCleanupFailed", ...
-        "Unable to delete the pilot-created parallel pool: %s", ...
-        cleanupError.message);
 end
 end
