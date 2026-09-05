@@ -3,11 +3,11 @@
 %
 % The script checks optimizer-seed independence, exact FE histories,
 % monotonic best-so-far convergence, valid sensor selections, and fixed-noise
-% final EKF validation. It then generates figures for:
-%   1. Optimized sensor locations and selection frequency.
-%   2. Convergence across all ten independent runs.
-%   3. RSO EKF tracking errors and measurement-update counts.
-%   4. Truth versus estimated trajectory for the worst RMS-position-error RSO.
+% final EKF validation. It then calls plotOptimizationPilotResults to create
+% repository-style figures for:
+%   1. Overall-best optimized sensor locations in the south-polar domain.
+%   2. All RSO truth trajectories together with the optimized network.
+%   3. Convergence across all ten independent optimization runs.
 %
 % By default the newest matching study under results/optimization_runs is
 % selected. Set studySummaryFile below to an explicit study_summary.mat path
@@ -99,6 +99,9 @@ assert(isfield(studyState,"validation"), ...
     ["Pilot does not contain final EKF validation. Run the pilot with " ...
      "runOptimizationPilot or call validateOptimizationStudy first."]);
 
+assert(isfield(studyState.validation,"overallBest"), ...
+    "Pilot validation does not contain overallBest results.");
+
 validation = studyState.validation.overallBest;
 
 assert(validation.measurementNoiseSeed == ...
@@ -117,231 +120,73 @@ assert(all(isfinite(validation.positionThreeSigmaNormsKm),"all"), ...
     "Position three-sigma history contains nonfinite values.");
 assert(all(isfinite(validation.velocityThreeSigmaNormsKmS),"all"), ...
     "Velocity three-sigma history contains nonfinite values.");
+assert(all(isfinite(validation.truthStateHistories(1:3,:,:)),"all"), ...
+    "RSO truth-state histories contain nonfinite positions.");
+
+numberOfObjects = size(validation.truthStateHistories,3);
+assert(numberOfObjects == studyState.runStates{1}.numberOfObjects, ...
+    "Validation RSO count does not match the optimization study.");
 
 %% ========================================================================
-%  Load frozen database for candidate geometry
+%  Publication-style result figures
 %  ========================================================================
 
-databaseFile = string(studyState.config.databaseFile);
-assert(isfile(databaseFile), ...
-    "Optimization database was not found: %s",databaseFile);
+figureInfo = plotOptimizationPilotResults(studyState);
 
-databaseData = load(databaseFile,"database");
-database = databaseData.database;
-
-numberOfCandidates = database.meta.numberOfCandidates;
-numberOfObjects = database.meta.numberOfObjects;
-
-%% ========================================================================
-%  Figure 1: sensor locations and selection frequency
-%  ========================================================================
-
-selectionCount = zeros(numberOfCandidates,1);
-
-for runIndex = 1:10
-    selected = studyState.runStates{runIndex}.bestSensorIndices(:);
-    selectionCount(selected) = selectionCount(selected) + 1;
-end
-
-selectedAtLeastOnce = find(selectionCount > 0);
-overallBestSensors = studyState.overallBestSensorIndices(:);
-
-candidateLongitudeDeg = rad2deg(database.candidates.longitudesRad);
-candidateLatitudeDeg = rad2deg(database.candidates.latitudesRad);
-
-figure("Name","Pilot Sensor Locations");
-hold on;
-
-scatter(candidateLongitudeDeg,candidateLatitudeDeg,8, ...
-    [0.75 0.75 0.75],"filled", ...
-    "DisplayName","Candidate sites");
-
-frequencyMarkerSize = 30 + 30*selectionCount(selectedAtLeastOnce);
-scatter(candidateLongitudeDeg(selectedAtLeastOnce), ...
-    candidateLatitudeDeg(selectedAtLeastOnce), ...
-    frequencyMarkerSize,selectionCount(selectedAtLeastOnce), ...
-    "filled","DisplayName","Selected across runs");
-
-scatter(candidateLongitudeDeg(overallBestSensors), ...
-    candidateLatitudeDeg(overallBestSensors), ...
-    140,"p","filled","MarkerEdgeColor","k", ...
-    "DisplayName","Overall best network");
-
-xlabel("Longitude [deg E]");
-ylabel("Latitude [deg]");
-xlim([0 360]);
-ylim([-90 -75]);
-grid on;
-box on;
-colorbar;
-title(sprintf( ...
-    "10-Run Pilot Sensor Selection Frequency: %d-Sensor Network", ...
-    studyState.config.networkSize));
-legend("Location","best");
-
-%% ========================================================================
-%  Figure 2: convergence across all independent runs
-%  ========================================================================
-
-referenceFe = studyState.runStates{1}.history.fe(:);
-numberOfHistoryPoints = numel(referenceFe);
-scoreHistory = nan(numberOfHistoryPoints,10);
-
-for runIndex = 1:10
-    runState = studyState.runStates{runIndex};
-    assert(isequal(runState.history.fe(:),referenceFe), ...
-        "Run %d does not share the common FE grid.",runIndex);
-    scoreHistory(:,runIndex) = -runState.history.bestJ(:);
-end
-
-meanScore = mean(scoreHistory,2);
-stdScore = std(scoreHistory,0,2);
-
-figure("Name","Pilot Convergence");
-hold on;
-
-for runIndex = 1:10
-    plot(referenceFe,scoreHistory(:,runIndex), ...
-        "LineWidth",0.8, ...
-        "HandleVisibility","off");
-end
-
-plot(referenceFe,meanScore, ...
-    "k-","LineWidth",2.2,"DisplayName","Mean best-so-far score");
-plot(referenceFe,meanScore+stdScore, ...
-    "k--","LineWidth",1.1,"DisplayName","Mean \pm 1 std");
-plot(referenceFe,meanScore-stdScore, ...
-    "k--","LineWidth",1.1,"HandleVisibility","off");
-
-xlabel("Function Evaluations");
-if string(studyState.config.objectiveMode) == "coverage"
-    ylabel("Best Coverage Score");
-else
-    ylabel("Best Information Score");
-end
-grid on;
-box on;
-title(sprintf( ...
-    "GA Convergence: 10 Independent Runs, 1200 FE/Run"));
-legend("Location","best");
-
-%% ========================================================================
-%  Figure 3: RSO tracking performance for overall best network
-%  ========================================================================
-
-timeHours = validation.times(:)/3600;
-
-figure("Name","Pilot RSO EKF Tracking");
-tiledlayout(2,2,"TileSpacing","compact","Padding","compact");
-
-nexttile;
-plot(timeHours,validation.positionErrorNormsKm,"LineWidth",0.8);
-hold on;
-plot(timeHours,median(validation.positionErrorNormsKm,2), ...
-    "k-","LineWidth",2.2);
-xlabel("Time [hr]");
-ylabel("Position Error Norm [km]");
-title("Position Tracking Error");
-grid on;
-box on;
-
-nexttile;
-plot(timeHours,validation.velocityErrorNormsKmS,"LineWidth",0.8);
-hold on;
-plot(timeHours,median(validation.velocityErrorNormsKmS,2), ...
-    "k-","LineWidth",2.2);
-xlabel("Time [hr]");
-ylabel("Velocity Error Norm [km/s]");
-title("Velocity Tracking Error");
-grid on;
-box on;
-
-nexttile;
-bar(1:numberOfObjects,validation.measurementUpdateCounts);
-xlabel("RSO");
-ylabel("Measurement Updates");
-title("Accepted EKF Measurements");
-grid on;
-box on;
-
-nexttile;
-bar(1:numberOfObjects,validation.rmsPositionErrorKm);
-xlabel("RSO");
-ylabel("RMS Position Error [km]");
-title("Per-RSO RMS Position Error");
-grid on;
-box on;
-
-sgtitle(sprintf( ...
-    "Overall Best Network EKF Validation — Fixed Noise Seed %d", ...
-    validation.measurementNoiseSeed));
-
-%% ========================================================================
-%  Figure 4: worst-RMS RSO truth and estimate in MCI
-%  ========================================================================
-
-[~,worstObjectIndex] = max(validation.rmsPositionErrorKm);
-truthTrajectory = validation.truthStateHistories(1:3,:,worstObjectIndex);
-estimatedTrajectory = validation.stateHistories(1:3,:,worstObjectIndex);
-
-figure("Name","Worst RSO Trajectory Tracking");
-hold on;
-
-plot3(truthTrajectory(1,:),truthTrajectory(2,:),truthTrajectory(3,:), ...
-    "LineWidth",2,"DisplayName","Truth");
-plot3(estimatedTrajectory(1,:),estimatedTrajectory(2,:), ...
-    estimatedTrajectory(3,:),"--","LineWidth",1.5, ...
-    "DisplayName","EKF estimate");
-
-[moonX,moonY,moonZ] = sphere(40);
-moonRadiusKm = database.config.moon.radiusKm;
-surf(moonRadiusKm*moonX,moonRadiusKm*moonY,moonRadiusKm*moonZ, ...
-    "FaceAlpha",0.12,"EdgeColor","none", ...
-    "HandleVisibility","off");
-
-axis equal;
-xlabel("MCI x [km]");
-ylabel("MCI y [km]");
-zlabel("MCI z [km]");
-grid on;
-box on;
-view(3);
-legend("Location","best");
-title(sprintf( ...
-    "Worst RMS Position-Error RSO: Object %d",worstObjectIndex));
+assert(isgraphics(figureInfo.sensorNetwork,"figure"), ...
+    "Sensor-network figure was not created.");
+assert(isgraphics(figureInfo.rsoPopulation,"figure"), ...
+    "RSO-population figure was not created.");
+assert(isgraphics(figureInfo.convergence,"figure"), ...
+    "Convergence figure was not created.");
+assert(isfile(figureInfo.sensorOutputFile), ...
+    "Sensor-network EPS was not exported.");
+assert(isfile(figureInfo.rsoOutputFile), ...
+    "RSO-population EPS was not exported.");
+assert(isfile(figureInfo.convergenceOutputFile), ...
+    "Convergence EPS was not exported.");
 
 %% ========================================================================
 %  Console summary
 %  ========================================================================
 
+[~,worstObjectIndex] = max(validation.rmsPositionErrorKm);
+
 fprintf("\n");
 fprintf("Optimization pilot result summary\n");
 fprintf("---------------------------------\n");
-fprintf("Study:                  %s\n",studySummaryFile);
-fprintf("Runs:                   %d\n",studyState.numberOfRuns);
-fprintf("FE per run:             %d\n", ...
+fprintf("Study:                   %s\n",studySummaryFile);
+fprintf("Runs:                    %d\n",studyState.numberOfRuns);
+fprintf("FE per run:              %d\n", ...
     studyState.config.functionEvaluationBudget);
-fprintf("Optimizer seeds:        %d through %d\n", ...
+fprintf("Optimizer seeds:         %d through %d\n", ...
     actualSeeds(1),actualSeeds(end));
-fprintf("Measurement-noise seed: %d\n", ...
+fprintf("Measurement-noise seed:  %d\n", ...
     validation.measurementNoiseSeed);
-fprintf("Best run:               %d\n",studyState.overallBestRunIndex);
-fprintf("Best objective J:       %.12g\n",studyState.overallBestObjective);
-fprintf("Best information score: %.8f\n", ...
+fprintf("Best run:                %d\n",studyState.overallBestRunIndex);
+fprintf("Best objective J:        %.12g\n",studyState.overallBestObjective);
+fprintf("Best information score:  %.8f\n", ...
     studyState.overallBestInformationScore);
-fprintf("Best coverage score:    %.0f\n", ...
+fprintf("Best coverage score:     %.0f\n", ...
     studyState.overallBestCoverageScore);
+fprintf("RSOs visualized:         %d\n",numberOfObjects);
 fprintf("Mean RMS position error: %.6f km\n", ...
     mean(validation.rmsPositionErrorKm));
 fprintf("Total EKF updates:       %d\n", ...
     sum(validation.measurementUpdateCounts));
 fprintf("Worst RMS RSO:           %d\n",worstObjectIndex);
-fprintf("\n");
-fprintf("Seed checks:             passed\n");
-fprintf("FE accounting:           passed\n");
+
+fprintf("\nOverall-best sensor network\n");
+disp(studyState.overallBestSensorTable);
+
+fprintf("\nVerification checks\n");
+fprintf("Seed checks:              passed\n");
+fprintf("FE accounting:            passed\n");
 fprintf("Convergence monotonicity: passed\n");
-fprintf("Sensor-index validity:   passed\n");
-fprintf("Fixed-noise EKF:         passed\n");
+fprintf("Sensor-index validity:    passed\n");
+fprintf("Fixed-noise EKF:          passed\n");
+fprintf("RSO population geometry:  passed\n");
+fprintf("Figure export:            passed\n");
 fprintf("\n");
 fprintf("testOptimizationPilotResults passed.\n");
 
@@ -365,8 +210,8 @@ summaryFiles = summaryFiles(sortOrder);
 summaryFile = "";
 
 for fileIndex = 1:numel(summaryFiles)
-    candidateFile = fullfile(summaryFiles(fileIndex).folder, ...
-        summaryFiles(fileIndex).name);
+    candidateFile = fullfile( ...
+        summaryFiles(fileIndex).folder,summaryFiles(fileIndex).name);
 
     candidateData = load(candidateFile,"studyState");
 
@@ -376,16 +221,21 @@ for fileIndex = 1:numel(summaryFiles)
 
     candidateStudy = candidateData.studyState;
 
-    if isfield(candidateStudy,"numberOfRuns") && ...
-            candidateStudy.numberOfRuns == 10 && ...
-            isfield(candidateStudy,"config") && ...
-            isfield(candidateStudy.config,"functionEvaluationBudget") && ...
-            candidateStudy.config.functionEvaluationBudget == 1200
+    isCompletedPilot = ...
+        isfield(candidateStudy,"numberOfRuns") && ...
+        candidateStudy.numberOfRuns == 10 && ...
+        isfield(candidateStudy,"config") && ...
+        isfield(candidateStudy.config,"functionEvaluationBudget") && ...
+        candidateStudy.config.functionEvaluationBudget == 1200 && ...
+        isfield(candidateStudy,"validation") && ...
+        isfield(candidateStudy.validation,"overallBest");
+
+    if isCompletedPilot
         summaryFile = string(candidateFile);
         break
     end
 end
 
 assert(strlength(summaryFile) > 0, ...
-    "No 10-run, 1200-FE pilot study summary was found.");
+    "No completed 10-run, 1200-FE pilot study summary was found.");
 end
