@@ -10,11 +10,12 @@ function figureInfo = plotOptimizationPilotResults(studyState)
 % black background, Arial typography, high-contrast annotations, minimum
 % 12-pt text, 6.5-in manuscript width, and 0.25-in export padding.
 %
-% The RSO population figure reserves explicit space for the 3-D axes labels
-% and legend, and exports the complete figure so neither can be clipped. The
-% convergence plot retains the native minimization objective J, including its
-% negative sign, so improvement is shown in the conventional downward
-% direction.
+% The RSO population figure uses symmetric Moon-centered axis limits and
+% reserves separate space above the 3-D axes for the legend. This keeps the
+% MCI axes, tick labels, and axis labels visible in both the interactive
+% figure and exported EPS image. The convergence plot retains the native
+% minimization objective J, including its negative sign, so improvement is
+% shown in the conventional downward direction.
 %
 % Usage:
 %   plotOptimizationPilotResults(studyState)
@@ -250,13 +251,16 @@ for latitudeIndex = 1:2
         "VerticalAlignment","middle");
 end
 
+% The center of this south-polar projection is the geographic lunar
+% south pole. Label it numerically to avoid implying a separate site.
 scatter( ...
     sensorAxes,0,0,28,".", ...
     "MarkerEdgeColor",textColor, ...
     "HandleVisibility","off");
 
 text( ...
-    sensorAxes,-16,-16,"South Pole", ...
+    sensorAxes,-16,-16,"90^{\circ}S", ...
+    "Interpreter","tex", ...
     "Color",textColor, ...
     "FontName",fontName, ...
     "FontSize",annotationFontSize, ...
@@ -340,6 +344,10 @@ radiusHistoriesKm = squeeze( ...
 maxRadiusByObjectKm = max(radiusHistoriesKm,[],1);
 [farthestRadiusKm,farthestObjectIndex] = max(maxRadiusByObjectKm);
 
+allPositionComponentsKm = truthStateHistories(1:3,:,:);
+componentLimitKm = 1.08*max(abs(allPositionComponentsKm),[],"all");
+componentLimitKm = max(componentLimitKm,1.25*moonRadiusKm);
+
 rsoFigure = figure( ...
     "Name","RSO Population", ...
     "Color",backgroundColor, ...
@@ -349,13 +357,12 @@ rsoFigure = figure( ...
 
 rsoFigure.InvertHardcopy = "off";
 
-% Use explicit axes and legend positions for this 3-D figure. This reserves
-% space for tick labels, x/y/z labels, and the legend in both the interactive
-% figure and exported EPS image.
+% Keep the legend above the plotting box and reserve generous lower margins
+% for the x-, y-, and z-axis annotations.
 rsoAxes = axes( ...
     rsoFigure, ...
     "Units","normalized", ...
-    "Position",[0.14 0.18 0.80 0.76]);
+    "Position",[0.15 0.15 0.78 0.70]);
 
 hold(rsoAxes,"on");
 axis(rsoAxes,"on");
@@ -442,6 +449,12 @@ rsoSensorHandle = scatter3( ...
     "LineWidth",1.4, ...
     "DisplayName","Optimized sensors");
 
+xlim(rsoAxes,[-componentLimitKm componentLimitKm]);
+ylim(rsoAxes,[-componentLimitKm componentLimitKm]);
+zlim(rsoAxes,[-componentLimitKm componentLimitKm]);
+daspect(rsoAxes,[1 1 1]);
+pbaspect(rsoAxes,[1 1 1]);
+
 xlabel(rsoAxes,"MCI x [km]", ...
     "Color",textColor,"FontName",fontName, ...
     "FontSize",labelFontSize,"FontWeight","bold");
@@ -465,7 +478,7 @@ rsoLegend = legend( ...
     "Units","normalized");
 
 styleLegend(rsoLegend,boxColor,boxEdgeColor,textColor,fontName,legendFontSize);
-rsoLegend.Position = [0.19 0.025 0.62 0.065];
+rsoLegend.Position = [0.19 0.900 0.62 0.060];
 
 %% ========================================================================
 %  Figure 3: native minimization objective versus function evaluations
