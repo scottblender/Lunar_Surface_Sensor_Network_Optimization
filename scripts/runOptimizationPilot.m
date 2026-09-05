@@ -86,7 +86,7 @@ save(summaryFile,"studyState","-v7.3");
 
 fprintf("\nPilot complete.\n");
 fprintf("Run the result/visualization test with:\n");
-fprintf("  run(\"tests/testOptimizationPilotResults.m\")\n");
+fprintf('  run("tests/testOptimizationPilotResults.m")\n');
 
 end
 
