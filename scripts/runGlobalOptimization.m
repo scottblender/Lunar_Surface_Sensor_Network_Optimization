@@ -15,15 +15,15 @@ function studyState = runGlobalOptimization(userConfig)
 % generation consumes one full population of objective evaluations. Because
 % this allows MATLAB GA to lose a previously discovered best individual, an
 % explicit best-so-far incumbent is recorded by the OutputFcn and returned as
-% the run result. This matches the FE-accounting approach used in the related
-% cislunar gradient-free comparison study.
+% the run result.
 %
-% Parallel execution can optionally restart a process-based pool before each
-% independent run. This is useful for repeated GA calls in MATLAB releases
-% where Global Optimization Toolbox worker-function dispatch can become stale
-% across consecutive runs. A parallel.pool.Constant stores the frozen search
-% database on the workers so the objective handle does not repeatedly capture
-% and serialize the full database.
+% Parallel execution normally follows the same efficient pattern used by the
+% related cislunar gradient-free study: create/reuse one process pool for the
+% complete multi-run study and create one worker-local parallel.pool.Constant
+% containing the frozen objective database. If MATLAB reports a recoverable
+% worker-dispatch failure, the affected run is retried once after rebuilding
+% the process pool and worker constant. The optimizer RNG is reset to the same
+% run seed before retrying, so the stochastic study definition is preserved.
 %
 % Example
 %
@@ -33,7 +33,7 @@ function studyState = runGlobalOptimization(userConfig)
 %   config.functionEvaluationBudget = 6000;
 %   config.populationSize = 60;
 %   config.numberOfRuns = 10;
-%   config.useParallel = false;
+%   config.useParallel = true;
 %   studyState = runGlobalOptimization(config);
 
 arguments
@@ -71,6 +71,7 @@ defaultConfig.numberOfRuns = 1;
 defaultConfig.baseSeed = 1000;
 defaultConfig.useParallel = false;
 defaultConfig.parallelRestartEachRun = false;
+defaultConfig.parallelRetryOnFailure = true;
 defaultConfig.closeParallelPoolAtEnd = false;
 defaultConfig.useParallelDatabaseConstant = true;
 defaultConfig.display = "iter";
@@ -91,17 +92,19 @@ validateattributes(config.numberOfRuns,{'numeric'}, ...
 validateattributes(config.baseSeed,{'numeric'}, ...
     {'scalar','integer','nonnegative'});
 
-assert(islogical(config.useParallel) && isscalar(config.useParallel), ...
-    "useParallel must be a scalar logical.");
-assert(islogical(config.parallelRestartEachRun) && ...
-    isscalar(config.parallelRestartEachRun), ...
-    "parallelRestartEachRun must be a scalar logical.");
-assert(islogical(config.closeParallelPoolAtEnd) && ...
-    isscalar(config.closeParallelPoolAtEnd), ...
-    "closeParallelPoolAtEnd must be a scalar logical.");
-assert(islogical(config.useParallelDatabaseConstant) && ...
-    isscalar(config.useParallelDatabaseConstant), ...
-    "useParallelDatabaseConstant must be a scalar logical.");
+logicalFields = [ ...
+    "useParallel", ...
+    "parallelRestartEachRun", ...
+    "parallelRetryOnFailure", ...
+    "closeParallelPoolAtEnd", ...
+    "useParallelDatabaseConstant" ...
+    ];
+
+for fieldIndex = 1:numel(logicalFields)
+    fieldName = logicalFields(fieldIndex);
+    assert(islogical(config.(fieldName)) && isscalar(config.(fieldName)), ...
+        "%s must be a scalar logical.",fieldName);
+end
 
 assert(config.optimizer == "GA", ...
     "This runner currently implements GA only.");
@@ -144,22 +147,32 @@ fprintf("Parallel objective:    %d\n",config.useParallel);
 
 if config.useParallel
     fprintf("Restart pool each run: %d\n",config.parallelRestartEachRun);
+    fprintf("Retry parallel failure:%d\n",config.parallelRetryOnFailure);
 end
 
 %% Lightweight frozen database used only by the search objective
 
 objectiveDatabase = buildObjectiveDatabase(database);
 
-%% Shared parallel pool when per-run restart is disabled
+%% Shared parallel resources
 
+sharedPool = [];
+sharedPoolOwned = false;
 sharedPoolCleanup = [];
+sharedObjectiveDatabaseConstant = [];
 
 if config.useParallel && ~config.parallelRestartEachRun
-    [~,poolWasCreated] = ensureProcessPool(false);
+    [sharedPool,poolWasCreated] = ensureProcessPool(false);
+    sharedPoolOwned = poolWasCreated;
 
-    if poolWasCreated && config.closeParallelPoolAtEnd
-        ownedPool = gcp("nocreate");
-        sharedPoolCleanup = onCleanup(@() cleanupParallelPool(ownedPool));
+    if config.useParallelDatabaseConstant
+        fprintf("Loading frozen objective database on parallel workers...\n");
+        sharedObjectiveDatabaseConstant = ...
+            parallel.pool.Constant(objectiveDatabase);
+    end
+
+    if config.closeParallelPoolAtEnd
+        sharedPoolCleanup = onCleanup(@cleanupOwnedSharedPool);
     end
 end
 
@@ -231,39 +244,47 @@ for runIndex = 1:config.numberOfRuns
     runSeed = config.baseSeed + runIndex - 1;
     rng(runSeed,"twister");
 
-    historyFe = zeros(0,1);
-    historyBestJ = zeros(0,1);
-    historyGeneration = zeros(0,1);
-    incumbentJ = Inf;
-    incumbentX = [];
+    resetRunHistory();
 
-    %% Fresh process pool for this run when requested
+    %% Parallel resources for this run
 
     runPoolCleanup = [];
+    activeDatabaseConstant = [];
 
     if config.useParallel && config.parallelRestartEachRun
         fprintf("\nRefreshing process-based pool for run %d...\n",runIndex);
         [runPool,~] = ensureProcessPool(true);
         runPoolCleanup = onCleanup(@() cleanupParallelPool(runPool));
+
+        if config.useParallelDatabaseConstant
+            activeDatabaseConstant = ...
+                parallel.pool.Constant(objectiveDatabase);
+        end
+
     elseif config.useParallel
-        % Guard against a pool that disappeared between independent runs.
-        [~,~] = ensureProcessPool(false);
+        % If a shared pool vanished unexpectedly between runs, rebuild the
+        % shared worker resources once and continue.
+        currentPool = gcp("nocreate");
+
+        if isempty(currentPool) || isa(currentPool,"parallel.ThreadPool")
+            sharedObjectiveDatabaseConstant = [];
+            [sharedPool,poolWasCreated] = ensureProcessPool(false);
+            sharedPoolOwned = sharedPoolOwned || poolWasCreated;
+
+            if config.useParallelDatabaseConstant
+                sharedObjectiveDatabaseConstant = ...
+                    parallel.pool.Constant(objectiveDatabase);
+            end
+        else
+            sharedPool = currentPool;
+        end
+
+        if config.useParallelDatabaseConstant
+            activeDatabaseConstant = sharedObjectiveDatabaseConstant;
+        end
     end
 
-    %% Worker-local database constant
-
-    objectiveDatabaseConstant = [];
-
-    if config.useParallel && config.useParallelDatabaseConstant
-        objectiveDatabaseConstant = parallel.pool.Constant(objectiveDatabase);
-        objectiveFunction = @(sensorIndices) ...
-            optimization.networkObjectiveFromConstant( ...
-                sensorIndices,objectiveDatabaseConstant,config.objectiveMode);
-    else
-        objectiveFunction = @(sensorIndices) ...
-            optimization.networkObjective( ...
-                sensorIndices,objectiveDatabase,config.objectiveMode);
-    end
+    objectiveFunction = buildObjectiveFunction(activeDatabaseConstant);
 
     %% GA options
 
@@ -281,22 +302,66 @@ for runIndex = 1:config.numberOfRuns
         "FitnessLimit",-Inf, ...
         "OutputFcn",@gaOutputFunction);
 
-    %% Run optimizer
+    %% Run optimizer with one safe shared-pool recovery attempt
 
+    parallelRetryCount = 0;
+    parallelPoolRestarted = false;
     runTimer = tic;
 
-    [solverBestX,solverBestObjective,exitFlag,solverOutput, ...
-        finalPopulation,finalScores] = ga( ...
-            objectiveFunction, ...
-            numberOfVariables, ...
-            A,b,[],[], ...
-            lowerBounds,upperBounds, ...
-            [],integerVariables,gaOptions);
+    try
+        [solverBestX,solverBestObjective,exitFlag,solverOutput, ...
+            finalPopulation,finalScores] = ...
+            executeGa(objectiveFunction,gaOptions);
+
+    catch optimizerError
+
+        canRetry = ...
+            config.useParallel && ...
+            ~config.parallelRestartEachRun && ...
+            config.parallelRetryOnFailure && ...
+            isRecoverableParallelDispatchError(optimizerError);
+
+        if ~canRetry
+            rethrow(optimizerError);
+        end
+
+        parallelRetryCount = 1;
+        parallelPoolRestarted = true;
+
+        fprintf("\nRecoverable parallel GA dispatch failure detected.\n");
+        fprintf("Restarting the process pool and retrying run %d once...\n", ...
+            runIndex);
+
+        % Release handles tied to the failed pool before replacing it.
+        objectiveFunction = [];
+        activeDatabaseConstant = [];
+        sharedObjectiveDatabaseConstant = [];
+
+        [sharedPool,~] = ensureProcessPool(true);
+        sharedPoolOwned = true;
+
+        if config.useParallelDatabaseConstant
+            sharedObjectiveDatabaseConstant = ...
+                parallel.pool.Constant(objectiveDatabase);
+            activeDatabaseConstant = sharedObjectiveDatabaseConstant;
+        end
+
+        objectiveFunction = buildObjectiveFunction(activeDatabaseConstant);
+
+        % Preserve the exact stochastic definition of this independent run.
+        rng(runSeed,"twister");
+        resetRunHistory();
+
+        [solverBestX,solverBestObjective,exitFlag,solverOutput, ...
+            finalPopulation,finalScores] = ...
+            executeGa(objectiveFunction,gaOptions);
+    end
 
     runtimeSeconds = toc(runTimer);
 
-    % Release the worker-local constant before deleting a per-run pool.
-    objectiveDatabaseConstant = [];
+    % Release per-run worker resources before deleting a per-run pool.
+    objectiveFunction = [];
+    activeDatabaseConstant = [];
 
     if ~isempty(runPoolCleanup)
         clear runPoolCleanup
@@ -367,7 +432,7 @@ for runIndex = 1:config.numberOfRuns
     %% Run state
 
     runState = struct();
-    runState.version = "lunar_global_optimization_run_v2_incumbent";
+    runState.version = "lunar_global_optimization_run_v3_shared_pool";
     runState.created = string(datetime("now"));
     runState.studyName = string(config.studyName);
     runState.runIndex = runIndex;
@@ -402,6 +467,8 @@ for runIndex = 1:config.numberOfRuns
     runState.finalScores = finalScores;
     runState.usedParallel = config.useParallel;
     runState.parallelRestartEachRun = config.parallelRestartEachRun;
+    runState.parallelRetryCount = parallelRetryCount;
+    runState.parallelPoolRestarted = parallelPoolRestarted;
     runState.history = struct();
     runState.history.fe = historyFe;
     runState.history.bestJ = historyBestJ;
@@ -428,6 +495,10 @@ for runIndex = 1:config.numberOfRuns
         fprintf("Solver calls:          %d\n",solverFunctionEvaluations);
     end
 
+    if parallelRetryCount > 0
+        fprintf("Parallel retries:      %d\n",parallelRetryCount);
+    end
+
     fprintf("Best objective J:      %.12g\n",bestObjective);
     fprintf("Information score:     %.8f\n",bestDetails.informationScore);
     fprintf("Coverage score:        %.0f\n",bestDetails.coverageScore);
@@ -436,10 +507,11 @@ for runIndex = 1:config.numberOfRuns
     disp(bestSensorTable);
 end
 
-%% Close a shared pool only if this function created and owns it
+%% Release shared worker data and owned pool
+
+sharedObjectiveDatabaseConstant = [];
 
 if ~isempty(sharedPoolCleanup)
-    fprintf("\nClosing process-based parallel pool created by this study...\n");
     clear sharedPoolCleanup
 end
 
@@ -449,7 +521,7 @@ end
 overallBestRunState = runStates{overallBestRunIndex};
 
 studyState = struct();
-studyState.version = "lunar_global_optimization_study_v2_incumbent";
+studyState.version = "lunar_global_optimization_study_v3_shared_pool";
 studyState.created = string(datetime("now"));
 studyState.studyDirectory = string(studyDirectory);
 studyState.config = config;
@@ -469,6 +541,8 @@ studyState.overallBestInformationScore = ...
     overallBestRunState.bestInformationScore;
 studyState.overallBestCoverageScore = ...
     overallBestRunState.bestCoverageScore;
+studyState.parallelRetryCounts = cellfun( ...
+    @(runState) runState.parallelRetryCount,runStates);
 
 %% Save study summary
 
@@ -488,6 +562,7 @@ fprintf("Independent runs:       %d\n",config.numberOfRuns);
 fprintf("FE budget / run:        %d\n",config.functionEvaluationBudget);
 fprintf("Mean best J:            %.12g\n",studyState.meanBestObjective);
 fprintf("Std best J:             %.12g\n",studyState.stdBestObjective);
+fprintf("Parallel retries:       %d\n",sum(studyState.parallelRetryCounts));
 fprintf("Best run:               %d\n",overallBestRunIndex);
 fprintf("Overall best J:         %.12g\n",overallBestObjective);
 fprintf("Information score:      %.8f\n", ...
@@ -498,7 +573,45 @@ fprintf("\nOverall best network\n");
 disp(studyState.overallBestSensorTable);
 fprintf("Results saved to:\n  %s\n",studyDirectory);
 
-%% Nested GA output function
+%% Nested helpers that share optimizer run state
+
+    function resetRunHistory()
+        historyFe = zeros(0,1);
+        historyBestJ = zeros(0,1);
+        historyGeneration = zeros(0,1);
+        incumbentJ = Inf;
+        incumbentX = [];
+    end
+
+    function objectiveFunctionHandle = ...
+            buildObjectiveFunction(databaseConstant)
+
+        if config.useParallel && config.useParallelDatabaseConstant
+            assert(~isempty(databaseConstant), ...
+                "Parallel objective database constant is unavailable.");
+
+            objectiveFunctionHandle = @(sensorIndices) ...
+                optimization.networkObjectiveFromConstant( ...
+                    sensorIndices,databaseConstant,config.objectiveMode);
+        else
+            objectiveFunctionHandle = @(sensorIndices) ...
+                optimization.networkObjective( ...
+                    sensorIndices,objectiveDatabase,config.objectiveMode);
+        end
+    end
+
+    function [solverBestX,solverBestObjective,exitFlag,solverOutput, ...
+            finalPopulation,finalScores] = ...
+            executeGa(objectiveFunctionHandle,options)
+
+        [solverBestX,solverBestObjective,exitFlag,solverOutput, ...
+            finalPopulation,finalScores] = ga( ...
+                objectiveFunctionHandle, ...
+                numberOfVariables, ...
+                A,b,[],[], ...
+                lowerBounds,upperBounds, ...
+                [],integerVariables,options);
+    end
 
     function [state,options,optChanged] = ...
             gaOutputFunction(options,state,flag)
@@ -538,6 +651,18 @@ fprintf("Results saved to:\n  %s\n",studyDirectory);
             historyGeneration(end+1,1) = state.Generation;
         elseif currentFe == historyFe(end)
             historyBestJ(end) = min(historyBestJ(end),incumbentJ);
+        end
+    end
+
+    function cleanupOwnedSharedPool()
+        if ~sharedPoolOwned
+            return
+        end
+
+        currentPool = gcp("nocreate");
+        if ~isempty(currentPool)
+            fprintf("\nClosing process-based parallel pool created by this study...\n");
+            cleanupParallelPool(currentPool);
         end
     end
 
@@ -636,5 +761,40 @@ catch cleanupError
         "runGlobalOptimization:PoolCleanupFailed", ...
         "Unable to delete the optimization parallel pool: %s", ...
         cleanupError.message);
+end
+end
+
+function tf = isRecoverableParallelDispatchError(errorObject)
+% ISRECOVERABLEPARALLELDISPATCHERROR Restrict automatic retry to worker/
+% pool dispatch failures rather than retrying arbitrary objective errors.
+
+messageText = lower(string(errorObject.message));
+stackNames = strings(0,1);
+
+if ~isempty(errorObject.stack)
+    stackNames = lower(string({errorObject.stack.name})).';
+end
+
+tf = ...
+    contains(messageText,"selected parallel environment") || ...
+    any(contains(stackNames,"setoptimfcnhandleonworkers")) || ...
+    (contains(messageText,"parallel pool") && ...
+        (contains(messageText,"shut") || ...
+         contains(messageText,"disconnect") || ...
+         contains(messageText,"unavailable"))) || ...
+    (contains(messageText,"worker") && ...
+        (contains(messageText,"disconnect") || ...
+         contains(messageText,"unavailable") || ...
+         contains(messageText,"failed")));
+
+if tf
+    return
+end
+
+for causeIndex = 1:numel(errorObject.cause)
+    if isRecoverableParallelDispatchError(errorObject.cause{causeIndex})
+        tf = true;
+        return
+    end
 end
 end
