@@ -10,10 +10,11 @@ function figureInfo = plotOptimizationPilotResults(studyState)
 % black background, Arial typography, high-contrast annotations, minimum
 % 12-pt text, 6.5-in manuscript width, and 0.25-in export padding.
 %
-% Legends are placed in dedicated tiled-layout rows so they are included in
-% exports without clipping. The convergence plot retains the native
-% minimization objective J, including its negative sign, so improvement is
-% shown in the conventional downward direction.
+% The RSO population figure reserves explicit space for the 3-D axes labels
+% and legend, and exports the complete figure so neither can be clipped. The
+% convergence plot retains the native minimization objective J, including its
+% negative sign, so improvement is shown in the conventional downward
+% direction.
 %
 % Usage:
 %   plotOptimizationPilotResults(studyState)
@@ -348,21 +349,26 @@ rsoFigure = figure( ...
 
 rsoFigure.InvertHardcopy = "off";
 
-rsoLayout = tiledlayout( ...
-    rsoFigure,1,1, ...
-    "TileSpacing","compact", ...
-    "Padding","compact");
+% Use explicit axes and legend positions for this 3-D figure. This reserves
+% space for tick labels, x/y/z labels, and the legend in both the interactive
+% figure and exported EPS image.
+rsoAxes = axes( ...
+    rsoFigure, ...
+    "Units","normalized", ...
+    "Position",[0.14 0.18 0.80 0.76]);
 
-rsoAxes = nexttile(rsoLayout,1);
 hold(rsoAxes,"on");
+axis(rsoAxes,"on");
 axis(rsoAxes,"equal");
 axis(rsoAxes,"vis3d");
 box(rsoAxes,"on");
 grid(rsoAxes,"on");
 
+rsoAxes.Visible = "on";
 rsoAxes.Color = backgroundColor;
 rsoAxes.FontName = fontName;
 rsoAxes.FontSize = axisFontSize;
+rsoAxes.FontWeight = "bold";
 rsoAxes.XColor = textColor;
 rsoAxes.YColor = textColor;
 rsoAxes.ZColor = textColor;
@@ -370,6 +376,7 @@ rsoAxes.GridColor = gridColor;
 rsoAxes.MinorGridColor = gridColor;
 rsoAxes.GridAlpha = 0.60;
 rsoAxes.LineWidth = 1.0;
+rsoAxes.TickDir = "out";
 
 [moonX,moonY,moonZ] = sphere(64);
 moonHandle = surf( ...
@@ -454,10 +461,11 @@ rsoLegend = legend( ...
     "Moon", ...
     sprintf("RSO trajectories (%d)",numberOfObjects), ...
     "Optimized sensors", ...
-    "Orientation","horizontal");
+    "Orientation","horizontal", ...
+    "Units","normalized");
 
 styleLegend(rsoLegend,boxColor,boxEdgeColor,textColor,fontName,legendFontSize);
-rsoLegend.Layout.Tile = "south";
+rsoLegend.Position = [0.19 0.025 0.62 0.065];
 
 %% ========================================================================
 %  Figure 3: native minimization objective versus function evaluations
@@ -561,7 +569,7 @@ styleLegend( ...
 convergenceLegend.Layout.Tile = "south";
 
 %% ========================================================================
-%  Export complete tiled layouts so legends cannot be cropped
+%  Export complete figure/layout containers so annotations are retained
 %  ========================================================================
 
 drawnow;
@@ -579,7 +587,7 @@ exportgraphics( ...
     "PreserveAspectRatio","on");
 
 exportgraphics( ...
-    rsoLayout, ...
+    rsoFigure, ...
     rsoOutputFile, ...
     "ContentType","image", ...
     "Resolution",600, ...
