@@ -6,13 +6,12 @@ function studyState = runOptimizationPilot(userConfig)
 % with respect to the frozen database; the fixed-noise EKF validation is
 % performed after the search and is not counted in FE.
 %
-% When parallel objective evaluation is enabled, the pilot deliberately uses
-% a fresh process-based parallel pool for every independent GA run. The prior
-% pool is deleted before the next run and the final pool is deleted when that
-% run finishes. This avoids repeated-GA worker-function dispatch failures seen
-% with reused pools in MATLAB R2026a. The frozen objective database is supplied
-% through parallel.pool.Constant so workers do not receive a large captured
-% database in the anonymous objective handle.
+% Parallel execution mirrors the efficient workflow used by the related
+% cislunar gradient-free study: one process-based pool is created or reused
+% for all independent GA runs, and one worker-local parallel.pool.Constant
+% stores the frozen objective database for the full study. If MATLAB reports
+% a recoverable worker-dispatch failure, runGlobalOptimization restarts the
+% pool and retries only the affected run once using the same optimizer seed.
 %
 % Default pilot
 %   addpath("scripts");
@@ -63,9 +62,12 @@ assert(config.functionEvaluationBudget == 1200, ...
 
 optimizationConfig = rmfield(config,"validation");
 
-% Repeated GA calls in R2026a can fail when the same pool is reused. The
-% pilot therefore owns a fresh process pool for each independent run.
-optimizationConfig.parallelRestartEachRun = ...
+% Reuse one process pool and one frozen worker database for all ten runs.
+% This removes repeated pool startup/teardown overhead while retaining a
+% one-time automatic recovery path for the MATLAB parallel dispatch failure
+% observed during earlier pilot development.
+optimizationConfig.parallelRestartEachRun = false;
+optimizationConfig.parallelRetryOnFailure = ...
     logical(optimizationConfig.useParallel);
 optimizationConfig.closeParallelPoolAtEnd = ...
     logical(optimizationConfig.useParallel);
@@ -83,7 +85,8 @@ fprintf("Fixed EKF measurement-noise seed: %d\n", ...
     config.validation.measurementNoiseSeed);
 
 if optimizationConfig.useParallel
-    fprintf("Parallel policy: fresh process pool for every GA run\n");
+    fprintf("Parallel policy: one shared process pool for all GA runs\n");
+    fprintf("Parallel recovery: one retry of an affected run if needed\n");
 end
 
 studyState = runGlobalOptimization(optimizationConfig);
@@ -95,7 +98,7 @@ studyState = validateOptimizationStudy(studyState,config.validation);
 %% Record the complete pilot configuration
 
 studyState.pilot = struct();
-studyState.pilot.version = "lunar_10x1200_pilot_v2";
+studyState.pilot.version = "lunar_10x1200_pilot_v3_shared_pool";
 studyState.pilot.config = config;
 studyState.pilot.optimizerSeeds = ...
     optimizationConfig.baseSeed + (0:optimizationConfig.numberOfRuns-1).';
@@ -103,6 +106,8 @@ studyState.pilot.measurementNoiseSeed = ...
     config.validation.measurementNoiseSeed;
 studyState.pilot.parallelRestartEachRun = ...
     optimizationConfig.parallelRestartEachRun;
+studyState.pilot.parallelRetryOnFailure = ...
+    optimizationConfig.parallelRetryOnFailure;
 
 summaryFile = fullfile(string(studyState.studyDirectory),"study_summary.mat");
 save(summaryFile,"studyState","-v7.3");
