@@ -1,21 +1,15 @@
 %% exportRsoPopulationTable
-% Generate the CSV used to populate the manuscript table:
+% Generate the CSV used to populate the manuscript RSO table and a separate
+% orbital-period diagnostic for selecting the production tracking window.
 %
-%   Orbital elements of the representative RSO population used during
-%   sensor-network optimization.
-%
-% Output:
+% Outputs:
 %   results/rso_population_table.csv
+%   results/rso_period_diagnostics.csv
 %
-% Columns:
-%   RSO
-%   hp_km
-%   a_km
-%   e
-%   i_deg
-%   Omega_deg
-%   omega_deg
-%   nu0_deg
+% The period diagnostic reports every RSO's orbital period together with the
+% number of revolutions in a candidate 72-hour tracking arc and the nominal
+% number of samples per orbit at a 10-minute cadence. These tracking values
+% are diagnostic only; this script does not change the optimization database.
 
 clear;
 close all;
@@ -48,19 +42,19 @@ assert(~isempty(which("rsoGeneration.buildRsoSet")), ...
 %  RSO population definition
 %  ========================================================================
 
-% The manuscript optimization population contains generated RSOs only.
 selection = "generated";
-
 numberOfObjects = 20;
 
-% Element-space limits used to construct the representative population.
 periapsisAltitudeLimitsKm = [50,5000];
 inclinationLimitsRad = deg2rad([0,180]);
 eccentricityLimits = [0,0.8];
 
-% Lunar constants.
 moonRadiusKm = 1737.4;
 moonMu = 4902.800066;              % km^3/s^2
+
+% Candidate production tracking definition used only for diagnostics.
+candidateTrackingDurationHours = 72;
+candidateCadenceMinutes = 10;
 
 %% ========================================================================
 %  Build the exact RSO catalog
@@ -92,18 +86,20 @@ assert(all(rsoCatalog.SourceType == "Generated"), ...
 
 requiredVariables = [ ...
     "PeriapsisAltitudeKm"
+    "ApoapsisAltitudeKm"
     "SemiMajorAxisKm"
     "Eccentricity"
     "InclinationRad"
     "RaanRad"
     "ArgumentOfPeriapsisRad"
     "TrueAnomalyRad"
+    "PeriodSeconds"
 ];
 
 assert(all(ismember( ...
     requiredVariables, ...
     string(rsoCatalog.Properties.VariableNames))), ...
-    "The RSO catalog is missing one or more required orbital elements.");
+    "The RSO catalog is missing one or more required orbital quantities.");
 
 %% ========================================================================
 %  Construct manuscript table
@@ -113,77 +109,27 @@ rsoNames = compose( ...
     "RSO %02d", ...
     (1:numberOfObjects).');
 
-periapsisAltitudeKm = ...
-    rsoCatalog.PeriapsisAltitudeKm;
-
-semiMajorAxisKm = ...
-    rsoCatalog.SemiMajorAxisKm;
-
-eccentricity = ...
-    rsoCatalog.Eccentricity;
-
-inclinationDeg = ...
-    rad2deg(rsoCatalog.InclinationRad);
-
-raanDeg = ...
-    rad2deg(rsoCatalog.RaanRad);
-
-argumentOfPeriapsisDeg = ...
-    rad2deg(rsoCatalog.ArgumentOfPeriapsisRad);
-
-trueAnomalyDeg = ...
-    rad2deg(rsoCatalog.TrueAnomalyRad);
-
-%% ========================================================================
-%  Normalize angular quantities to [0,360)
-%  ========================================================================
+periapsisAltitudeKm = rsoCatalog.PeriapsisAltitudeKm;
+semiMajorAxisKm = rsoCatalog.SemiMajorAxisKm;
+eccentricity = rsoCatalog.Eccentricity;
+inclinationDeg = rad2deg(rsoCatalog.InclinationRad);
+raanDeg = rad2deg(rsoCatalog.RaanRad);
+argumentOfPeriapsisDeg = rad2deg(rsoCatalog.ArgumentOfPeriapsisRad);
+trueAnomalyDeg = rad2deg(rsoCatalog.TrueAnomalyRad);
 
 raanDeg = mod(raanDeg,360);
-
-argumentOfPeriapsisDeg = ...
-    mod(argumentOfPeriapsisDeg,360);
-
-trueAnomalyDeg = ...
-    mod(trueAnomalyDeg,360);
-
-%% ========================================================================
-%  Round values for manuscript presentation
-%  ========================================================================
-
-periapsisAltitudeKm = ...
-    round(periapsisAltitudeKm,3);
-
-semiMajorAxisKm = ...
-    round(semiMajorAxisKm,3);
-
-eccentricity = ...
-    round(eccentricity,4);
-
-inclinationDeg = ...
-    round(inclinationDeg,3);
-
-raanDeg = ...
-    round(raanDeg,3);
-
-argumentOfPeriapsisDeg = ...
-    round(argumentOfPeriapsisDeg,3);
-
-trueAnomalyDeg = ...
-    round(trueAnomalyDeg,3);
-
-%% ========================================================================
-%  Build output table
-%  ========================================================================
+argumentOfPeriapsisDeg = mod(argumentOfPeriapsisDeg,360);
+trueAnomalyDeg = mod(trueAnomalyDeg,360);
 
 manuscriptTable = table( ...
     rsoNames, ...
-    periapsisAltitudeKm, ...
-    semiMajorAxisKm, ...
-    eccentricity, ...
-    inclinationDeg, ...
-    raanDeg, ...
-    argumentOfPeriapsisDeg, ...
-    trueAnomalyDeg, ...
+    round(periapsisAltitudeKm,3), ...
+    round(semiMajorAxisKm,3), ...
+    round(eccentricity,4), ...
+    round(inclinationDeg,3), ...
+    round(raanDeg,3), ...
+    round(argumentOfPeriapsisDeg,3), ...
+    round(trueAnomalyDeg,3), ...
     'VariableNames',{ ...
         'RSO', ...
         'hp_km', ...
@@ -195,16 +141,56 @@ manuscriptTable = table( ...
         'nu0_deg'});
 
 %% ========================================================================
-%  Write CSV
+%  Construct orbital-period / tracking diagnostic
 %  ========================================================================
 
-outputFile = fullfile( ...
+periodSeconds = rsoCatalog.PeriodSeconds;
+periodHours = periodSeconds/3600;
+periodDays = periodHours/24;
+
+apoapsisAltitudeKm = rsoCatalog.ApoapsisAltitudeKm;
+
+revolutionsInTrackingWindow = ...
+    candidateTrackingDurationHours ./ periodHours;
+
+samplesPerOrbitAtCandidateCadence = ...
+    periodSeconds ./ (candidateCadenceMinutes*60);
+
+periodDiagnosticTable = table( ...
+    rsoNames, ...
+    round(periapsisAltitudeKm,3), ...
+    round(apoapsisAltitudeKm,3), ...
+    round(eccentricity,4), ...
+    round(inclinationDeg,3), ...
+    round(periodHours,3), ...
+    round(periodDays,4), ...
+    round(revolutionsInTrackingWindow,3), ...
+    round(samplesPerOrbitAtCandidateCadence,2), ...
+    'VariableNames',{ ...
+        'RSO', ...
+        'hp_km', ...
+        'ha_km', ...
+        'e', ...
+        'i_deg', ...
+        'period_hr', ...
+        'period_day', ...
+        'revolutions_in_72hr', ...
+        'samples_per_orbit_at_10min'});
+
+%% ========================================================================
+%  Write CSV files
+%  ========================================================================
+
+manuscriptOutputFile = fullfile( ...
     resultsDirectory, ...
     "rso_population_table.csv");
 
-writetable( ...
-    manuscriptTable, ...
-    outputFile);
+periodOutputFile = fullfile( ...
+    resultsDirectory, ...
+    "rso_period_diagnostics.csv");
+
+writetable(manuscriptTable,manuscriptOutputFile);
+writetable(periodDiagnosticTable,periodOutputFile);
 
 %% ========================================================================
 %  Display results
@@ -215,17 +201,37 @@ disp("Representative RSO population");
 disp("-----------------------------");
 disp(manuscriptTable);
 
-fprintf("\nGenerated %d-object RSO population.\n", ...
-    numberOfObjects);
+disp(" ");
+disp("RSO orbital-period and tracking diagnostics");
+disp("-------------------------------------------");
+disp(periodDiagnosticTable);
 
-fprintf("Saved manuscript CSV:\n  %s\n", ...
-    outputFile);
+fprintf("\nCandidate tracking diagnostic: %.0f hr at %.0f min cadence.\n", ...
+    candidateTrackingDurationHours,candidateCadenceMinutes);
+
+fprintf("Period range:  %.3f to %.3f hr\n", ...
+    min(periodHours),max(periodHours));
+
+fprintf("Median period: %.3f hr\n",median(periodHours));
+
+fprintf("72-hr revolutions range: %.3f to %.3f\n", ...
+    min(revolutionsInTrackingWindow), ...
+    max(revolutionsInTrackingWindow));
+
+fprintf("10-min samples/orbit range: %.2f to %.2f\n", ...
+    min(samplesPerOrbitAtCandidateCadence), ...
+    max(samplesPerOrbitAtCandidateCadence));
+
+fprintf("\nGenerated %d-object RSO population.\n",numberOfObjects);
+
+fprintf("Saved manuscript CSV:\n  %s\n",manuscriptOutputFile);
+fprintf("Saved period diagnostic CSV:\n  %s\n",periodOutputFile);
 
 %% ========================================================================
-%  Print LaTeX-ready rows
+%  Print LaTeX-ready manuscript rows
 %  ========================================================================
 
-fprintf("\nLaTeX-ready table rows:\n\n");
+fprintf("\nLaTeX-ready manuscript table rows:\n\n");
 
 for objectIndex = 1:height(manuscriptTable)
 
