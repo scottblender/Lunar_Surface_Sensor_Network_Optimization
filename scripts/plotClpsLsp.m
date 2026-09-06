@@ -154,12 +154,15 @@ boundaryFontSize = 12;
 legendFontSize = 12;
 colorbarFontSize = 12;
 
+% Use a slightly wider canvas so the map, callouts, colorbar, and one-row
+% legend can be centered without any clipping at the figure boundaries.
 fig = figure("Name",theme.name, ...
     "Color",theme.backgroundColor,"Units","inches", ...
-    "Position",[1 1 10.5 6.8],"Renderer","opengl");
+    "Position",[1 1 12.0 7.4],"Renderer","opengl");
 fig.InvertHardcopy = "off";
 
-ax = axes(fig,"Position",[0.035 0.12 0.84 0.84]);
+mapAxesPosition = [0.055 0.16 0.755 0.78];
+ax = axes(fig,"Position",mapAxesPosition);
 hold(ax,"on");
 ax.Color = theme.backgroundColor;
 ax.FontName = fontName;
@@ -276,8 +279,8 @@ text(ax,completedX(2)+16,completedY(2)-18,"IM-2", ...
 %% Detailed callouts
 
 % IM-1 / TO2-IM
-im1TextPosition = [-850,210];
-im1ArrowStart = [-520,210];
+im1TextPosition = [-900,210];
+im1ArrowStart = [-540,210];
 drawDataArrow(ax,im1ArrowStart,[completedX(1),completedY(1)], ...
     theme.completedColor,2.0);
 text(ax,im1TextPosition(1),im1TextPosition(2), ...
@@ -288,8 +291,8 @@ text(ax,im1TextPosition(1),im1TextPosition(2), ...
     "HorizontalAlignment","left","VerticalAlignment","middle");
 
 % LSP-wide planned anchors
-lspTextPosition = [-850,485];
-lspArrowStart = [-520,430];
+lspTextPosition = [-900,485];
+lspArrowStart = [-540,430];
 drawDataArrow(ax,lspArrowStart,[lspAnchorX,lspAnchorY], ...
     theme.plannedColor,2.0);
 text(ax,lspTextPosition(1),lspTextPosition(2), ...
@@ -304,8 +307,8 @@ text(ax,lspTextPosition(1),lspTextPosition(2), ...
 
 % Mons Mouton
 monsAnchor = [mean(monsX),mean(monsY)];
-monsTextPosition = [535,475];
-monsArrowStart = [525,390];
+monsTextPosition = [545,475];
+monsArrowStart = [535,390];
 drawDataArrow(ax,monsArrowStart,monsAnchor,theme.plannedColor,2.0);
 text(ax,monsTextPosition(1),monsTextPosition(2), ...
     {"Mons Mouton", ...
@@ -319,8 +322,8 @@ text(ax,monsTextPosition(1),monsTextPosition(2), ...
 
 % Schrodinger Basin
 schAnchor = [mean(schX),mean(schY)];
-schTextPosition = [535,-300];
-schArrowStart = [520,-245];
+schTextPosition = [545,-300];
+schArrowStart = [530,-245];
 drawDataArrow(ax,schArrowStart,schAnchor,theme.optionalColor,2.0);
 text(ax,schTextPosition(1),schTextPosition(2), ...
     {"Schrodinger Basin", ...
@@ -335,10 +338,14 @@ text(ax,schTextPosition(1),schTextPosition(2), ...
 
 axis(ax,"equal");
 axis(ax,"off");
-xlim(ax,[-930 930]);
-ylim(ax,[-610 610]);
+xlim(ax,[-1000 1000]);
+ylim(ax,[-650 650]);
 
+% Explicit placement prevents the colorbar from squeezing the axes and keeps
+% it clear of the right-side mission callouts in both theme variants.
 colorbarHandle = colorbar(ax,"eastoutside");
+colorbarHandle.Units = "normalized";
+colorbarHandle.Position = [0.865 0.18 0.020 0.68];
 colorbarHandle.FontName = fontName;
 colorbarHandle.FontSize = colorbarFontSize;
 colorbarHandle.FontWeight = "bold";
@@ -349,18 +356,24 @@ colorbarHandle.Label.FontSize = colorbarFontSize;
 colorbarHandle.Label.FontWeight = "bold";
 colorbarHandle.Label.Color = theme.textColor;
 
+% Restore the desired map framing after MATLAB allocates colorbar space.
+ax.Position = mapAxesPosition;
+
+% Center the complete four-item legend beneath the map/callout composition.
 legendHandle = legend(ax, ...
     [completedHandle plannedHandle monsHandle schHandle], ...
     "Completed landing","Planned LSP anchor", ...
     "Planned LSP anchor region","Optional regional overlap", ...
-    "Location","southoutside","Orientation","horizontal", ...
-    "NumColumns",4);
+    "Orientation","horizontal","NumColumns",4);
+legendHandle.Units = "normalized";
+legendHandle.Position = [0.075 0.025 0.85 0.070];
 legendHandle.FontName = fontName;
 legendHandle.FontSize = legendFontSize;
 legendHandle.FontWeight = "bold";
 legendHandle.TextColor = theme.textColor;
 legendHandle.Color = theme.boxColor;
 legendHandle.EdgeColor = theme.boxEdgeColor;
+legendHandle.ItemTokenSize = [18 10];
 
 end
 
