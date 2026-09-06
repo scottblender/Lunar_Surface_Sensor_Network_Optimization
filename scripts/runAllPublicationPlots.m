@@ -74,8 +74,12 @@ fprintf("\n============================================================\n");
 fprintf("Publication-figure generation summary\n");
 fprintf("============================================================\n");
 
-summaryTable = table(jobNames,jobStatus,jobMessages, ...
-    "VariableNames",["FigureSet","Status","Message"]);
+% MATLAB R2026a interprets string-valued name/value parameter names more
+% strictly in table(). Use the name=value syntax so VariableNames is not
+% treated as an additional table variable.
+summaryTable = table( ...
+    jobNames,jobStatus,jobMessages, ...
+    VariableNames=["FigureSet","Status","Message"]);
 disp(summaryTable);
 
 fprintf("Open figures: %d\n",numel(findall(groot,"Type","figure")));
