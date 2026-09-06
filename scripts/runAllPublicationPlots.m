@@ -1,5 +1,5 @@
 function runAllPublicationPlots()
-% RUNALLPUBLICATIONPLOTS Regenerate all manuscript figures in one command.
+% RUNALLPUBLICATIONPLOTS Regenerate the manuscript schematic figures.
 %
 % The routine closes existing figures once, then runs each publication plot
 % generator without closing figures between scripts so all results remain open
@@ -14,8 +14,9 @@ function runAllPublicationPlots()
 %   plotReferenceFrameTransformations
 %   plotAnglesOnlyMeasurementModel
 %   plotExclusionConstraint
-%   plotClpsLsp                 (white + dark CLPS maps)
-%   plotOptimizationPilotResults
+%   plotClpsLsp                 (white manuscript map only)
+%
+% Optimization-result figures are intentionally excluded from this driver.
 
 close all;
 
@@ -33,9 +34,9 @@ plotJobs = { ...
     "Reference-frame transformations", "plotReferenceFrameTransformations.m"; ...
     "Angles-only measurement model",   "plotAnglesOnlyMeasurementModel.m"; ...
     "Exclusion constraint",            "plotExclusionConstraint.m"; ...
-    "CLPS south-polar maps",           "plotClpsLsp.m"};
+    "CLPS south-polar map",            "plotClpsLsp.m"};
 
-numberOfJobs = size(plotJobs,1) + 1;
+numberOfJobs = size(plotJobs,1);
 jobNames = strings(numberOfJobs,1);
 jobStatus = strings(numberOfJobs,1);
 jobMessages = strings(numberOfJobs,1);
@@ -44,7 +45,7 @@ fprintf("\n============================================================\n");
 fprintf("Regenerating publication figures\n");
 fprintf("============================================================\n");
 
-for jobIndex = 1:size(plotJobs,1)
+for jobIndex = 1:numberOfJobs
     jobName = plotJobs{jobIndex,1};
     scriptName = plotJobs{jobIndex,2};
     scriptPath = fullfile(scriptDirectory,scriptName);
@@ -63,24 +64,6 @@ for jobIndex = 1:size(plotJobs,1)
         warning("runAllPublicationPlots:PlotFailed", ...
             "%s failed:\n%s",jobName,ME.getReport("basic","hyperlinks","off"));
     end
-end
-
-%% Optimization pilot figures
-
-pilotJobIndex = numberOfJobs;
-jobNames(pilotJobIndex) = "Optimization pilot results";
-fprintf("\n[%d/%d] Optimization pilot results\n",pilotJobIndex,numberOfJobs);
-
-try
-    figureInfo = plotOptimizationPilotResults(); %#ok<NASGU>
-    jobStatus(pilotJobIndex) = "PASS";
-    jobMessages(pilotJobIndex) = "Generated successfully";
-catch ME
-    jobStatus(pilotJobIndex) = "FAIL";
-    jobMessages(pilotJobIndex) = string(ME.message);
-    warning("runAllPublicationPlots:PlotFailed", ...
-        "Optimization pilot plotting failed:\n%s", ...
-        ME.getReport("basic","hyperlinks","off"));
 end
 
 %% Verify manuscript minimum font size
