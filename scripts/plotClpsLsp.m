@@ -10,7 +10,12 @@ clc;
 
 scriptDirectory = fileparts(mfilename("fullpath"));
 repositoryRoot = fileparts(scriptDirectory);
+sourceDirectory = fullfile(repositoryRoot,"src");
+
 addpath(scriptDirectory);
+addpath(sourceDirectory);
+rehash path;
+
 style = publicationPlotStyle();
 
 fontName = style.fontName;
@@ -28,33 +33,41 @@ textColor = style.textColor;
 boxColor = style.backgroundColor;
 boxEdgeColor = [0.70 0.70 0.70];
 
-%% Load DEM
-
-demFile = fullfile(repositoryRoot,"data","new_lunar_interpolant_model.mat");
-assert(isfile(demFile),"DEM file was not found: %s",demFile);
-
-loadedData = load(demFile);
-variableNames = fieldnames(loadedData);
-demInterpolant = [];
-for variableIndex = 1:numel(variableNames)
-    currentVariable = loadedData.(variableNames{variableIndex});
-    if isa(currentVariable,"griddedInterpolant")
-        demInterpolant = currentVariable;
-        break
-    end
-end
-assert(~isempty(demInterpolant), ...
-    "No griddedInterpolant was found in %s.",demFile);
+%% Load final production DEM
 
 moonRadiusKm = 1737.4;
+demFile = fullfile(repositoryRoot,"data","Final_Lunar_DEM.mat");
+
+assert(isfile(demFile), ...
+    "Final lunar DEM was not found: %s",demFile);
+
+assert(~isempty(which("digitalElevationModel.loadTriaxialLunarDem")), ...
+    "digitalElevationModel.loadTriaxialLunarDem was not found after adding src to path.");
+
+% Final_Lunar_DEM.mat stores the numeric global raster DEM rather than a
+% serialized griddedInterpolant. Reuse the same repository loader employed by
+% buildProductionOptimizationDatabase so plotting and optimization use an
+% identical raster convention and interpolant construction.
+[demInterpolant,~] = ...
+    digitalElevationModel.loadTriaxialLunarDem( ...
+        string(demFile),moonRadiusKm,24,48);
+
 domainSouthDeg = -90;
 domainNorthDeg = -75;
 
 longitudeDeg = linspace(0,360,721);
 latitudeDeg = linspace(domainSouthDeg,domainNorthDeg,301);
 [longitudeMeshDeg,latitudeMeshDeg] = meshgrid(longitudeDeg,latitudeDeg);
-elevationKm = double(demInterpolant(latitudeMeshDeg,longitudeMeshDeg));
+
+% loadTriaxialLunarDem returns the workflow-standard interpolant with inputs
+% in radians: elevationKm = dem(latitudeRad,longitudeRad).
+elevationKm = double(demInterpolant( ...
+    deg2rad(latitudeMeshDeg), ...
+    deg2rad(longitudeMeshDeg)));
+
 finiteElevationKm = elevationKm(isfinite(elevationKm));
+assert(~isempty(finiteElevationKm), ...
+    "The final lunar DEM produced no finite samples over the LSP domain.");
 elevationLimitsKm = [min(finiteElevationKm),max(finiteElevationKm)];
 
 % Completed CLPS landings: IM-1 and IM-2.
