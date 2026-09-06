@@ -6,7 +6,6 @@
 %   reference_frame_sensor_centered.eps
 
 clear;
-close all;
 clc;
 
 scriptDirectory = fileparts(mfilename("fullpath"));
@@ -14,10 +13,11 @@ addpath(scriptDirectory);
 style = publicationPlotStyle();
 
 fontName = style.fontName;
-axisLabelFontSize = 13;
-annotationFontSize = 11;
+axisLabelFontSize = 16;
+annotationFontSize = 13;
 backgroundColor = style.backgroundColor;
 textColor = style.textColor;
+labelBackgroundColor = style.labelBackgroundColor;
 moonColor = style.moonColor;
 moonEdgeColor = style.moonEdgeColor;
 mciColor = style.blueColor;
@@ -41,7 +41,8 @@ theta = deg2rad(35);
 
 %% Moon-centered MCI / MR figure
 
-figMoon = figure("Color",backgroundColor,"Units","inches", ...
+figMoon = figure("Name","Reference frames: MCI and MR", ...
+    "Color",backgroundColor,"Units","inches", ...
     "Position",[1 1 exportWidthInches exportHeightInches],"Renderer","painters");
 axMoon = axes(figMoon,"Position",[0.05 0.05 0.90 0.90]);
 hold(axMoon,"on");
@@ -63,10 +64,10 @@ yI = [0;1];
 xR = [cos(theta);sin(theta)];
 yR = [-sin(theta);cos(theta)];
 
-drawArrow2D(axMoon,origin,origin+axisLength*xI,mciColor,2.0,0.085,0.065,"-");
-drawArrow2D(axMoon,origin,origin+axisLength*yI,mciColor,2.0,0.085,0.065,"-");
-drawArrow2D(axMoon,origin,origin+axisLength*xR,mrColor,2.0,0.085,0.065,"--");
-drawArrow2D(axMoon,origin,origin+axisLength*yR,mrColor,2.0,0.085,0.065,"--");
+drawArrow2D(axMoon,origin,origin+axisLength*xI,mciColor,2.2,0.085,0.065,"-");
+drawArrow2D(axMoon,origin,origin+axisLength*yI,mciColor,2.2,0.085,0.065,"-");
+drawArrow2D(axMoon,origin,origin+axisLength*xR,mrColor,2.2,0.085,0.065,"--");
+drawArrow2D(axMoon,origin,origin+axisLength*yR,mrColor,2.2,0.085,0.065,"--");
 
 text(axMoon,origin(1)+1.20,origin(2),"x_I", ...
     "Interpreter","tex","Color",mciColor,"FontName",fontName, ...
@@ -86,21 +87,26 @@ plot(axMoon,origin(1),origin(2),"o","MarkerSize",9, ...
 plot(axMoon,origin(1),origin(2),".","Color",textColor,"MarkerSize",11);
 text(axMoon,origin(1)-0.08,origin(2)-0.13,"z_I=z_R", ...
     "Interpreter","tex","Color",textColor,"FontName",fontName, ...
-    "FontSize",annotationFontSize,"HorizontalAlignment","right","VerticalAlignment","top");
+    "FontSize",annotationFontSize,"FontWeight","bold", ...
+    "BackgroundColor",labelBackgroundColor,"Margin",style.labelMargin, ...
+    "HorizontalAlignment","right","VerticalAlignment","top");
 
 angleRadius = 0.37;
 angleValues = linspace(0,theta,100);
 anglePoints = origin + angleRadius*[cos(angleValues);sin(angleValues)];
-plot(axMoon,anglePoints(1,:),anglePoints(2,:),"Color",angleColor,"LineWidth",1.8);
+plot(axMoon,anglePoints(1,:),anglePoints(2,:),"Color",angleColor,"LineWidth",2.0);
 drawArrowHead2D(axMoon,anglePoints(:,end),[-sin(theta);cos(theta)],angleColor,0.065,0.055);
 angleLabel = origin + 0.49*[cos(theta/2);sin(theta/2)];
 text(axMoon,angleLabel(1),angleLabel(2),"\theta(t)", ...
     "Interpreter","tex","Color",angleColor,"FontName",fontName, ...
-    "FontSize",axisLabelFontSize,"FontWeight","bold","HorizontalAlignment","center");
+    "FontSize",axisLabelFontSize,"FontWeight","bold", ...
+    "BackgroundColor",labelBackgroundColor,"Margin",style.labelMargin, ...
+    "HorizontalAlignment","center");
 
 %% Sensor-centered ENU figure
 
-figSensor = figure("Color",backgroundColor,"Units","inches", ...
+figSensor = figure("Name","Reference frames: local ENU", ...
+    "Color",backgroundColor,"Units","inches", ...
     "Position",[8 1 exportWidthInches exportHeightInches],"Renderer","painters");
 axSensor = axes(figSensor,"Position",[0.05 0.05 0.90 0.90]);
 hold(axSensor,"on");
@@ -121,6 +127,8 @@ scatter(axSensor,sensorPosition(1),sensorPosition(2),62,"o", ...
     "MarkerFaceColor",sensorColor,"MarkerEdgeColor",backgroundColor,"LineWidth",1.0);
 text(axSensor,sensorPosition(1)-0.12,sensorPosition(2)-0.16,"Surface sensor", ...
     "Color",textColor,"FontName",fontName,"FontSize",annotationFontSize, ...
+    "FontWeight","bold","BackgroundColor",labelBackgroundColor, ...
+    "Margin",style.labelMargin, ...
     "HorizontalAlignment","right","VerticalAlignment","top");
 
 plot(axSensor,[localMoonCenter(1),sensorPosition(1)], ...
@@ -128,7 +136,8 @@ plot(axSensor,[localMoonCenter(1),sensorPosition(1)], ...
     "Color",style.grayColor,"LineWidth",1.1);
 text(axSensor,sensorPosition(1)+0.08,sensorPosition(2)-0.43,"r_{s,R}", ...
     "Interpreter","tex","Color",style.grayColor,"FontName",fontName, ...
-    "FontSize",annotationFontSize);
+    "FontSize",annotationFontSize,"FontWeight","bold", ...
+    "BackgroundColor",labelBackgroundColor,"Margin",style.labelMargin);
 
 E = [1;0];
 N = [-0.72;0.55]; N = N/norm(N);
@@ -136,11 +145,11 @@ U = [0;1];
 localAxisLength = 0.58;
 
 drawArrow2D(axSensor,sensorPosition,sensorPosition+localAxisLength*E, ...
-    eastColor,2.0,0.070,0.058,"-");
+    eastColor,2.2,0.070,0.058,"-");
 drawArrow2D(axSensor,sensorPosition,sensorPosition+localAxisLength*N, ...
-    northColor,2.0,0.070,0.058,"-");
+    northColor,2.2,0.070,0.058,"-");
 drawArrow2D(axSensor,sensorPosition,sensorPosition+localAxisLength*U, ...
-    upColor,2.0,0.070,0.058,"-");
+    upColor,2.2,0.070,0.058,"-");
 
 text(axSensor,sensorPosition(1)+0.70,sensorPosition(2),"E", ...
     "Color",eastColor,"FontName",fontName,"FontSize",axisLabelFontSize,"FontWeight","bold");
@@ -151,18 +160,22 @@ text(axSensor,sensorPosition(1),sensorPosition(2)+0.70,"U", ...
     "HorizontalAlignment","center");
 
 rsoPosition = [0.80;1.50];
-drawArrow2D(axSensor,sensorPosition,rsoPosition,relativePositionColor,2.2,0.095,0.065,"-");
+drawArrow2D(axSensor,sensorPosition,rsoPosition,relativePositionColor,2.4,0.095,0.065,"-");
 scatter(axSensor,rsoPosition(1),rsoPosition(2),80,"p", ...
     "MarkerFaceColor",relativePositionColor,"MarkerEdgeColor",backgroundColor,"LineWidth",1.0);
 text(axSensor,rsoPosition(1)+0.12,rsoPosition(2)+0.04,"RSO", ...
-    "Color",textColor,"FontName",fontName,"FontSize",annotationFontSize);
+    "Color",textColor,"FontName",fontName,"FontSize",annotationFontSize, ...
+    "FontWeight","bold","BackgroundColor",labelBackgroundColor, ...
+    "Margin",style.labelMargin);
 
 rho = rsoPosition-sensorPosition;
 rhoNormal = [-rho(2);rho(1)]/norm(rho);
 rhoLabel = sensorPosition + 0.58*rho + 0.10*rhoNormal;
 text(axSensor,rhoLabel(1),rhoLabel(2),"\rho_R", ...
     "Interpreter","tex","Color",relativePositionColor,"FontName",fontName, ...
-    "FontSize",axisLabelFontSize,"FontWeight","bold","HorizontalAlignment","center");
+    "FontSize",axisLabelFontSize,"FontWeight","bold", ...
+    "BackgroundColor",labelBackgroundColor,"Margin",style.labelMargin, ...
+    "HorizontalAlignment","center");
 
 %% Export
 
