@@ -20,7 +20,20 @@ end
 
 scriptDirectory = fileparts(mfilename("fullpath"));
 projectRoot = fileparts(scriptDirectory);
+sourceDirectory = fullfile(projectRoot,"src");
 resultsDirectory = fullfile(projectRoot,"results");
+
+assert(isfolder(sourceDirectory), ...
+    "Source directory not found: %s",sourceDirectory);
+
+% Allow this function to be called directly from the MATLAB command window.
+% The repository source tree contains package folders such as
+% +referenceFrames, which are otherwise unavailable unless src is on path.
+addpath(sourceDirectory);
+rehash path;
+
+assert(~isempty(which("referenceFrames.moonRotating")), ...
+    "referenceFrames.moonRotating was not found after adding src to path.");
 
 if isempty(fieldnames(studyState))
     summaryFile = findLatestPilotSummary(resultsDirectory);
