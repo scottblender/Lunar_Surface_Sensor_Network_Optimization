@@ -14,12 +14,12 @@ style = publicationPlotStyle();
 fontName = style.fontName;
 objectFontSize = 15;
 angleFontSize = 17;
-rsoMarkerArea = 170;
+rsoMarkerArea = 360;
 backgroundColor = style.backgroundColor;
 textColor = style.textColor;
 
 sensorColor = style.redColor;
-targetColor = style.blueColor;
+targetColor = style.magentaColor;
 bodyColor = style.moonColor;
 occultationColor = style.grayColor;
 minimumAngleColor = style.orangeColor;
@@ -90,7 +90,7 @@ plot(ax,[sensor(1),target(1)],[sensor(2),target(2)],"-", ...
 plot(ax,sensor(1),sensor(2),"o","MarkerSize",10, ...
     "MarkerFaceColor",sensorColor,"MarkerEdgeColor",backgroundColor,"LineWidth",1.0);
 scatter(ax,target(1),target(2),rsoMarkerArea,"p", ...
-    "MarkerFaceColor",targetColor,"MarkerEdgeColor",backgroundColor,"LineWidth",1.2);
+    "MarkerFaceColor",targetColor,"MarkerEdgeColor",targetColor,"LineWidth",1.2);
 
 occultationArcRadius = 0.88;
 minimumArcRadius = 1.30;
