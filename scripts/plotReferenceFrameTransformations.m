@@ -15,7 +15,7 @@ style = publicationPlotStyle();
 fontName = style.fontName;
 axisLabelFontSize = 16;
 annotationFontSize = 13;
-rsoMarkerArea = 170;
+rsoMarkerArea = 360;
 backgroundColor = style.backgroundColor;
 textColor = style.textColor;
 labelBackgroundColor = style.labelBackgroundColor;
@@ -163,7 +163,7 @@ text(axSensor,sensorPosition(1),sensorPosition(2)+0.70,"U", ...
 rsoPosition = [0.80;1.50];
 drawArrow2D(axSensor,sensorPosition,rsoPosition,relativePositionColor,2.4,0.095,0.065,"-");
 scatter(axSensor,rsoPosition(1),rsoPosition(2),rsoMarkerArea,"p", ...
-    "MarkerFaceColor",relativePositionColor,"MarkerEdgeColor",backgroundColor,"LineWidth",1.2);
+    "MarkerFaceColor",relativePositionColor,"MarkerEdgeColor",relativePositionColor,"LineWidth",1.2);
 text(axSensor,rsoPosition(1)+0.12,rsoPosition(2)+0.04,"RSO", ...
     "Color",textColor,"FontName",fontName,"FontSize",annotationFontSize, ...
     "FontWeight","bold","BackgroundColor",labelBackgroundColor, ...
