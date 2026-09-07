@@ -74,9 +74,6 @@ fprintf("\n============================================================\n");
 fprintf("Publication-figure generation summary\n");
 fprintf("============================================================\n");
 
-% MATLAB R2026a interprets string-valued name/value parameter names more
-% strictly in table(). Use the name=value syntax so VariableNames is not
-% treated as an additional table variable.
 summaryTable = table( ...
     jobNames,jobStatus,jobMessages, ...
     VariableNames=["FigureSet","Status","Message"]);
@@ -84,11 +81,11 @@ disp(summaryTable);
 
 fprintf("Open figures: %d\n",numel(findall(groot,"Type","figure")));
 fprintf("Minimum required font size: %.0f pt\n",minimumFontSizePt);
-fprintf("Smallest detected font size: %.1f pt\n",fontAudit.minimumDetectedFontSizePt);
+fprintf("Smallest visible font size: %.1f pt\n",fontAudit.minimumDetectedFontSizePt);
 
 if fontAudit.numberBelowMinimum > 0
     warning("runAllPublicationPlots:FontSize", ...
-        "%d figure text objects are below %.0f pt.", ...
+        "%d visible figure text objects are below %.0f pt.", ...
         fontAudit.numberBelowMinimum,minimumFontSizePt);
 else
     fprintf("Font-size audit: PASS\n");
@@ -103,6 +100,10 @@ end
 end
 
 function audit = auditFigureFontSizes(minimumFontSizePt)
+% Audit only text that can actually appear in the rendered figure. MATLAB
+% creates empty title/axis-label objects and hidden axes with default 10-pt
+% fonts even when axis(...,"off") is used; those non-rendered objects should
+% not trigger a manuscript typography warning.
 
 figures = findall(groot,"Type","figure");
 fontSizes = zeros(0,1);
@@ -110,10 +111,33 @@ numberBelowMinimum = 0;
 
 for figureIndex = 1:numel(figures)
     objects = findall(figures(figureIndex));
+
     for objectIndex = 1:numel(objects)
         objectHandle = objects(objectIndex);
+
         if ~isprop(objectHandle,"FontSize")
             continue
+        end
+
+        % Skip explicitly hidden graphics objects.
+        if isprop(objectHandle,"Visible")
+            try
+                if string(objectHandle.Visible) == "off"
+                    continue
+                end
+            catch
+            end
+        end
+
+        % Skip empty text/title/label placeholders created by MATLAB.
+        if isprop(objectHandle,"String")
+            try
+                objectString = string(objectHandle.String);
+                if isempty(objectString) || all(strlength(objectString) == 0)
+                    continue
+                end
+            catch
+            end
         end
 
         try
@@ -122,7 +146,8 @@ for figureIndex = 1:numel(figures)
             continue
         end
 
-        if isempty(currentFontSize) || ~isfinite(currentFontSize)
+        if isempty(currentFontSize) || ~isscalar(currentFontSize) || ...
+                ~isfinite(currentFontSize)
             continue
         end
 
