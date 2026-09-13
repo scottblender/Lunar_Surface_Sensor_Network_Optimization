@@ -1,6 +1,10 @@
 function studyState = runOptimizationPilot(userConfig)
 % RUNOPTIMIZATIONPILOT Run the standard 10 x 1200-FE GA pilot and EKF check.
 %
+% The pilot defaults to the information objective, which is the primary
+% sensor-network design metric. Set objectiveMode to "coverage" to run the
+% corresponding coverage-optimized comparison study.
+%
 % The pilot uses ten independent optimizer seeds while holding the final
 % EKF measurement-noise realization fixed. Optimization remains deterministic
 % with respect to the frozen database; the fixed-noise EKF validation is
@@ -33,7 +37,7 @@ end
 defaultConfig = struct();
 defaultConfig.optimizer = "GA";
 defaultConfig.networkSize = 3;
-defaultConfig.objectiveMode = "coverage";
+defaultConfig.objectiveMode = "information";
 defaultConfig.functionEvaluationBudget = 1200;
 defaultConfig.populationSize = 60;
 defaultConfig.numberOfRuns = 10;
@@ -78,6 +82,7 @@ fprintf("\n");
 fprintf("============================================================\n");
 fprintf("10 x 1200-FE lunar optimization pilot\n");
 fprintf("============================================================\n");
+fprintf("Primary/default objective: %s\n",optimizationConfig.objectiveMode);
 fprintf("Optimizer seed sequence: %d through %d\n", ...
     optimizationConfig.baseSeed, ...
     optimizationConfig.baseSeed + optimizationConfig.numberOfRuns - 1);
@@ -98,7 +103,7 @@ studyState = validateOptimizationStudy(studyState,config.validation);
 %% Record the complete pilot configuration
 
 studyState.pilot = struct();
-studyState.pilot.version = "lunar_10x1200_pilot_v3_shared_pool";
+studyState.pilot.version = "lunar_10x1200_pilot_v4_information_default";
 studyState.pilot.config = config;
 studyState.pilot.optimizerSeeds = ...
     optimizationConfig.baseSeed + (0:optimizationConfig.numberOfRuns-1).';
