@@ -44,6 +44,11 @@ function [referenceStateHistory, ...
 % The STM at index k maps the state and covariance from the previous epoch
 % to observationTimes(k). At k = 1, the previous epoch is initialTime.
 %
+% The nominal state uses the same ODE solver and tolerances as
+% orbitDynamics.propagateLunarOrbit. This keeps the independently computed
+% truth and nominal tracking histories numerically consistent over the
+% multi-day production arc while simultaneously propagating the STM.
+%
 % The geometric LOS gate used here can later be replaced by the terrain
 % horizon database without changing the covariance propagation function.
 
@@ -107,8 +112,11 @@ topographicElevation = ...
 
 identityMatrix = eye(6);
 
+% Match orbitDynamics.propagateLunarOrbit so the state component of the
+% augmented state/STM integration remains consistent with the canonical
+% truth propagation over long arcs.
 odeOptions = odeset( ...
-    "RelTol",1e-11, ...
+    "RelTol",1e-12, ...
     "AbsTol",1e-12);
 
 currentTime = initialTime;
@@ -129,7 +137,7 @@ for timeIndex = 1:numberOfTimes
         reshape(identityMatrix,36,1)
     ];
 
-    [~,augmentedHistory] = ode45( ...
+    [~,augmentedHistory] = ode113( ...
         @(time,augmentedState) ...
             orbitDynamics.lunarStateAndStmDynamics( ...
                 time,augmentedState,moonMu), ...
