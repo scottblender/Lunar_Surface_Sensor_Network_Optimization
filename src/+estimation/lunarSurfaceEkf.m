@@ -1,4 +1,4 @@
-function [stateHistory, covarianceHistory, innovationHistory, measurementInformationHistory] = lunarSurfaceEkf(initialTime, observationTimes, rightAscension, declination, sensorLatitudes, sensorLongitudes, dem, measurementAvailable, initialState, initialCovariance, measurementCovariance, accelerationNoiseIntensity, moonMu, moonRadius, theta0, angularRate)
+function [stateHistory, covarianceHistory, innovationHistory, measurementInformationHistory, predictedStateHistory] = lunarSurfaceEkf(initialTime, observationTimes, rightAscension, declination, sensorLatitudes, sensorLongitudes, dem, measurementAvailable, initialState, initialCovariance, measurementCovariance, accelerationNoiseIntensity, moonMu, moonRadius, theta0, angularRate)
 % LUNARSURFACEEKF Run an RA/Dec EKF using lunar surface sensors.
 %
 % Inputs:
@@ -24,6 +24,7 @@ function [stateHistory, covarianceHistory, innovationHistory, measurementInforma
 %   covarianceHistory            - 6x6xN posterior covariance history
 %   innovationHistory            - 2xN RA/Dec innovation history
 %   measurementInformationHistory- 6x6xN H'*R^(-1)*H history
+%   predictedStateHistory        - 6xN pre-update predicted MCI states
 
 arguments
     initialTime (1,1) double
@@ -73,6 +74,7 @@ covarianceHistory = zeros(6,6,numberOfObservations);
 innovationHistory = NaN(2,numberOfObservations);
 measurementInformationHistory = ...
     zeros(6,6,numberOfObservations);
+predictedStateHistory = zeros(6,numberOfObservations);
 
 currentTime = initialTime;
 currentState = initialState;
@@ -125,6 +127,9 @@ for observationIndex = 1:numberOfObservations
 
     predictedCovariance = ...
         0.5*(predictedCovariance + predictedCovariance');
+
+    predictedStateHistory(:,observationIndex) = ...
+        predictedState;
 
     %% LOS-gated measurement update
 
