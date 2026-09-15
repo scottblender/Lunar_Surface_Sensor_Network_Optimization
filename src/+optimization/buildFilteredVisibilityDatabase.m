@@ -16,7 +16,8 @@ function [filteredAvailability,diagnostics] = ...
         minimumAngularSeparation, ...
         moonRadius, ...
         theta0, ...
-        angularRate)
+        angularRate, ...
+        earthMinimumAngularSeparation)
 % BUILDFILTEREDVISIBILITYDATABASE Apply terrain and celestial constraints.
 %
 % Inputs:
@@ -33,23 +34,21 @@ function [filteredAvailability,diagnostics] = ...
 %   horizonMargin               - Additional terrain-horizon margin, rad
 %   earthRadius                 - Earth radius, km
 %   sunRadius                   - Sun radius, km
-%   minimumAngularSeparation    - Minimum target/body-center angle, rad
+%   minimumAngularSeparation    - Sun center keep-out angle, rad
 %   moonRadius                  - Lunar reference radius, km
 %   theta0                      - Initial Moon rotation angle, rad
 %   angularRate                 - Lunar rotation rate, rad/s
+%   earthMinimumAngularSeparation - Optional Earth center keep-out angle,
+%                                   rad. Omit to use the Sun value.
 %
 % Outputs:
 %   filteredAvailability - SxNxO fully filtered measurement gate
 %   diagnostics          - Constraint masks and geometry histories
 %
-% Earth and Sun use one center-referenced minimum angular separation.
-% For each body, the required separation is
-%
-%   thetaRequired = max(thetaOccultation, minimumAngularSeparation).
-%
-% Thus minimumAngularSeparation = 0 degenerates exactly to physical
-% occultation. The Moon is not included in celestial screening because
-% lunar obstruction is already represented by the terrain/horizon LOS gate.
+% For each body, the required separation is the maximum of the physical
+% occultation threshold and its configured center-referenced keep-out angle.
+% The Moon is not included in celestial screening because lunar obstruction
+% is already represented by the terrain/horizon LOS gate.
 %
 % The final gate is
 %
@@ -73,6 +72,16 @@ arguments
     moonRadius (1,1) double {mustBePositive} = 1737.4
     theta0 (1,1) double = 0
     angularRate (1,1) double = 2*pi/(27.321661*86400)
+    earthMinimumAngularSeparation (1,1) double = NaN
+end
+
+if isnan(earthMinimumAngularSeparation)
+    earthMinimumAngularSeparation = minimumAngularSeparation;
+else
+    validateattributes( ...
+        earthMinimumAngularSeparation, ...
+        {'numeric'}, ...
+        {'scalar','nonnegative','finite'});
 end
 
 numberOfTimes = length(times);
@@ -198,7 +207,8 @@ for timeIndex = 1:numberOfTimes
                     sunPosition, ...
                     earthRadius, ...
                     sunRadius, ...
-                    minimumAngularSeparation);
+                    minimumAngularSeparation, ...
+                    earthMinimumAngularSeparation);
 
             earthBlocked(sensorIndex,timeIndex,objectIndex) = ...
                 objectEarthBlocked;
@@ -254,5 +264,8 @@ diagnostics.sunSeparation = sunSeparation;
 diagnostics.earthMinimumSeparation = earthMinimumSeparation;
 diagnostics.sunMinimumSeparation = sunMinimumSeparation;
 diagnostics.configuredMinimumAngularSeparation = minimumAngularSeparation;
+diagnostics.configuredSunMinimumAngularSeparation = minimumAngularSeparation;
+diagnostics.configuredEarthMinimumAngularSeparation = ...
+    earthMinimumAngularSeparation;
 
 end
