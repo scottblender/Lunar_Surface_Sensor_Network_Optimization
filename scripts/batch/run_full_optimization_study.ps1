@@ -116,13 +116,17 @@ function Invoke-LunarOptimization {
 
     $projectRootMatlab = $ProjectRoot.Replace("'", "''")
 
+    # Use MATLAB character-vector literals here rather than double-quoted
+    # MATLAB strings. Start-Process may remove embedded double quotes while
+    # assembling the -batch command line, which would turn information into
+    # an unresolved MATLAB variable instead of the intended string value.
     $matlabCommand = @"
 cd('$projectRootMatlab');
 addpath('scripts');
 
 config = struct();
 config.networkSize = $NetworkSize;
-config.objectiveMode = "$Objective";
+config.objectiveMode = '$Objective';
 config.functionEvaluationBudget = $EvalBudget;
 config.populationSize = $PopulationSize;
 config.numberOfRuns = $NumberOfRuns;
@@ -134,7 +138,7 @@ config.parallelRetryOnFailure = true;
 config.closeParallelPoolAtEnd = true;
 config.useParallelDatabaseConstant = true;
 
-config.display = "iter";
+config.display = 'iter';
 
 studyState = runGlobalOptimization(config);
 "@
