@@ -16,9 +16,14 @@ $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $RunnerFile = Join-Path $ProjectRoot "scripts\runGlobalOptimization.m"
+$BatchEntry = Join-Path $ProjectRoot "scripts\batch\run_lunar_batch_entry.m"
 
 if (-not (Test-Path $RunnerFile)) {
     throw "Cannot find runGlobalOptimization.m at: $RunnerFile"
+}
+
+if (-not (Test-Path $BatchEntry)) {
+    throw "Cannot find MATLAB batch entry at: $BatchEntry"
 }
 
 # -------------------------------------------------------------------------
@@ -26,7 +31,6 @@ if (-not (Test-Path $RunnerFile)) {
 # -------------------------------------------------------------------------
 
 if ([string]::IsNullOrWhiteSpace($MatlabExe)) {
-
     $matlabCommand = Get-Command matlab.exe -ErrorAction SilentlyContinue
 
     if ($matlabCommand) {
@@ -90,28 +94,28 @@ if ($StartCase -lt 1 -or $StartCase -gt $TotalCases) {
 
 $CasesToRun = @($Cases[($StartCase - 1)..($TotalCases - 1)])
 $TotalScheduledCases = $CasesToRun.Count
-$CompletedScheduledCases = 0
+$TotalScheduledRuns = $TotalScheduledCases * $NumberOfRuns
+$CompletedScheduledRuns = 0
 
 # -------------------------------------------------------------------------
 # Batch logs
 # -------------------------------------------------------------------------
 
 $Timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-
 $LogRoot = Join-Path `
     (Join-Path $ProjectRoot "results") `
     "batch_logs\production_$Timestamp"
 
 New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null
 
+$BatchEntryMatlab = $BatchEntry.Replace("'", "''")
+
 # -------------------------------------------------------------------------
 # Helpers
 # -------------------------------------------------------------------------
 
 function Format-TimeSpan {
-    param(
-        [double]$Seconds
-    )
+    param([double]$Seconds)
 
     if ($Seconds -lt 0) {
         return "--:--:--"
@@ -125,219 +129,198 @@ function Format-TimeSpan {
         $timeSpan.Seconds
 }
 
-function Invoke-LunarOptimization {
+function Update-StudyProgress {
     param(
+        [int]$AbsoluteCase,
+        [int]$RunInCase,
         [int]$NetworkSize,
         [string]$Objective
     )
 
-    $caseName = "ga_$($Objective)_n$NetworkSize"
+    if ($script:CompletedScheduledRuns -gt 0) {
+        $averageRunSeconds = `
+            $script:StudyTimer.Elapsed.TotalSeconds / `
+            $script:CompletedScheduledRuns
 
-    $stdoutLog = Join-Path $LogRoot "$caseName.stdout.log"
-    $stderrLog = Join-Path $LogRoot "$caseName.stderr.log"
+        $remainingRuns = `
+            $script:TotalScheduledRuns - `
+            $script:CompletedScheduledRuns
+
+        $estimatedRemainingSeconds = `
+            $averageRunSeconds * $remainingRuns
+
+        $etaText = Format-TimeSpan $estimatedRemainingSeconds
+    }
+    else {
+        $etaText = "calculating..."
+    }
+
+    $percentComplete = [math]::Round(
+        100 * $script:CompletedScheduledRuns / `
+        $script:TotalScheduledRuns,
+        1
+    )
+
+    $seed = $script:BaseSeed + $RunInCase - 1
+
+    $status = `
+        "$($script:CompletedScheduledRuns) of $($script:TotalScheduledRuns) runs | " +
+        "case $AbsoluteCase of $($script:TotalCases) | " +
+        "Ns=$NetworkSize | $Objective | seed $seed | ETA $etaText"
+
+    Write-Progress `
+        -Activity "Lunar surface optimization study" `
+        -Status $status `
+        -PercentComplete $percentComplete
+}
+
+function Invoke-LunarOptimization {
+    param(
+        [int]$NetworkSize,
+        [string]$Objective,
+        [int]$AbsoluteCase,
+        [int]$ScheduledCaseIndex
+    )
+
+    $caseName = "ga_$($Objective)_n$NetworkSize"
     $consoleLog = Join-Path $LogRoot "$caseName.log"
 
-    $projectRootMatlab = $ProjectRoot.Replace("'", "''")
+    if (Test-Path $consoleLog) {
+        Remove-Item $consoleLog -Force
+    }
 
-    # Start the process pool explicitly with a fixed worker count before
-    # entering runGlobalOptimization. This avoids MATLAB waiting forever for
-    # a profile-default worker that cannot connect. The optimization runner
-    # reuses this pool for all independent runs in the case.
-    $matlabCommand = @"
-cd('$projectRootMatlab');
-addpath('scripts');
+    # Match the proven batch-runner structure from the cislunar study:
+    # PowerShell supplies configuration through environment variables and
+    # MATLAB executes one stable batch-entry script for the whole case.
+    $env:PROJECT_ROOT = $ProjectRoot
+    $env:NETWORK_SIZE = "$NetworkSize"
+    $env:OBJECTIVE_MODE = $Objective
+    $env:EVAL_BUDGET = "$EvalBudget"
+    $env:POPULATION_SIZE = "$PopulationSize"
+    $env:NUMBER_OF_RUNS = "$NumberOfRuns"
+    $env:BASE_SEED = "$BaseSeed"
+    $env:PARALLEL_WORKERS = "$ParallelWorkers"
 
-config = struct();
-config.networkSize = $NetworkSize;
-config.objectiveMode = '$Objective';
-config.functionEvaluationBudget = $EvalBudget;
-config.populationSize = $PopulationSize;
-config.numberOfRuns = $NumberOfRuns;
-config.baseSeed = $BaseSeed;
-
-config.useParallel = true;
-config.parallelRestartEachRun = false;
-config.parallelRetryOnFailure = true;
-config.closeParallelPoolAtEnd = false;
-config.useParallelDatabaseConstant = true;
-config.display = 'iter';
-
-try
-    existingPool = gcp('nocreate');
-    if ~isempty(existingPool)
-        delete(existingPool);
-    end
-
-    fprintf('Starting explicit process pool with %d workers...\n',$ParallelWorkers);
-    parpool('Processes',$ParallelWorkers);
-
-    studyState = runGlobalOptimization(config);
-catch batchError
-    existingPool = gcp('nocreate');
-    if ~isempty(existingPool)
-        delete(existingPool);
-    end
-    rethrow(batchError);
-end
-
-existingPool = gcp('nocreate');
-if ~isempty(existingPool)
-    delete(existingPool);
-end
-"@
+    $batchCommand = "run('$BatchEntryMatlab')"
 
     Write-Host ""
     Write-Host "============================================================"
-    Write-Host "Starting production case"
+    Write-Host "Starting production case $AbsoluteCase of $TotalCases"
     Write-Host "============================================================"
     Write-Host "Network size:      $NetworkSize"
     Write-Host "Objective:         $Objective"
     Write-Host "FE budget/run:     $EvalBudget"
     Write-Host "Runs:              $NumberOfRuns"
-    Write-Host "Base seed:         $BaseSeed"
+    Write-Host "Seeds:             $BaseSeed-$($BaseSeed + $NumberOfRuns - 1)"
     Write-Host "Parallel workers:  $ParallelWorkers"
+    Write-Host "Log:               $consoleLog"
     Write-Host ""
 
-    try {
+    $caseRunOffset = ($ScheduledCaseIndex - 1) * $NumberOfRuns
+    $lastReportedRun = 0
 
-        $process = Start-Process `
-            -FilePath $MatlabExe `
-            -ArgumentList @(
-                "-batch",
-                "`"$matlabCommand`""
-            ) `
-            -WorkingDirectory $ProjectRoot `
-            -RedirectStandardOutput $stdoutLog `
-            -RedirectStandardError $stderrLog `
-            -NoNewWindow `
-            -Wait `
-            -PassThru
+    # Stream MATLAB output through PowerShell rather than waiting silently
+    # for all 20 runs in a case. Full output is retained in the case log;
+    # the console only shows useful run/case milestones.
+    & $MatlabExe -batch $batchCommand 2>&1 | ForEach-Object {
+        $line = $_.ToString()
+        Add-Content -Path $consoleLog -Value $line -Encoding UTF8
 
-        $matlabExitCode = $process.ExitCode
+        if ($line -match '^\s*Run\s+(\d+)\s+complete\s*$') {
+            $runInCase = [int]$Matches[1]
 
-        if (Test-Path $consoleLog) {
-            Remove-Item $consoleLog -Force
-        }
+            if ($runInCase -gt $lastReportedRun) {
+                $lastReportedRun = $runInCase
+                $script:CompletedScheduledRuns = `
+                    $caseRunOffset + $runInCase
 
-        if (Test-Path $stdoutLog) {
-            Get-Content $stdoutLog | Add-Content $consoleLog
-            Get-Content $stdoutLog
-        }
+                Update-StudyProgress `
+                    -AbsoluteCase $AbsoluteCase `
+                    -RunInCase $runInCase `
+                    -NetworkSize $NetworkSize `
+                    -Objective $Objective
 
-        if (Test-Path $stderrLog) {
-            Get-Content $stderrLog | Add-Content $consoleLog
-
-            $stderrContent = Get-Content $stderrLog
-
-            if ($stderrContent) {
-                $stderrContent | Write-Host
+                Write-Host `
+                    "Completed run $runInCase of $NumberOfRuns " +
+                    "for Ns=$NetworkSize | $Objective"
             }
         }
-
-        if ($matlabExitCode -ne 0) {
-
-            throw `
-                "MATLAB failed for Ns=$NetworkSize, objective=$Objective " +
-                "with exit code $matlabExitCode. See: $consoleLog"
+        elseif (
+            $line -match '^Starting process pool' -or
+            $line -match '^Parallel pool ready' -or
+            $line -match '^Global optimization study complete' -or
+            $line -match '^Results saved to:' -or
+            $line -match '^Shutting down parallel pool' -or
+            $line -match '^Parallel pool shut down successfully' -or
+            $line -match '^Error using ' -or
+            $line -match '^Caused by:' -or
+            $line -match '^ERROR:'
+        ) {
+            Write-Host $line
         }
     }
-    finally {
 
-        Remove-Item `
-            $stdoutLog `
-            -Force `
-            -ErrorAction SilentlyContinue
+    $matlabExitCode = $LASTEXITCODE
 
-        Remove-Item `
-            $stderrLog `
-            -Force `
-            -ErrorAction SilentlyContinue
+    if ($matlabExitCode -ne 0) {
+        throw `
+            "MATLAB failed for Ns=$NetworkSize, objective=$Objective " +
+            "with exit code $matlabExitCode. See: $consoleLog"
     }
 
+    if ($lastReportedRun -ne $NumberOfRuns) {
+        throw `
+            "MATLAB exited successfully, but only $lastReportedRun of " +
+            "$NumberOfRuns run completions were observed. See: $consoleLog"
+    }
+
+    $script:CompletedScheduledRuns = `
+        $caseRunOffset + $NumberOfRuns
+
+    Update-StudyProgress `
+        -AbsoluteCase $AbsoluteCase `
+        -RunInCase $NumberOfRuns `
+        -NetworkSize $NetworkSize `
+        -Objective $Objective
+
     Write-Host ""
-    Write-Host "Completed -> Ns=$NetworkSize | $Objective"
-    Write-Host "Log       -> $consoleLog"
+    Write-Host "Completed case -> Ns=$NetworkSize | $Objective"
+    Write-Host "Log            -> $consoleLog"
 }
 
 # -------------------------------------------------------------------------
 # Run production study
 # -------------------------------------------------------------------------
 
-$StudyTimer = [System.Diagnostics.Stopwatch]::StartNew()
+$script:StudyTimer = [System.Diagnostics.Stopwatch]::StartNew()
+$script:TotalScheduledRuns = $TotalScheduledRuns
+$script:TotalCases = $TotalCases
+$script:BaseSeed = $BaseSeed
+$script:CompletedScheduledRuns = 0
+
+$ScheduledCaseIndex = 0
 
 foreach ($Case in $CasesToRun) {
+    $ScheduledCaseIndex++
 
     $NetworkSize = $Case.NetworkSize
     $Objective = $Case.Objective
-    $AbsoluteCase = $StartCase + $CompletedScheduledCases
-    $CurrentScheduledCase = $CompletedScheduledCases + 1
+    $AbsoluteCase = $StartCase + $ScheduledCaseIndex - 1
 
-    if ($CompletedScheduledCases -gt 0) {
-
-        $AverageCaseSeconds = `
-            $StudyTimer.Elapsed.TotalSeconds / $CompletedScheduledCases
-
-        $RemainingCases = `
-            $TotalScheduledCases - $CompletedScheduledCases
-
-        $EstimatedRemainingSeconds = `
-            $AverageCaseSeconds * $RemainingCases
-
-        $EtaText = `
-            Format-TimeSpan $EstimatedRemainingSeconds
-    }
-    else {
-        $EtaText = "calculating..."
-    }
-
-    $PercentComplete = `
-        [math]::Round(
-            100 * $CompletedScheduledCases / $TotalScheduledCases,
-            1
-        )
-
-    $status = `
-        "Case $AbsoluteCase of $TotalCases | " +
-        "scheduled $CurrentScheduledCase of $TotalScheduledCases | " +
-        "Ns=$NetworkSize | $Objective | ETA $EtaText"
-
-    Write-Progress `
-        -Activity "Lunar surface optimization study" `
-        -Status $status `
-        -PercentComplete $PercentComplete
-
-    Invoke-LunarOptimization `
+    Update-StudyProgress `
+        -AbsoluteCase $AbsoluteCase `
+        -RunInCase 1 `
         -NetworkSize $NetworkSize `
         -Objective $Objective
 
-    $CompletedScheduledCases++
-
-    $AverageCaseSeconds = `
-        $StudyTimer.Elapsed.TotalSeconds / $CompletedScheduledCases
-
-    $RemainingCases = `
-        $TotalScheduledCases - $CompletedScheduledCases
-
-    $EstimatedRemainingSeconds = `
-        $AverageCaseSeconds * $RemainingCases
-
-    $PercentComplete = `
-        [math]::Round(
-            100 * $CompletedScheduledCases / $TotalScheduledCases,
-            1
-        )
-
-    $status = `
-        "$CompletedScheduledCases of $TotalScheduledCases scheduled cases complete | " +
-        "ETA $(Format-TimeSpan $EstimatedRemainingSeconds)"
-
-    Write-Progress `
-        -Activity "Lunar surface optimization study" `
-        -Status $status `
-        -PercentComplete $PercentComplete
+    Invoke-LunarOptimization `
+        -NetworkSize $NetworkSize `
+        -Objective $Objective `
+        -AbsoluteCase $AbsoluteCase `
+        -ScheduledCaseIndex $ScheduledCaseIndex
 }
 
-$StudyTimer.Stop()
+$script:StudyTimer.Stop()
 
 Write-Progress `
     -Activity "Lunar surface optimization study" `
@@ -358,7 +341,8 @@ Write-Host "Runs / case:        $NumberOfRuns"
 Write-Host "Parallel workers:   $ParallelWorkers"
 Write-Host "Started at case:    $StartCase of $TotalCases"
 Write-Host "Cases this launch:  $TotalScheduledCases"
-Write-Host "Total runtime:      $(Format-TimeSpan $StudyTimer.Elapsed.TotalSeconds)"
+Write-Host "Runs this launch:   $TotalScheduledRuns"
+Write-Host "Total runtime:      $(Format-TimeSpan $script:StudyTimer.Elapsed.TotalSeconds)"
 Write-Host "Batch logs:"
 Write-Host "  $LogRoot"
 Write-Host ""
