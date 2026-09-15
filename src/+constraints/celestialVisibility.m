@@ -9,20 +9,23 @@ function [isVisible, ...
         sunPosition, ...
         earthRadius, ...
         sunRadius, ...
-        minimumAngularSeparation)
-% CELESTIALVISIBILITY Apply unified Earth and Sun angular-separation gates.
+        minimumAngularSeparation, ...
+        earthMinimumAngularSeparation)
+% CELESTIALVISIBILITY Apply Earth and Sun angular-separation gates.
 %
 % All positions must be expressed in the same reference frame and units.
-% minimumAngularSeparation is an absolute minimum LOS separation measured
-% from each body's CENTER, in rad.
+% minimumAngularSeparation is the Sun center-referenced keep-out angle.
+% earthMinimumAngularSeparation optionally specifies an independent Earth
+% keep-out angle. If it is omitted, Earth uses minimumAngularSeparation so
+% legacy callers retain the previous shared-angle behavior.
 %
 % For each body b,
 %
-%   thetaRequired,b = max(thetaOccultation,b, minimumAngularSeparation).
+%   thetaRequired,b = max(thetaOccultation,b, thetaConfigured,b).
 %
-% Therefore, as minimumAngularSeparation -> 0, the constraint degenerates
-% exactly to physical occultation. Physical tangency is blocked. Equality
-% at a configured minimum angular separation is allowed.
+% A zero configured separation degenerates exactly to physical occultation.
+% Physical tangency is blocked. Equality at a configured minimum angular
+% separation is allowed.
 %
 % The Moon is intentionally not screened here. For a lunar surface sensor,
 % lunar obstruction is represented by the local terrain/horizon LOS gate.
@@ -35,6 +38,16 @@ arguments
     earthRadius (1,1) double {mustBePositive} = 6378.1366
     sunRadius (1,1) double {mustBePositive} = 695700
     minimumAngularSeparation (1,1) double {mustBeNonnegative} = 0
+    earthMinimumAngularSeparation (1,1) double = NaN
+end
+
+if isnan(earthMinimumAngularSeparation)
+    earthMinimumAngularSeparation = minimumAngularSeparation;
+else
+    validateattributes( ...
+        earthMinimumAngularSeparation, ...
+        {'numeric'}, ...
+        {'scalar','nonnegative','finite'});
 end
 
 [earthClear,earthSeparation,earthMinimumSeparation] = ...
@@ -43,7 +56,7 @@ end
         targetPosition, ...
         earthPosition, ...
         earthRadius, ...
-        minimumAngularSeparation);
+        earthMinimumAngularSeparation);
 
 [sunClear,sunSeparation,sunMinimumSeparation] = ...
     minimumSeparationGate( ...
