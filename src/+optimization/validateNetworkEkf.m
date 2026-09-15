@@ -223,35 +223,20 @@ demFile = resolveDemFile(database,demFileOverride);
 assert(isfile(demFile), ...
     "validateNetworkEkf:DemNotFound", ...
     "Validation DEM was not found: %s",demFile);
-fileVariables = whos("-file",demFile);
-variableNames = string({fileVariables.name});
-if any(variableNames == "DEM")
+
+try
     [dem,~] = digitalElevationModel.loadTriaxialLunarDem( ...
         string(demFile),moonRadiusKm,24,48);
-    return
+catch loaderError
+    error( ...
+        "validateNetworkEkf:UnsupportedDemFile", ...
+        "Unable to load validation DEM '%s': %s", ...
+        demFile,loaderError.message);
 end
-if any(variableNames == "F")
-    loadedData = load(demFile,"F");
-    sourceDem = loadedData.F;
-    latitudeGrid = sourceDem.GridVectors{1}(:);
-    longitudeGrid = sourceDem.GridVectors{2}(:);
-    elevationGrid = sourceDem.Values;
-    if max(abs(latitudeGrid)) > pi/2 + 1e-6
-        latitudeGrid = deg2rad(latitudeGrid);
-    end
-    if max(abs(longitudeGrid)) > 2*pi + 1e-6
-        longitudeGrid = deg2rad(longitudeGrid);
-    end
-    if longitudeGrid(end) < 2*pi-1e-10
-        longitudeGrid = [longitudeGrid;2*pi];
-        elevationGrid = [elevationGrid,elevationGrid(:,1)];
-    end
-    dem = griddedInterpolant( ...
-        {latitudeGrid,longitudeGrid},elevationGrid,"linear","nearest");
-    return
-end
-error("validateNetworkEkf:UnsupportedDemFile", ...
-    "DEM MAT file must contain either DEM or F.");
+
+assert(isa(dem,"griddedInterpolant"), ...
+    "validateNetworkEkf:InvalidDemType", ...
+    "Validation DEM loader did not return a griddedInterpolant.");
 end
 
 function demFile = resolveDemFile(database,demFileOverride)
