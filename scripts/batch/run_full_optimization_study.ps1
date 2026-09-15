@@ -2,7 +2,7 @@
 param(
     [string]$MatlabExe = "",
     [int]$EvalBudget = 6000,
-    [int]$NumberOfRuns = 1,
+    [int]$NumberOfRuns = 20,
     [int]$BaseSeed = 1000
 )
 
