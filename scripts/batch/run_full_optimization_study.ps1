@@ -3,7 +3,9 @@ param(
     [string]$MatlabExe = "",
     [int]$EvalBudget = 6000,
     [int]$NumberOfRuns = 20,
-    [int]$BaseSeed = 1000
+    [int]$BaseSeed = 1000,
+    [int]$ParallelWorkers = 7,
+    [int]$StartCase = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,6 +61,10 @@ if ($BaseSeed -lt 0) {
     throw "BaseSeed must be nonnegative."
 }
 
+if ($ParallelWorkers -lt 1) {
+    throw "ParallelWorkers must be at least 1."
+}
+
 # -------------------------------------------------------------------------
 # Study definition
 # -------------------------------------------------------------------------
@@ -66,8 +72,25 @@ if ($BaseSeed -lt 0) {
 $NetworkSizes = @(3, 5, 7, 10)
 $Objectives = @("information", "coverage")
 
-$TotalCases = $NetworkSizes.Count * $Objectives.Count
-$CompletedCases = 0
+$Cases = @()
+foreach ($NetworkSize in $NetworkSizes) {
+    foreach ($Objective in $Objectives) {
+        $Cases += [PSCustomObject]@{
+            NetworkSize = $NetworkSize
+            Objective = $Objective
+        }
+    }
+}
+
+$TotalCases = $Cases.Count
+
+if ($StartCase -lt 1 -or $StartCase -gt $TotalCases) {
+    throw "StartCase must be between 1 and $TotalCases."
+}
+
+$CasesToRun = @($Cases[($StartCase - 1)..($TotalCases - 1)])
+$TotalScheduledCases = $CasesToRun.Count
+$CompletedScheduledCases = 0
 
 # -------------------------------------------------------------------------
 # Batch logs
@@ -116,10 +139,10 @@ function Invoke-LunarOptimization {
 
     $projectRootMatlab = $ProjectRoot.Replace("'", "''")
 
-    # Use MATLAB character-vector literals here rather than double-quoted
-    # MATLAB strings. Start-Process may remove embedded double quotes while
-    # assembling the -batch command line, which would turn information into
-    # an unresolved MATLAB variable instead of the intended string value.
+    # Start the process pool explicitly with a fixed worker count before
+    # entering runGlobalOptimization. This avoids MATLAB waiting forever for
+    # a profile-default worker that cannot connect. The optimization runner
+    # reuses this pool for all independent runs in the case.
     $matlabCommand = @"
 cd('$projectRootMatlab');
 addpath('scripts');
@@ -135,23 +158,44 @@ config.baseSeed = $BaseSeed;
 config.useParallel = true;
 config.parallelRestartEachRun = false;
 config.parallelRetryOnFailure = true;
-config.closeParallelPoolAtEnd = true;
+config.closeParallelPoolAtEnd = false;
 config.useParallelDatabaseConstant = true;
-
 config.display = 'iter';
 
-studyState = runGlobalOptimization(config);
+try
+    existingPool = gcp('nocreate');
+    if ~isempty(existingPool)
+        delete(existingPool);
+    end
+
+    fprintf('Starting explicit process pool with %d workers...\n',$ParallelWorkers);
+    parpool('Processes',$ParallelWorkers);
+
+    studyState = runGlobalOptimization(config);
+catch batchError
+    existingPool = gcp('nocreate');
+    if ~isempty(existingPool)
+        delete(existingPool);
+    end
+    rethrow(batchError);
+end
+
+existingPool = gcp('nocreate');
+if ~isempty(existingPool)
+    delete(existingPool);
+end
 "@
 
     Write-Host ""
     Write-Host "============================================================"
     Write-Host "Starting production case"
     Write-Host "============================================================"
-    Write-Host "Network size:    $NetworkSize"
-    Write-Host "Objective:       $Objective"
-    Write-Host "FE budget/run:   $EvalBudget"
-    Write-Host "Runs:            $NumberOfRuns"
-    Write-Host "Base seed:       $BaseSeed"
+    Write-Host "Network size:      $NetworkSize"
+    Write-Host "Objective:         $Objective"
+    Write-Host "FE budget/run:     $EvalBudget"
+    Write-Host "Runs:              $NumberOfRuns"
+    Write-Host "Base seed:         $BaseSeed"
+    Write-Host "Parallel workers:  $ParallelWorkers"
     Write-Host ""
 
     try {
@@ -221,75 +265,76 @@ studyState = runGlobalOptimization(config);
 
 $StudyTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
-foreach ($NetworkSize in $NetworkSizes) {
+foreach ($Case in $CasesToRun) {
 
-    foreach ($Objective in $Objectives) {
+    $NetworkSize = $Case.NetworkSize
+    $Objective = $Case.Objective
+    $AbsoluteCase = $StartCase + $CompletedScheduledCases
+    $CurrentScheduledCase = $CompletedScheduledCases + 1
 
-        $CurrentCase = $CompletedCases + 1
-
-        if ($CompletedCases -gt 0) {
-
-            $AverageCaseSeconds = `
-                $StudyTimer.Elapsed.TotalSeconds / $CompletedCases
-
-            $RemainingCases = `
-                $TotalCases - $CompletedCases
-
-            $EstimatedRemainingSeconds = `
-                $AverageCaseSeconds * $RemainingCases
-
-            $EtaText = `
-                Format-TimeSpan $EstimatedRemainingSeconds
-        }
-        else {
-            $EtaText = "calculating..."
-        }
-
-        $PercentComplete = `
-            [math]::Round(
-                100 * $CompletedCases / $TotalCases,
-                1
-            )
-
-        $status = `
-            "Case $CurrentCase of $TotalCases | " +
-            "Ns=$NetworkSize | $Objective | ETA $EtaText"
-
-        Write-Progress `
-            -Activity "Lunar surface optimization study" `
-            -Status $status `
-            -PercentComplete $PercentComplete
-
-        Invoke-LunarOptimization `
-            -NetworkSize $NetworkSize `
-            -Objective $Objective
-
-        $CompletedCases++
+    if ($CompletedScheduledCases -gt 0) {
 
         $AverageCaseSeconds = `
-            $StudyTimer.Elapsed.TotalSeconds / $CompletedCases
+            $StudyTimer.Elapsed.TotalSeconds / $CompletedScheduledCases
 
         $RemainingCases = `
-            $TotalCases - $CompletedCases
+            $TotalScheduledCases - $CompletedScheduledCases
 
         $EstimatedRemainingSeconds = `
             $AverageCaseSeconds * $RemainingCases
 
-        $PercentComplete = `
-            [math]::Round(
-                100 * $CompletedCases / $TotalCases,
-                1
-            )
-
-        $status = `
-            "$CompletedCases of $TotalCases complete | " +
-            "ETA $(Format-TimeSpan $EstimatedRemainingSeconds)"
-
-        Write-Progress `
-            -Activity "Lunar surface optimization study" `
-            -Status $status `
-            -PercentComplete $PercentComplete
+        $EtaText = `
+            Format-TimeSpan $EstimatedRemainingSeconds
     }
+    else {
+        $EtaText = "calculating..."
+    }
+
+    $PercentComplete = `
+        [math]::Round(
+            100 * $CompletedScheduledCases / $TotalScheduledCases,
+            1
+        )
+
+    $status = `
+        "Case $AbsoluteCase of $TotalCases | " +
+        "scheduled $CurrentScheduledCase of $TotalScheduledCases | " +
+        "Ns=$NetworkSize | $Objective | ETA $EtaText"
+
+    Write-Progress `
+        -Activity "Lunar surface optimization study" `
+        -Status $status `
+        -PercentComplete $PercentComplete
+
+    Invoke-LunarOptimization `
+        -NetworkSize $NetworkSize `
+        -Objective $Objective
+
+    $CompletedScheduledCases++
+
+    $AverageCaseSeconds = `
+        $StudyTimer.Elapsed.TotalSeconds / $CompletedScheduledCases
+
+    $RemainingCases = `
+        $TotalScheduledCases - $CompletedScheduledCases
+
+    $EstimatedRemainingSeconds = `
+        $AverageCaseSeconds * $RemainingCases
+
+    $PercentComplete = `
+        [math]::Round(
+            100 * $CompletedScheduledCases / $TotalScheduledCases,
+            1
+        )
+
+    $status = `
+        "$CompletedScheduledCases of $TotalScheduledCases scheduled cases complete | " +
+        "ETA $(Format-TimeSpan $EstimatedRemainingSeconds)"
+
+    Write-Progress `
+        -Activity "Lunar surface optimization study" `
+        -Status $status `
+        -PercentComplete $PercentComplete
 }
 
 $StudyTimer.Stop()
@@ -310,7 +355,9 @@ Write-Host "Network sizes:      $($NetworkSizes -join ', ')"
 Write-Host "Objectives:         $($Objectives -join ', ')"
 Write-Host "FE budget / run:    $EvalBudget"
 Write-Host "Runs / case:        $NumberOfRuns"
-Write-Host "Total cases:        $TotalCases"
+Write-Host "Parallel workers:   $ParallelWorkers"
+Write-Host "Started at case:    $StartCase of $TotalCases"
+Write-Host "Cases this launch:  $TotalScheduledCases"
 Write-Host "Total runtime:      $(Format-TimeSpan $StudyTimer.Elapsed.TotalSeconds)"
 Write-Host "Batch logs:"
 Write-Host "  $LogRoot"
