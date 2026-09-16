@@ -2,9 +2,10 @@ function style = publicationPlotStyle()
 % PUBLICATIONPLOTSTYLE Shared white-background manuscript figure styling.
 %
 % Typography is intentionally oversized for LaTeX placement. Several result
-% figures are reduced when assembled as subfigures, so 12--14 pt source
-% text becomes too small in the final manuscript. Keep the common defaults
-% large and let unusually dense plots override them locally if necessary.
+% figures are reduced when assembled as subfigures, so 12--14 pt source text
+% becomes too small in the final manuscript. The canvas dimensions below are
+% likewise oversized so the larger type does not crowd ticks, labels, legends,
+% tiled layouts, or annotations after export.
 
 style = struct();
 
@@ -43,7 +44,17 @@ style.lightGrayColor = [0.90 0.90 0.91];
 style.labelBackgroundColor = [1.00 1.00 1.00];
 style.labelMargin = 1.5;
 
-style.exportWidthInches = 6.50;
-style.exportPaddingInches = 0.25;
+% Conference-paper source canvases. These are intentionally larger than the
+% final LaTeX placement size because the figures are commonly reduced after
+% export. Keeping more source-canvas area preserves readable tick spacing.
+style.exportWidthInches = 8.50;
+style.exportHeightInches = 6.25;
+style.wideFigureWidthInches = 12.0;
+style.wideFigureHeightInches = 7.0;
+style.gridFigureWidthInches = 11.0;
+style.gridFigureHeightInches = 10.5;
+style.heatmapWidthInches = 11.0;
+style.heatmapHeightInches = 7.5;
+style.exportPaddingInches = 0.30;
 
 end
