@@ -1,16 +1,18 @@
 function style = publicationPlotStyle()
 % PUBLICATIONPLOTSTYLE Shared white-background manuscript figure styling.
 %
-% All manuscript figures use a minimum 12-pt text size. Individual plotting
-% scripts may increase labels beyond these defaults when geometry permits.
+% Typography is intentionally oversized for LaTeX placement. Several result
+% figures are reduced when assembled as subfigures, so 12--14 pt source
+% text becomes too small in the final manuscript. Keep the common defaults
+% large and let unusually dense plots override them locally if necessary.
 
 style = struct();
 
 style.fontName = "Arial";
-style.axisFontSize = 12;
-style.labelFontSize = 14;
-style.annotationFontSize = 12;
-style.legendFontSize = 12;
+style.axisFontSize = 18;
+style.labelFontSize = 20;
+style.annotationFontSize = 18;
+style.legendFontSize = 18;
 
 style.backgroundColor = [1.00 1.00 1.00];
 style.textColor = [0.12 0.12 0.12];
