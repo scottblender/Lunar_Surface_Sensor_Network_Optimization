@@ -1,4 +1,4 @@
-function plotInfo = plotMonteCarloRobustness(resultsFile)
+function plotInfo = plotMonteCarloRobustness(resultsFile,outputDirectory)
 % PLOTMONTECARLOROBUSTNESS Plot local sensor-placement robustness results.
 %
 % The main-paper outputs are intentionally limited to two box-and-whisker
@@ -7,9 +7,15 @@ function plotInfo = plotMonteCarloRobustness(resultsFile)
 % spacecraft are enabled, the corresponding two figures are written to a
 % supplemental subdirectory. Nominal optimized performance and the Monte
 % Carlo mean are overlaid on every boxplot.
+%
+% By default, the Monte Carlo figures are written beside the rest of the
+% production conference figures under results/production_figures. This keeps
+% the final manuscript products in one location while the raw MC MAT file
+% remains in its timestamped study directory.
 
 arguments
     resultsFile (1,1) string
+    outputDirectory (1,1) string = ""
 end
 
 assert(isfile(resultsFile),"Monte Carlo results file was not found: %s",resultsFile);
@@ -19,21 +25,29 @@ studyState = data.studyState;
 assert(studyState.completed,"The supplied Monte Carlo study is incomplete.");
 
 scriptDirectory = fileparts(mfilename("fullpath"));
+projectRoot = fileparts(scriptDirectory);
 addpath(scriptDirectory);
 style = publicationPlotStyle();
 
-figuresDirectory = fullfile(studyState.studyDirectory,"figures");
+if strlength(outputDirectory) == 0
+    outputDirectory = string(fullfile(projectRoot,"results","production_figures"));
+end
+figuresDirectory = outputDirectory;
 supplementalDirectory = fullfile(figuresDirectory,"supplemental");
+tableDirectory = fullfile(figuresDirectory,"tables");
 if ~isfolder(figuresDirectory), mkdir(figuresDirectory); end
 if ~isfolder(supplementalDirectory), mkdir(supplementalDirectory); end
+if ~isfolder(tableDirectory), mkdir(tableDirectory); end
 
 %% Main-paper Monte Carlo figures
 infoFigure = plotMetricBoxplot( ...
     studyState,"information","rso","informationScore", ...
-    "Information score","rso_information_boxplot",figuresDirectory,style);
+    "Information score","monte_carlo_rso_information_boxplot", ...
+    figuresDirectory,style);
 coverageFigure = plotMetricBoxplot( ...
     studyState,"coverage","rso","coverageScore", ...
-    "Coverage score","rso_coverage_boxplot",figuresDirectory,style);
+    "Coverage score","monte_carlo_rso_coverage_boxplot", ...
+    figuresDirectory,style);
 
 %% Supplemental operational-spacecraft figures
 operationalInfoFigure = "";
@@ -41,17 +55,17 @@ operationalCoverageFigure = "";
 if studyState.config.includeOperationalSpacecraft
     operationalInfoFigure = plotMetricBoxplot( ...
         studyState,"information","operational","informationScore", ...
-        "Information score","operational_information_boxplot", ...
+        "Information score","monte_carlo_operational_information_boxplot", ...
         supplementalDirectory,style);
     operationalCoverageFigure = plotMetricBoxplot( ...
         studyState,"coverage","operational","coverageScore", ...
-        "Coverage score","operational_coverage_boxplot", ...
+        "Coverage score","monte_carlo_operational_coverage_boxplot", ...
         supplementalDirectory,style);
 end
 
 %% Summary statistics
 summaryTable = buildSummaryTable(studyState);
-summaryFile = fullfile(studyState.studyDirectory,"monte_carlo_summary.csv");
+summaryFile = fullfile(tableDirectory,"monte_carlo_summary.csv");
 writetable(summaryTable,summaryFile);
 
 fprintf("\n============================================================\n");
@@ -110,13 +124,13 @@ else
 end
 
 widthIn = style.exportWidthInches;
-heightIn = 4.8;
+heightIn = style.exportHeightInches;
 fig = figure("Color",style.backgroundColor,"Units","inches", ...
     "Position",[1 1 widthIn heightIn],"PaperUnits","inches", ...
     "PaperSize",[widthIn heightIn],"PaperPosition",[0 0 widthIn heightIn], ...
     "PaperPositionMode","manual","Renderer","painters", ...
     "InvertHardcopy","off");
-ax = axes(fig,"Units","normalized","Position",[0.17 0.19 0.78 0.75]);
+ax = axes(fig,"Units","normalized","Position",[0.16 0.18 0.80 0.70]);
 hold(ax,"on");
 box(ax,"off");
 grid(ax,"off");
@@ -124,16 +138,16 @@ grid(ax,"off");
 boxHandle = boxchart(ax,groupValues,allValues, ...
     "BoxFaceColor",boxColor,"MarkerStyle",".","MarkerColor",style.grayColor);
 nominalHandle = plot(ax,networkSizes,nominalValues,"o", ...
-    "LineStyle","none","MarkerSize",10,"LineWidth",2.0, ...
+    "LineStyle","none","MarkerSize",11,"LineWidth",2.0, ...
     "MarkerFaceColor",style.backgroundColor,"MarkerEdgeColor",style.redColor);
 meanHandle = plot(ax,networkSizes,meanValues,"x", ...
-    "LineStyle","none","MarkerSize",11,"LineWidth",2.2, ...
+    "LineStyle","none","MarkerSize",12,"LineWidth",2.2, ...
     "Color",style.textColor);
 
 xlabel(ax,"Number of sensors, N_s","FontWeight","bold");
 ylabel(ax,yLabelText,"FontWeight","bold");
 xticks(ax,networkSizes);
-xlim(ax,[min(networkSizes)-0.6 max(networkSizes)+0.6]);
+xlim(ax,[min(networkSizes)-0.7 max(networkSizes)+0.7]);
 set(ax,"FontName",style.fontName,"FontSize",style.axisFontSize, ...
     "FontWeight","bold","LineWidth",1.1,"TickDir","out", ...
     "XGrid","off","YGrid","off","Box","off","Layer","top");
@@ -142,7 +156,8 @@ ax.YLabel.FontSize = style.labelFontSize;
 
 lgd = legend(ax,[boxHandle nominalHandle meanHandle], ...
     ["Monte Carlo samples","Nominal optimized","Monte Carlo mean"], ...
-    "Location","best","Box","off");
+    "Location","northoutside","Orientation","horizontal", ...
+    "NumColumns",3,"Box","off");
 lgd.FontName = style.fontName;
 lgd.FontSize = style.legendFontSize;
 lgd.FontWeight = "bold";
@@ -153,8 +168,15 @@ span = max(plotValues)-min(plotValues);
 if span <= 0
     span = max(1,0.05*max(abs(plotValues)));
 end
-padding = 0.08*span;
+padding = 0.10*span;
 ylim(ax,[min(plotValues)-padding max(plotValues)+padding]);
+
+% Keep the larger manuscript font from producing too many y tick labels.
+limits = ylim(ax);
+ax.YTick = linspace(limits(1),limits(2),5);
+
+% Use a little more whitespace around the large tick labels before export.
+ax.LooseInset = max(ax.TightInset,[0.03 0.03 0.03 0.03]);
 
 drawnow;
 epsFile = fullfile(figuresDirectory,fileStem + ".eps");
