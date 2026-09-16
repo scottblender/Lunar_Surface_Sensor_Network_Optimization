@@ -66,19 +66,32 @@ if isfield(results,"production")
 
             % The original long sentence became crowded when the manuscript
             % font was enlarged. Keep the same meaning in a shorter caption-
-            % style annotation and give it a wider text box.
-            textboxes = findall(fig,"Type","textboxshape");
-            for j = 1:numel(textboxes)
+            % style annotation and give it a wider text box. Search by the
+            % String property rather than a graphics-class name so this works
+            % consistently across MATLAB releases.
+            stringObjects = findall(fig,"-property","String");
+            for j = 1:numel(stringObjects)
                 try
-                    currentText = string(textboxes(j).String);
-                    if contains(currentText,"selection frequency", ...
-                            "IgnoreCase",true)
-                        textboxes(j).String = "Marker size \propto selection frequency";
-                        textboxes(j).Interpreter = "tex";
-                        textboxes(j).FontName = style.fontName;
-                        textboxes(j).FontSize = style.annotationFontSize;
-                        textboxes(j).FontWeight = "bold";
-                        textboxes(j).Position = [0.16 0.006 0.68 0.045];
+                    currentText = string(stringObjects(j).String);
+                    if any(contains(currentText,"selection frequency", ...
+                            "IgnoreCase",true))
+                        stringObjects(j).String = ...
+                            "Marker size \propto selection frequency";
+                        if isprop(stringObjects(j),"Interpreter")
+                            stringObjects(j).Interpreter = "tex";
+                        end
+                        if isprop(stringObjects(j),"FontName")
+                            stringObjects(j).FontName = style.fontName;
+                        end
+                        if isprop(stringObjects(j),"FontSize")
+                            stringObjects(j).FontSize = style.annotationFontSize;
+                        end
+                        if isprop(stringObjects(j),"FontWeight")
+                            stringObjects(j).FontWeight = "bold";
+                        end
+                        if isprop(stringObjects(j),"Position")
+                            stringObjects(j).Position = [0.14 0.006 0.72 0.05];
+                        end
                     end
                 catch
                 end
