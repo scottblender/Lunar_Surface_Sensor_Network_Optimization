@@ -42,7 +42,7 @@ target = sensor + targetRange*[cos(thetaTarget),sin(thetaTarget)];
 
 fig = figure("Name","Celestial-body exclusion constraint", ...
     "Color",backgroundColor,"Units","inches", ...
-    "Position",[1 1 5.4 4.1],"Renderer","painters");
+    "Position",[1 1 5.4 4.1],"Renderer","opengl");
 ax = axes(fig,"Units","normalized","Position",[0.03 0.04 0.94 0.92]);
 hold(ax,"on");
 axis(ax,"equal");
@@ -99,8 +99,6 @@ drawAngleArc(ax,sensor,0,thetaOcc,occultationArcRadius,occultationColor,2.2);
 drawAngleArc(ax,sensor,0,thetaRequired,minimumArcRadius,minimumAngleColor,2.4);
 drawAngleArc(ax,sensor,0,thetaTarget,targetArcRadius,targetAngleColor,2.4);
 
-% White label backings keep text readable where rays, boundaries, and shaded
-% sectors pass beneath the annotations.
 text(ax,sensor(1)+0.04,sensor(2)-0.34,"Surface sensor", ...
     "Color",textColor,"FontName",fontName,"FontSize",objectFontSize, ...
     "FontWeight","bold","BackgroundColor",backgroundColor,"Margin",1.5, ...
@@ -140,8 +138,13 @@ ylim(ax,[-1.32 2.48]);
 ax.LooseInset = max(ax.TightInset,0.005);
 
 outputFile = fullfile(scriptDirectory,"Exclusion_Constraint_Schematic.eps");
-exportgraphics(ax,outputFile,"ContentType","vector", ...
-    "BackgroundColor",backgroundColor,"Colorspace","rgb");
+fig.InvertHardcopy = "off";
+fig.PaperUnits = "inches";
+fig.PaperSize = [5.4 4.1];
+fig.PaperPosition = [0 0 5.4 4.1];
+fig.PaperPositionMode = "manual";
+drawnow;
+print(fig,char(outputFile),"-depsc","-opengl","-r600");
 
 fprintf("Saved exclusion-constraint schematic:\n  %s\n",outputFile);
 
