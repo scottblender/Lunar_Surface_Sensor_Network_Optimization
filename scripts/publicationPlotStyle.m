@@ -1,16 +1,19 @@
 function style = publicationPlotStyle()
 % PUBLICATIONPLOTSTYLE Shared white-background manuscript figure styling.
 %
-% All manuscript figures use a minimum 12-pt text size. Individual plotting
-% scripts may increase labels beyond these defaults when geometry permits.
+% Typography is intentionally oversized for LaTeX placement. Several result
+% figures are reduced when assembled as subfigures, so 12--14 pt source text
+% becomes too small in the final manuscript. The canvas dimensions below are
+% likewise oversized so the larger type does not crowd ticks, labels, legends,
+% tiled layouts, or annotations after export.
 
 style = struct();
 
 style.fontName = "Arial";
-style.axisFontSize = 12;
-style.labelFontSize = 14;
-style.annotationFontSize = 12;
-style.legendFontSize = 12;
+style.axisFontSize = 18;
+style.labelFontSize = 20;
+style.annotationFontSize = 18;
+style.legendFontSize = 18;
 
 style.backgroundColor = [1.00 1.00 1.00];
 style.textColor = [0.12 0.12 0.12];
@@ -37,11 +40,18 @@ style.redColor = [0.76 0.12 0.12];
 style.grayColor = [0.44 0.44 0.46];
 style.lightGrayColor = [0.90 0.90 0.91];
 
-% Common text backing for labels that overlap plotted geometry.
 style.labelBackgroundColor = [1.00 1.00 1.00];
 style.labelMargin = 1.5;
 
-style.exportWidthInches = 6.50;
-style.exportPaddingInches = 0.25;
+% Source canvases are deliberately larger than their final LaTeX placement.
+style.exportWidthInches = 8.50;
+style.exportHeightInches = 6.25;
+style.wideFigureWidthInches = 12.0;
+style.wideFigureHeightInches = 7.0;
+style.gridFigureWidthInches = 11.0;
+style.gridFigureHeightInches = 10.5;
+style.heatmapWidthInches = 12.0;
+style.heatmapHeightInches = 9.0;
+style.exportPaddingInches = 0.30;
 
 end
