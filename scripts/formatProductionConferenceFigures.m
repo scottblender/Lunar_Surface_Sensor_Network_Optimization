@@ -123,9 +123,8 @@ for fieldIndex = 1:numel(fields)
             ax = axesHandles(axisIndex);
             limits = xlim(ax);
             if all(isfinite(limits)) && limits(2) > limits(1)
-                ticks = linspace(limits(1),limits(2),5);
-                ax.XTick = ticks;
-                ax.XTickLabel = compose("%.0f",ticks);
+                ax.XTick = chooseRoundFunctionEvaluationTicks(limits);
+                ax.XTickLabel = compose("%.0f",ax.XTick);
             end
         end
     end
@@ -141,6 +140,30 @@ for fieldIndex = 1:numel(fields)
             "Colorspace","rgb");
     end
     files(end+1,1) = outputFile; %#ok<AGROW>
+end
+end
+
+function ticks = chooseRoundFunctionEvaluationTicks(limits)
+upperLimit = limits(2);
+if upperLimit <= 6000
+    step = 1000;
+elseif upperLimit <= 12000
+    step = 2000;
+elseif upperLimit <= 30000
+    step = 5000;
+else
+    step = 10^floor(log10(upperLimit));
+end
+firstTick = ceil(max(0,limits(1))/step)*step;
+if firstTick == 0
+    firstTick = step;
+end
+ticks = firstTick:step:upperLimit;
+if isempty(ticks) || ticks(end) < upperLimit-1e-9
+    ticks(end+1) = upperLimit; %#ok<AGROW>
+end
+if numel(ticks) > 7
+    ticks = ticks(ceil(linspace(1,numel(ticks),7)));
 end
 end
 
