@@ -6,11 +6,11 @@ function results = runProductionConferenceResults(userConfig)
 %   2) sensor-selection frequency: information and coverage;
 %   3) one combined design-RSO RMS/observability heatmap;
 %   4) one combined operational-RSO RMS/observability heatmap;
-%   5) one combined Monte Carlo robustness figure, when available.
+%   5) two Monte Carlo robustness subfigures, when available.
 %
-% This is at most seven figure files. Mean-objective plots, best-network
-% geometry plots, final-objective boxplots, and the separate operational
-% heatmaps are redundant with the retained figures/tables and are removed.
+% The two Monte Carlo files are designed to be placed side-by-side in LaTeX.
+% Mean-objective plots, best-network geometry plots, final-objective boxplots,
+% and separate operational heatmaps are redundant and are removed.
 %
 % Main paper tables:
 %   1) conference_optimization_summary.csv;
@@ -24,9 +24,6 @@ arguments
     userConfig (1,1) struct = struct()
 end
 
-% Legacy helpers still compute a few diagnostic figures as part of their data
-% products. Keep them invisible during generation; reveal only the curated
-% paper figures at the end.
 rootHandle = groot;
 originalFigureVisibility = get(rootHandle,"defaultFigureVisible");
 set(rootHandle,"defaultFigureVisible","off");
@@ -44,7 +41,6 @@ results.tables = buildConferenceSummaryTables(userConfig);
 results.formatting = formatProductionConferenceFigures(results,userConfig);
 results.organization = organizeConferenceOutputs(results);
 
-% Restore the user's normal figure behavior before exposing the retained set.
 set(rootHandle,"defaultFigureVisible",originalFigureVisibility);
 if string(originalFigureVisibility) == "on"
     showPaperFigures(results);
@@ -61,7 +57,9 @@ fprintf("  Design-RSO tracking:\n    %s\n",results.perRsoEkf.outputFile);
 fprintf("  Operational-RSO tracking:\n    %s\n", ...
     results.operationalRsoFigure.outputFile);
 if results.monteCarlo.available
-    fprintf("  Monte Carlo robustness:\n    %s\n",results.monteCarlo.outputFile);
+    fprintf("  Monte Carlo robustness:\n");
+    fprintf("    %s\n",results.monteCarlo.information.outputFile);
+    fprintf("    %s\n",results.monteCarlo.coverage.outputFile);
 end
 
 fprintf("Paper tables:\n");
@@ -80,7 +78,6 @@ diagnosticsDirectory = fullfile(tableDirectory,"diagnostics");
 supplementalDirectory = fullfile(outputDirectory,"supplemental");
 if ~isfolder(diagnosticsDirectory), mkdir(diagnosticsDirectory); end
 
-% Close figure groups that are intentionally excluded from the paper.
 closeFigureGroup(results.production,"meanObjective");
 closeFigureGroup(results.production,"geometry");
 closeFigureGroup(results.production,"objectiveDistributions");
@@ -93,7 +90,6 @@ if isfield(results.operationalRso,"observabilityFigure") && ...
     close(results.operationalRso.observabilityFigure);
 end
 
-% Only these figure files belong in the paper result set.
 mainFigureNames = [ ...
     "convergence_information.eps"; ...
     "convergence_coverage.eps"; ...
@@ -101,11 +97,9 @@ mainFigureNames = [ ...
     "network_locations_vs_ns_coverage.eps"; ...
     "design_rso_tracking_heatmaps.eps"; ...
     "operational_rso_tracking_heatmaps.eps"; ...
-    "monte_carlo_robustness.eps"];
+    "monte_carlo_information.eps"; ...
+    "monte_carlo_coverage.eps"];
 
-% Remove every other generated figure from both the main output directory and
-% the old supplemental directory. All source result MAT/CSV data remain intact
-% and any excluded figure can be regenerated explicitly if ever needed.
 deleteNonPaperFigures(outputDirectory,mainFigureNames);
 if isfolder(supplementalDirectory)
     deleteGeneratedFigures(supplementalDirectory);
@@ -117,8 +111,6 @@ if isfolder(supplementalDirectory)
     end
 end
 
-% Keep only the two paper-ready CSVs at tables/. Everything else is diagnostic
-% data rather than another manuscript table.
 mainTableNames = ["conference_optimization_summary.csv", ...
     "conference_estimation_summary.csv"];
 csvFiles = dir(fullfile(tableDirectory,"*.csv"));
@@ -185,9 +177,16 @@ if isfield(results.operationalRsoFigure,"figure") && ...
         isgraphics(results.operationalRsoFigure.figure)
     results.operationalRsoFigure.figure.Visible = "on";
 end
-if isfield(results.monteCarlo,"available") && results.monteCarlo.available && ...
-        isfield(results.monteCarlo,"figure") && isgraphics(results.monteCarlo.figure)
-    results.monteCarlo.figure.Visible = "on";
+if isfield(results.monteCarlo,"available") && results.monteCarlo.available
+    objectiveFields = ["information","coverage"];
+    for objectiveField = objectiveFields
+        fieldName = char(objectiveField);
+        if isfield(results.monteCarlo,fieldName) && ...
+                isfield(results.monteCarlo.(fieldName),"figure") && ...
+                isgraphics(results.monteCarlo.(fieldName).figure)
+            results.monteCarlo.(fieldName).figure.Visible = "on";
+        end
+    end
 end
 end
 
