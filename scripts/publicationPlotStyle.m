@@ -43,17 +43,28 @@ style.lightGrayColor = [0.90 0.90 0.91];
 style.labelBackgroundColor = [1.00 1.00 1.00];
 style.labelMargin = 1.5;
 
+<<<<<<< HEAD
 % Source canvases are deliberately larger than their final LaTeX placement.
+=======
+% Conference-paper source canvases. These are intentionally larger than the
+% final LaTeX placement size because the figures are commonly reduced after
+% export. Keeping more source-canvas area preserves readable tick spacing.
+>>>>>>> origin/Scott
 style.exportWidthInches = 8.50;
 style.exportHeightInches = 6.25;
 style.wideFigureWidthInches = 12.0;
 style.wideFigureHeightInches = 7.0;
 style.gridFigureWidthInches = 11.0;
 style.gridFigureHeightInches = 10.5;
+<<<<<<< HEAD
 % Extra heatmap width prevents long operational-spacecraft labels from being
 % clipped while retaining the large manuscript font size.
 style.heatmapWidthInches = 13.5;
 style.heatmapHeightInches = 10.5;
+=======
+style.heatmapWidthInches = 11.0;
+style.heatmapHeightInches = 7.5;
+>>>>>>> origin/Scott
 style.exportPaddingInches = 0.30;
 
 end
