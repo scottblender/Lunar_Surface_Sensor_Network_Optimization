@@ -65,7 +65,8 @@ for objectiveMode = config.objectiveModes
             "MC study does not contain N_s = %d.",networkSize);
 
         caseState = studyState.cases{modeIndex,networkIndex};
-        values = -double(caseState.rso.(metricField)(:));
+        values = -double(caseState.rso.(metricField));
+        values = values(:);
         nominal = -double(caseState.nominal.rso.(metricField));
 
         fig = figure("Name",sprintf("Monte Carlo robustness: %s, N_s=%d", ...
