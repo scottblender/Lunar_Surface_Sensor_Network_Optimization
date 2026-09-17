@@ -77,13 +77,15 @@ fprintf("Monte Carlo robustness summary\n");
 fprintf("============================================================\n");
 disp(summaryTable);
 fprintf("Main-paper MC figures:\n");
-for file = [rsoInformationFigures;rsoCoverageFigures].'
-    fprintf("  %s\n",file);
+allMainFiles = [rsoInformationFigures;rsoCoverageFigures];
+for fileIndex = 1:numel(allMainFiles)
+    fprintf("  %s\n",allMainFiles(fileIndex));
 end
 if studyState.config.includeOperationalSpacecraft
     fprintf("Supplemental operational-spacecraft MC figures:\n");
-    for file = [operationalInformationFigures;operationalCoverageFigures].'
-        fprintf("  %s\n",file);
+    allSupplementalFiles = [operationalInformationFigures;operationalCoverageFigures];
+    for fileIndex = 1:numel(allSupplementalFiles)
+        fprintf("  %s\n",allSupplementalFiles(fileIndex));
     end
 end
 fprintf("Summary CSV:\n  %s\n",summaryFile);
@@ -109,9 +111,11 @@ modeIndex = find(studyState.config.nominalObjectiveModes == objectiveMode,1);
 assert(~isempty(modeIndex),"Requested objective mode was not included in the study.");
 networkSize = studyState.config.networkSizes(networkIndex);
 caseState = studyState.cases{modeIndex,networkIndex};
-values = double(caseState.(targetSet).(metricField)(:));
+values = double(caseState.(targetSet).(metricField));
+values = values(:);
 nominalValue = double(caseState.nominal.(targetSet).(metricField));
 meanValue = mean(values);
+fileStem = string(fileStem);
 
 if objectiveMode == "information"
     boxColor = style.blueColor;
