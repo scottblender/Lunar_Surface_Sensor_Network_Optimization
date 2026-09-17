@@ -45,7 +45,7 @@ config.demFile = "";
 config.networkSizes = [3 5 7 10];
 config.objectiveModes = ["information","coverage"];
 config.numberOfRuns = 20;
-config.functionEvaluationBudget = 6000;
+config.functionEvaluationBudget = 12000;
 config.measurementNoiseSeed = 5000;
 config.reuseCache = true;
 config.forceRecompute = false;
@@ -626,9 +626,8 @@ if isfield(database,"config") && isfield(database.config,"demSource")
     candidateFiles(end+1,1) = string(database.config.demSource); %#ok<AGROW>
 end
 candidateFiles = [candidateFiles; ...
-    string(fullfile(dataDirectory,"Final_Lunar_DEM.mat")); ...
-    string(fullfile(dataDirectory,"Synthetic_LunarDEM.mat")); ...
-    string(fullfile(dataDirectory,"SyntheticLunarDEM.mat"))];
+    string(fullfile(dataDirectory,"Synthetic_Lunar_DEM.mat")); ...
+    string(fullfile(dataDirectory,"Full_Resolution_DEM.mat"))];
 
 for fileIndex = 1:numel(candidateFiles)
     if strlength(candidateFiles(fileIndex)) > 0 && isfile(candidateFiles(fileIndex))
