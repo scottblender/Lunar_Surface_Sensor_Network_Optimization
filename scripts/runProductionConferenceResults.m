@@ -24,25 +24,14 @@ end
 
 results = struct();
 
-% Production optimization figures and fixed-noise design-population EKFs.
 results.production = plotProductionOptimizationResults(userConfig);
 results.perRsoEkf = plotPerRsoEkfHeatmaps(userConfig);
-
-% Out-of-sample representative operational spacecraft validation.
 results.operationalRso = evaluateOperationalRsoNetworks(userConfig);
 results.operationalRsoFigure = ...
     plotOperationalRsoTrackingHeatmaps(results.operationalRso,userConfig);
-
-% Local perturbation robustness, if a completed MC study exists.
 results.monteCarlo = plotMonteCarloConferenceFigure(userConfig);
-
-% Exactly two paper-ready tables.
 results.tables = buildConferenceSummaryTables(userConfig);
-
-% Final LaTeX-oriented canvas and typography pass.
 results.formatting = formatProductionConferenceFigures(results,userConfig);
-
-% Move redundant products out of the main-paper directories.
 results.organization = organizeConferenceOutputs(results);
 
 fprintf("\n============================================================\n");
@@ -97,8 +86,8 @@ if isfield(results.production,"objectiveDistributions")
     end
 end
 
-% evaluateOperationalRsoNetworks produces separate legacy heatmaps; the new
-% combined four-panel figure replaces them in the main directory.
+% Separate operational heatmaps are superseded by the combined four-panel
+% operational tracking figure.
 legacyOperational = strings(0,1);
 if isfield(results.operationalRso,"rmsOutputFile")
     legacyOperational(end+1,1) = string(results.operationalRso.rmsOutputFile); %#ok<AGROW>
@@ -110,6 +99,27 @@ for fileIndex = 1:numel(legacyOperational)
     if legacyOperational(fileIndex) ~= string(results.operationalRsoFigure.outputFile)
         moveSupportingFile(legacyOperational(fileIndex),supplementalDirectory);
     end
+end
+if isfield(results.operationalRso,"rmsFigure") && isgraphics(results.operationalRso.rmsFigure)
+    close(results.operationalRso.rmsFigure);
+end
+if isfield(results.operationalRso,"observabilityFigure") && ...
+        isgraphics(results.operationalRso.observabilityFigure)
+    close(results.operationalRso.observabilityFigure);
+end
+
+% Move stale predecessor plots from earlier result-pipeline versions.
+stalePlotNames = [ ...
+    "rso_information_boxplot.eps"; ...
+    "rso_coverage_boxplot.eps"; ...
+    "operational_information_boxplot.eps"; ...
+    "operational_coverage_boxplot.eps"; ...
+    "ekf_per_rso_position_rmse_heatmap.eps"; ...
+    "ekf_per_rso_observability_heatmap.eps"; ...
+    "ekf_per_rso_measurement_availability_heatmap.eps"];
+for fileIndex = 1:numel(stalePlotNames)
+    candidate = fullfile(outputDirectory,stalePlotNames(fileIndex));
+    moveSupportingFile(candidate,supplementalDirectory);
 end
 
 % Keep only the two paper-ready CSVs at tables/. Everything else is supporting
@@ -137,7 +147,7 @@ end
 function moveSupportingFile(sourceFile,destinationDirectory)
 if strlength(sourceFile) == 0 || ~isfile(sourceFile), return, end
 [~,name,extension] = fileparts(sourceFile);
-destinationFile = fullfile(destinationDirectory,name + extension);
+destinationFile = fullfile(destinationDirectory,string(name) + string(extension));
 movefile(sourceFile,destinationFile,"f");
 end
 
