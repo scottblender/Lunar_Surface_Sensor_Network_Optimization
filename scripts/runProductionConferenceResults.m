@@ -8,17 +8,15 @@ function results = runProductionConferenceResults(userConfig)
 %   4) one combined operational-RSO RMS/observability heatmap;
 %   5) two Monte Carlo robustness subfigures, when available.
 %
-% A discrete candidate-neighbor robustness study is also evaluated for the
-% best network in every N_s/objective case. It produces diagnostic CSV/MAT
-% outputs only, not another paper figure or main table.
-%
-% The two Monte Carlo files are designed to be placed side-by-side in LaTeX.
-% Mean-objective plots, best-network geometry plots, final-objective boxplots,
-% and separate operational heatmaps are redundant and are removed.
+% Additional validation studies do not add paper figures:
+%   - discrete candidate-neighbor robustness/local optimality;
+%   - synthetic-versus-full DEM terrain-resolution validation at the exact
+%     optimized sites.
 %
 % Main paper tables:
 %   1) conference_optimization_summary.csv;
-%   2) conference_estimation_summary.csv.
+%   2) conference_estimation_summary.csv;
+%   3) conference_dem_resolution_validation.csv.
 %
 % Detailed CSV diagnostics are retained under tables/diagnostics. Intermediate
 % figures are generated invisibly by legacy helpers and closed before the paper
@@ -43,6 +41,8 @@ results.operationalRsoFigure = ...
 results.monteCarlo = plotMonteCarloConferenceFigure(userConfig);
 results.discreteNeighbor = ...
     evaluateDiscreteNeighborRobustness(results.production,userConfig);
+results.demValidation = ...
+    evaluateDemResolutionValidation(results.production,userConfig);
 results.tables = buildConferenceSummaryTables(userConfig);
 results.formatting = formatProductionConferenceFigures(results,userConfig);
 results.organization = organizeConferenceOutputs(results);
@@ -71,6 +71,7 @@ end
 fprintf("Paper tables:\n");
 fprintf("  %s\n",results.tables.optimizationFile);
 fprintf("  %s\n",results.tables.estimationFile);
+fprintf("  %s\n",results.demValidation.outputFile);
 fprintf("Discrete-neighbor diagnostic summary:\n  %s\n", ...
     results.discreteNeighbor.summaryFile);
 fprintf("Diagnostic CSVs:\n  %s\n",results.organization.diagnosticsDirectory);
@@ -119,8 +120,10 @@ if isfolder(supplementalDirectory)
     end
 end
 
-mainTableNames = ["conference_optimization_summary.csv", ...
-    "conference_estimation_summary.csv"];
+mainTableNames = [ ...
+    "conference_optimization_summary.csv", ...
+    "conference_estimation_summary.csv", ...
+    "conference_dem_resolution_validation.csv"];
 csvFiles = dir(fullfile(tableDirectory,"*.csv"));
 for fileIndex = 1:numel(csvFiles)
     if any(string(csvFiles(fileIndex).name) == mainTableNames)
@@ -134,9 +137,11 @@ end
 info = struct();
 info.diagnosticsDirectory = string(diagnosticsDirectory);
 info.mainFigureNames = mainFigureNames;
-info.mainTableFiles = [ ...
-    string(fullfile(tableDirectory,mainTableNames(1))); ...
-    string(fullfile(tableDirectory,mainTableNames(2)))];
+info.mainTableFiles = strings(numel(mainTableNames),1);
+for tableIndex = 1:numel(mainTableNames)
+    info.mainTableFiles(tableIndex) = ...
+        string(fullfile(tableDirectory,mainTableNames(tableIndex)));
+end
 end
 
 function closeFigureGroup(parent,fieldName)
