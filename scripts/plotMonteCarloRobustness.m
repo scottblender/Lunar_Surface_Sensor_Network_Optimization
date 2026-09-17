@@ -1,17 +1,9 @@
 function plotInfo = plotMonteCarloRobustness(resultsFile,outputDirectory)
 % PLOTMONTECARLOROBUSTNESS Plot local sensor-placement robustness results.
 %
-% The main-paper outputs are intentionally limited to two box-and-whisker
-% figures: RSO information performance for information-optimized networks and
-% RSO coverage performance for coverage-optimized networks. If operational
-% spacecraft are enabled, the corresponding two figures are written to a
-% supplemental subdirectory. Nominal optimized performance and the Monte
-% Carlo mean are overlaid on every boxplot.
-%
-% By default, the Monte Carlo figures are written beside the rest of the
-% production conference figures under results/production_figures. This keeps
-% the final manuscript products in one location while the raw MC MAT file
-% remains in its timestamped study directory.
+% Each objective/network-size combination is exported as its own standalone
+% box-and-whisker figure. Operational-spacecraft figures, when enabled, use the
+% same one-network-per-figure convention in the supplemental directory.
 
 arguments
     resultsFile (1,1) string
@@ -39,28 +31,40 @@ if ~isfolder(figuresDirectory), mkdir(figuresDirectory); end
 if ~isfolder(supplementalDirectory), mkdir(supplementalDirectory); end
 if ~isfolder(tableDirectory), mkdir(tableDirectory); end
 
+networkSizes = double(studyState.config.networkSizes(:).');
+
 %% Main-paper Monte Carlo figures
-infoFigure = plotMetricBoxplot( ...
-    studyState,"information","rso","informationScore", ...
-    "Information score","monte_carlo_rso_information_boxplot", ...
-    figuresDirectory,style);
-coverageFigure = plotMetricBoxplot( ...
-    studyState,"coverage","rso","coverageScore", ...
-    "Coverage score","monte_carlo_rso_coverage_boxplot", ...
-    figuresDirectory,style);
+rsoInformationFigures = strings(numel(networkSizes),1);
+rsoCoverageFigures = strings(numel(networkSizes),1);
+for networkIndex = 1:numel(networkSizes)
+    networkSize = networkSizes(networkIndex);
+    rsoInformationFigures(networkIndex) = plotMetricBoxplot( ...
+        studyState,"information","rso","informationScore",networkIndex, ...
+        "Information score",sprintf("monte_carlo_rso_information_n%d",networkSize), ...
+        figuresDirectory,style);
+    rsoCoverageFigures(networkIndex) = plotMetricBoxplot( ...
+        studyState,"coverage","rso","coverageScore",networkIndex, ...
+        "Coverage score",sprintf("monte_carlo_rso_coverage_n%d",networkSize), ...
+        figuresDirectory,style);
+end
 
 %% Supplemental operational-spacecraft figures
-operationalInfoFigure = "";
-operationalCoverageFigure = "";
+operationalInformationFigures = strings(0,1);
+operationalCoverageFigures = strings(0,1);
 if studyState.config.includeOperationalSpacecraft
-    operationalInfoFigure = plotMetricBoxplot( ...
-        studyState,"information","operational","informationScore", ...
-        "Information score","monte_carlo_operational_information_boxplot", ...
-        supplementalDirectory,style);
-    operationalCoverageFigure = plotMetricBoxplot( ...
-        studyState,"coverage","operational","coverageScore", ...
-        "Coverage score","monte_carlo_operational_coverage_boxplot", ...
-        supplementalDirectory,style);
+    operationalInformationFigures = strings(numel(networkSizes),1);
+    operationalCoverageFigures = strings(numel(networkSizes),1);
+    for networkIndex = 1:numel(networkSizes)
+        networkSize = networkSizes(networkIndex);
+        operationalInformationFigures(networkIndex) = plotMetricBoxplot( ...
+            studyState,"information","operational","informationScore",networkIndex, ...
+            "Information score",sprintf("monte_carlo_operational_information_n%d",networkSize), ...
+            supplementalDirectory,style);
+        operationalCoverageFigures(networkIndex) = plotMetricBoxplot( ...
+            studyState,"coverage","operational","coverageScore",networkIndex, ...
+            "Coverage score",sprintf("monte_carlo_operational_coverage_n%d",networkSize), ...
+            supplementalDirectory,style);
+    end
 end
 
 %% Summary statistics
@@ -73,22 +77,24 @@ fprintf("Monte Carlo robustness summary\n");
 fprintf("============================================================\n");
 disp(summaryTable);
 fprintf("Main-paper MC figures:\n");
-fprintf("  %s\n",infoFigure);
-fprintf("  %s\n",coverageFigure);
+for file = [rsoInformationFigures;rsoCoverageFigures].'
+    fprintf("  %s\n",file);
+end
 if studyState.config.includeOperationalSpacecraft
     fprintf("Supplemental operational-spacecraft MC figures:\n");
-    fprintf("  %s\n",operationalInfoFigure);
-    fprintf("  %s\n",operationalCoverageFigure);
+    for file = [operationalInformationFigures;operationalCoverageFigures].'
+        fprintf("  %s\n",file);
+    end
 end
 fprintf("Summary CSV:\n  %s\n",summaryFile);
 
 plotInfo = struct();
 plotInfo.resultsFile = resultsFile;
 plotInfo.figuresDirectory = string(figuresDirectory);
-plotInfo.informationFigure = string(infoFigure);
-plotInfo.coverageFigure = string(coverageFigure);
-plotInfo.operationalInformationFigure = string(operationalInfoFigure);
-plotInfo.operationalCoverageFigure = string(operationalCoverageFigure);
+plotInfo.informationFigures = rsoInformationFigures;
+plotInfo.coverageFigures = rsoCoverageFigures;
+plotInfo.operationalInformationFigures = operationalInformationFigures;
+plotInfo.operationalCoverageFigures = operationalCoverageFigures;
 plotInfo.summaryTable = summaryTable;
 plotInfo.summaryFile = string(summaryFile);
 
@@ -96,26 +102,16 @@ end
 
 %% ------------------------------------------------------------------------
 function epsFile = plotMetricBoxplot( ...
-    studyState,objectiveMode,targetSet,metricField,yLabelText,fileStem, ...
-    figuresDirectory,style)
+    studyState,objectiveMode,targetSet,metricField,networkIndex,yLabelText, ...
+    fileStem,figuresDirectory,style)
 
 modeIndex = find(studyState.config.nominalObjectiveModes == objectiveMode,1);
 assert(~isempty(modeIndex),"Requested objective mode was not included in the study.");
-networkSizes = studyState.config.networkSizes;
-allValues = zeros(0,1);
-groupValues = zeros(0,1);
-nominalValues = nan(size(networkSizes));
-meanValues = nan(size(networkSizes));
-
-for networkIndex = 1:numel(networkSizes)
-    caseState = studyState.cases{modeIndex,networkIndex};
-    currentValues = caseState.(targetSet).(metricField);
-    allValues = [allValues; currentValues(:)]; %#ok<AGROW>
-    groupValues = [groupValues; repmat(networkSizes(networkIndex), ...
-        numel(currentValues),1)]; %#ok<AGROW>
-    nominalValues(networkIndex) = caseState.nominal.(targetSet).(metricField);
-    meanValues(networkIndex) = mean(currentValues);
-end
+networkSize = studyState.config.networkSizes(networkIndex);
+caseState = studyState.cases{modeIndex,networkIndex};
+values = double(caseState.(targetSet).(metricField)(:));
+nominalValue = double(caseState.nominal.(targetSet).(metricField));
+meanValue = mean(values);
 
 if objectiveMode == "information"
     boxColor = style.blueColor;
@@ -128,29 +124,28 @@ heightIn = style.exportHeightInches;
 fig = figure("Color",style.backgroundColor,"Units","inches", ...
     "Position",[1 1 widthIn heightIn],"PaperUnits","inches", ...
     "PaperSize",[widthIn heightIn],"PaperPosition",[0 0 widthIn heightIn], ...
-    "PaperPositionMode","manual","InvertHardcopy","off");
+    "PaperPositionMode","manual","InvertHardcopy","off", ...
+    "Renderer","opengl");
 ax = axes(fig,"Units","normalized","Position",[0.16 0.18 0.80 0.70]);
 hold(ax,"on");
 box(ax,"off");
 grid(ax,"off");
 
-boxHandle = boxchart(ax,groupValues,allValues, ...
+boxHandle = boxchart(ax,ones(size(values)),values, ...
     "BoxFaceColor",boxColor,"MarkerStyle",".","MarkerColor",style.grayColor);
-nominalHandle = plot(ax,networkSizes,nominalValues,"o", ...
-    "LineStyle","none","MarkerSize",11,"LineWidth",2.0, ...
-    "MarkerFaceColor",style.backgroundColor,"MarkerEdgeColor",style.redColor);
-meanHandle = plot(ax,networkSizes,meanValues,"x", ...
+nominalHandle = plot(ax,[0.68 1.32],[nominalValue nominalValue],"-", ...
+    "LineWidth",3.0,"Color",style.redColor);
+meanHandle = plot(ax,1,meanValue,"x", ...
     "LineStyle","none","MarkerSize",12,"LineWidth",2.2, ...
     "Color",style.textColor);
 
-xlabel(ax,"Number of sensors, N_s","FontWeight","bold");
+xticks(ax,1);
+xticklabels(ax,sprintf("N_s = %d",networkSize));
+xlim(ax,[0.5 1.5]);
 ylabel(ax,yLabelText,"FontWeight","bold");
-xticks(ax,networkSizes);
-xlim(ax,[min(networkSizes)-0.7 max(networkSizes)+0.7]);
 set(ax,"FontName",style.fontName,"FontSize",style.axisFontSize, ...
     "FontWeight","bold","LineWidth",1.1,"TickDir","out", ...
     "XGrid","off","YGrid","off","Box","off","Layer","top");
-ax.XLabel.FontSize = style.labelFontSize;
 ax.YLabel.FontSize = style.labelFontSize;
 
 lgd = legend(ax,[boxHandle nominalHandle meanHandle], ...
@@ -161,7 +156,7 @@ lgd.FontName = style.fontName;
 lgd.FontSize = style.legendFontSize;
 lgd.FontWeight = "bold";
 
-plotValues = [allValues;nominalValues(:);meanValues(:)];
+plotValues = [values;nominalValue;meanValue];
 plotValues = plotValues(isfinite(plotValues));
 span = max(plotValues)-min(plotValues);
 if span <= 0
@@ -169,22 +164,15 @@ if span <= 0
 end
 padding = 0.10*span;
 ylim(ax,[min(plotValues)-padding max(plotValues)+padding]);
-
-% Keep the larger manuscript font from producing too many y tick labels.
 limits = ylim(ax);
 ax.YTick = linspace(limits(1),limits(2),5);
-
-% Use a little more whitespace around the large tick labels before export.
 ax.LooseInset = max(ax.TightInset,[0.03 0.03 0.03 0.03]);
 
 drawnow;
-epsFile = fullfile(figuresDirectory,fileStem + ".eps");
-pngFile = fullfile(figuresDirectory,fileStem + ".png");
-exportgraphics(fig,epsFile, ...
-    "ContentType","image", ...
-    "Resolution",600, ...
-    "BackgroundColor",style.backgroundColor);
-exportgraphics(fig,pngFile,"Resolution",600, ...
+epsFile = string(fullfile(figuresDirectory,fileStem + ".eps"));
+pngFile = string(fullfile(figuresDirectory,fileStem + ".png"));
+print(fig,char(epsFile),"-depsc","-opengl","-r600");
+exportgraphics(fig,char(pngFile),"Resolution",600, ...
     "BackgroundColor",style.backgroundColor);
 close(fig);
 end
