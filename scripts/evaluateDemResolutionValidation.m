@@ -45,7 +45,7 @@ assert(isfield(productionInfo,"outputDirectory"), ...
 productionConfig = productionInfo.configuration;
 defaultConfig = struct();
 defaultConfig.syntheticDemFile = "";
-defaultConfig.fullDemFile = fullfile(dataDirectory,"Final_Lunar_DEM.mat");
+defaultConfig.fullDemFile = "";
 defaultConfig.reuseDemValidationCache = true;
 config = mergeRecognized(defaultConfig,userConfig);
 
@@ -65,12 +65,8 @@ assert(isfield(databaseData,"database"), ...
 database = databaseData.database;
 
 syntheticDemFile = resolveSyntheticDemFile(config.syntheticDemFile,database,dataDirectory);
-fullDemFile = string(config.fullDemFile);
+fullDemFile = resolveFullDemFile(config.fullDemFile,dataDirectory,projectRoot);
 assert(isfile(syntheticDemFile),"Synthetic DEM not found: %s",syntheticDemFile);
-assert(isfile(fullDemFile), ...
-    ["Full-resolution DEM not found: %s\n" ...
-     "Expected Final_Lunar_DEM.mat or provide userConfig.fullDemFile."], ...
-    fullDemFile);
 
 moonRadiusKm = double(database.config.moon.radiusKm);
 maximumRangeKm = double(database.config.terrain.maximumRangeKm);
@@ -279,6 +275,42 @@ for index = 1:numel(candidateNames)
 end
 error("evaluateDemResolutionValidation:SyntheticDemNotFound", ...
     "Synthetic lunar DEM could not be resolved from the database or data directory.");
+end
+
+function fullDemFile = resolveFullDemFile(requestedFile,dataDirectory,projectRoot)
+requestedFile = string(requestedFile);
+if strlength(requestedFile) > 0
+    if isfile(requestedFile)
+        fullDemFile = requestedFile;
+        return
+    end
+    error("evaluateDemResolutionValidation:FullDemNotFound", ...
+        "Requested full-resolution DEM was not found: %s",requestedFile);
+end
+
+preferredCandidates = [ ...
+    string(fullfile(dataDirectory,"Final_Lunar_DEM.mat")); ...
+    string(fullfile(projectRoot,"Final_Lunar_DEM.mat"))];
+for index = 1:numel(preferredCandidates)
+    if isfile(preferredCandidates(index))
+        fullDemFile = preferredCandidates(index);
+        return
+    end
+end
+
+% Data files are gitignored and may live in a user-created subdirectory. Look
+% for the canonical full-resolution filename anywhere beneath the project root
+% before requiring an explicit override.
+matches = dir(fullfile(projectRoot,"**","Final_Lunar_DEM.mat"));
+if ~isempty(matches)
+    fullDemFile = string(fullfile(matches(1).folder,matches(1).name));
+    return
+end
+
+error("evaluateDemResolutionValidation:FullDemNotFound", ...
+    ["Full-resolution DEM not found. Expected Final_Lunar_DEM.mat under " ...
+     "the project data directory or project root. Provide the exact path " ...
+     "with userConfig.fullDemFile if it is stored elsewhere."]);
 end
 
 function signature = buildSignature(databaseFile,summaryFiles,syntheticDemFile, ...
