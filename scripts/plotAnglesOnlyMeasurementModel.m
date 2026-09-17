@@ -31,7 +31,6 @@ labelBackgroundColor = style.labelBackgroundColor;
 
 exportWidthInches = 6.50;
 exportHeightInches = 6.50;
-exportPaddingInches = 0.25;
 
 rightAscensionFile = fullfile(scriptDirectory,"angles_only_right_ascension_geometry.eps");
 declinationFile = fullfile(scriptDirectory,"angles_only_declination_geometry.eps");
@@ -43,7 +42,7 @@ delta = deg2rad(32);
 
 figRa = figure("Name","Angles-only: right ascension", ...
     "Color",backgroundColor,"Units","inches", ...
-    "Position",[1 1 exportWidthInches exportHeightInches],"Renderer","painters");
+    "Position",[1 1 exportWidthInches exportHeightInches],"Renderer","opengl");
 axRa = axes(figRa,"Position",[0.055 0.055 0.89 0.89]);
 hold(axRa,"on");
 axis(axRa,"equal");
@@ -79,8 +78,6 @@ text(axRa,sensor(1),sensor(2)+axisLength+0.15,"y_I", ...
 
 drawArrow2D(axRa,sensor,projectionEnd,projectionColor,2.6,0.12,0.085,"-");
 normal = [-sin(alpha);cos(alpha)];
-% Offset the projected-range label toward the upper-left side of the vector
-% so its white backing does not obscure the LOS shaft.
 labelPosition = sensor + 0.54*projectionLength*[cos(alpha);sin(alpha)] + 0.36*normal;
 text(axRa,labelPosition(1),labelPosition(2),"\rho_{xy,k}", ...
     "Interpreter","tex","Color",projectionColor,"FontName",fontName, ...
@@ -112,7 +109,7 @@ text(axRa,angleLabel(1),angleLabel(2),"\alpha_k", ...
 
 figDec = figure("Name","Angles-only: declination", ...
     "Color",backgroundColor,"Units","inches", ...
-    "Position",[8 1 exportWidthInches exportHeightInches],"Renderer","painters");
+    "Position",[8 1 exportWidthInches exportHeightInches],"Renderer","opengl");
 axDec = axes(figDec,"Position",[0.055 0.055 0.89 0.89]);
 hold(axDec,"on");
 axis(axDec,"equal");
@@ -189,19 +186,26 @@ text(axDec,angleLabel(1),angleLabel(2),"\delta_k", ...
 
 %% Export
 
-exportgraphics(figRa,rightAscensionFile,"ContentType","vector", ...
-    "BackgroundColor",backgroundColor,"Colorspace","rgb", ...
-    "Units","inches","Width",exportWidthInches,"Height",exportHeightInches, ...
-    "Padding",exportPaddingInches,"PreserveAspectRatio","on");
-
-exportgraphics(figDec,declinationFile,"ContentType","vector", ...
-    "BackgroundColor",backgroundColor,"Colorspace","rgb", ...
-    "Units","inches","Width",exportWidthInches,"Height",exportHeightInches, ...
-    "Padding",exportPaddingInches,"PreserveAspectRatio","on");
+exportImageEps(figRa,rightAscensionFile,backgroundColor, ...
+    exportWidthInches,exportHeightInches);
+exportImageEps(figDec,declinationFile,backgroundColor, ...
+    exportWidthInches,exportHeightInches);
 
 fprintf("Saved angles-only geometry figures.\n");
 
 %% Local helpers
+
+function exportImageEps(fig,outputFile,backgroundColor,widthInches,heightInches)
+fig.Color = backgroundColor;
+fig.InvertHardcopy = "off";
+fig.Renderer = "opengl";
+fig.PaperUnits = "inches";
+fig.PaperSize = [widthInches heightInches];
+fig.PaperPosition = [0 0 widthInches heightInches];
+fig.PaperPositionMode = "manual";
+drawnow;
+print(fig,char(outputFile),"-depsc","-opengl","-r600");
+end
 
 function drawArrow2D(ax,startPoint,endPoint,color,lineWidth,headLength,headWidth,lineStyle)
 vector = endPoint-startPoint;
