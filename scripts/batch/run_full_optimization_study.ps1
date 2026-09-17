@@ -1,7 +1,7 @@
 # ---------------- run_full_optimization_study.ps1 ----------------
 param(
     [string]$MatlabExe = "",
-    [int]$EvalBudget = 6000,
+    [int]$EvalBudget = 12000,
     [int]$NumberOfRuns = 20,
     [int]$BaseSeed = 1000,
     [int]$ParallelWorkers = 7,
