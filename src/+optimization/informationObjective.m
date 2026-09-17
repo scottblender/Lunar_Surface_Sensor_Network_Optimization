@@ -16,7 +16,8 @@ function [objectiveValue,objectScores] = ...
 %   initialCovariances          - 6x6xO fixed IOD covariances
 %   stateTransitionHistories    - 6x6xNxO interval STMs
 %   processNoiseHistories       - 6x6xNxO process covariances
-%   measurementJacobianHistories- 2x6xSxNxO Jacobians
+%   measurementJacobianHistories- 2x3xSxNxO position-only Jacobians or
+%                                  legacy 2x6xSxNxO full Jacobians
 %   measurementAvailability     - SxNxO LOS gates
 %   measurementCovariances      - 2x2 or 2x2xS measurement covariances
 %   stateScales                 - 6x1 normalization scales
@@ -34,7 +35,7 @@ arguments
     initialCovariances (6,6,:) double
     stateTransitionHistories (6,6,:,:) double
     processNoiseHistories (6,6,:,:) double
-    measurementJacobianHistories (2,6,:,:,:) double
+    measurementJacobianHistories (2,:,:,:,:) double
     measurementAvailability (:,:,:) logical
     measurementCovariances double
     stateScales (6,1) double {mustBePositive}
@@ -49,6 +50,15 @@ numberOfSensors = ...
 
 numberOfTimes = ...
     size(measurementAvailability,2);
+
+numberOfJacobianColumns = ...
+    size(measurementJacobianHistories,2);
+
+if ~ismember(numberOfJacobianColumns,[3,6])
+    error( ...
+        "informationObjective:InvalidJacobianDimensions", ...
+        "Measurement Jacobians must have either 3 or 6 state columns.");
+end
 
 if length(selectedSensors) ~= numberOfSensors
     error( ...
@@ -100,7 +110,14 @@ for objectIndex = 1:numberOfObjects
     objectJacobians = reshape( ...
         measurementJacobianHistories( ...
             :,:,:,:,objectIndex), ...
-        2,6,numberOfSensors,numberOfTimes);
+        2,numberOfJacobianColumns,numberOfSensors,numberOfTimes);
+
+    if numberOfJacobianColumns == 3
+        objectJacobians = cat( ...
+            2, ...
+            objectJacobians, ...
+            zeros(size(objectJacobians),"like",objectJacobians));
+    end
 
     objectAvailability = reshape( ...
         measurementAvailability( ...
