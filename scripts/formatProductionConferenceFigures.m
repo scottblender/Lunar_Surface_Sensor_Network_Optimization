@@ -2,9 +2,9 @@ function report = formatProductionConferenceFigures(results,userConfig)
 % FORMATPRODUCTIONCONFERENCEFIGURES Resize and re-export paper figures only.
 %
 % Every retained manuscript figure is exported through the same EPS pipeline:
-% MATLAB print with the painters renderer. This keeps the export behavior
-% consistent across convergence, selection-frequency, tracking heatmaps, and
-% Monte Carlo figures before LaTeX placement.
+% exportgraphics with ContentType="image" at 600 dpi. This intentionally
+% rasterizes the plotted content inside the EPS container so all paper figures
+% use the same export behavior before LaTeX placement.
 
 arguments
     results (1,1) struct
@@ -46,7 +46,7 @@ if isfield(results,"production")
             end
             drawnow;
             outputFile = string(entry.outputFile);
-            exportPaintersEps(fig,outputFile,style);
+            exportImageEps(fig,outputFile,style);
             report.formattedFiles(end+1,1) = outputFile; %#ok<AGROW>
         end
     end
@@ -57,7 +57,7 @@ if isfield(results,"perRsoEkf") && isfield(results.perRsoEkf,"figure") && ...
     setFigureCanvas(results.perRsoEkf.figure, ...
         style.heatmapWidthInches,style.heatmapHeightInches);
     drawnow;
-    exportPaintersEps(results.perRsoEkf.figure,results.perRsoEkf.outputFile,style);
+    exportImageEps(results.perRsoEkf.figure,results.perRsoEkf.outputFile,style);
     report.formattedFiles(end+1,1) = string(results.perRsoEkf.outputFile); %#ok<AGROW>
 end
 
@@ -67,7 +67,7 @@ if isfield(results,"operationalRsoFigure") && ...
     setFigureCanvas(results.operationalRsoFigure.figure, ...
         style.heatmapWidthInches,style.heatmapHeightInches);
     drawnow;
-    exportPaintersEps(results.operationalRsoFigure.figure, ...
+    exportImageEps(results.operationalRsoFigure.figure, ...
         results.operationalRsoFigure.outputFile,style);
     report.formattedFiles(end+1,1) = ...
         string(results.operationalRsoFigure.outputFile); %#ok<AGROW>
@@ -83,12 +83,12 @@ if isfield(results,"monteCarlo") && isstruct(results.monteCarlo) && ...
         if ~isfield(entry,"figure") || ~isgraphics(entry.figure), continue, end
         setFigureCanvas(entry.figure,7.0,5.4);
         drawnow;
-        exportPaintersEps(entry.figure,entry.outputFile,style);
+        exportImageEps(entry.figure,entry.outputFile,style);
         report.formattedFiles(end+1,1) = string(entry.outputFile); %#ok<AGROW>
     end
 end
 
-fprintf("\nReformatted %d paper figure files using the common EPS/painters export.\n", ...
+fprintf("\nReformatted %d paper figure files using the common raster EPS export.\n", ...
     numel(report.formattedFiles));
 end
 
@@ -118,17 +118,19 @@ for fieldIndex = 1:numel(fields)
 
     drawnow;
     outputFile = string(entry.outputFile);
-    exportPaintersEps(fig,outputFile,style);
+    exportImageEps(fig,outputFile,style);
     files(end+1,1) = outputFile; %#ok<AGROW>
 end
 end
 
-function exportPaintersEps(fig,outputFile,style)
-fig.Renderer = "painters";
+function exportImageEps(fig,outputFile,style)
 fig.Color = style.backgroundColor;
 fig.InvertHardcopy = "off";
 drawnow;
-print(fig,char(outputFile),"-depsc","-painters","-r600");
+exportgraphics(fig,char(outputFile), ...
+    "ContentType","image", ...
+    "Resolution",600, ...
+    "BackgroundColor",style.backgroundColor);
 end
 
 function ticks = chooseRoundFunctionEvaluationTicks(limits)
