@@ -77,14 +77,18 @@ if isfield(results,"monteCarlo") && isstruct(results.monteCarlo) && ...
         isfield(results.monteCarlo,"available") && results.monteCarlo.available
     objectiveFields = ["information","coverage"];
     for objectiveField = objectiveFields
-        fieldName = char(objectiveField);
-        if ~isfield(results.monteCarlo,fieldName), continue, end
-        entry = results.monteCarlo.(fieldName);
-        if ~isfield(entry,"figure") || ~isgraphics(entry.figure), continue, end
-        setFigureCanvas(entry.figure,7.0,5.4);
-        drawnow;
-        exportImageEps(entry.figure,entry.outputFile,style);
-        report.formattedFiles(end+1,1) = string(entry.outputFile); %#ok<AGROW>
+        objectiveName = char(objectiveField);
+        if ~isfield(results.monteCarlo,objectiveName), continue, end
+        networkGroup = results.monteCarlo.(objectiveName);
+        networkFields = fieldnames(networkGroup);
+        for networkFieldIndex = 1:numel(networkFields)
+            entry = networkGroup.(networkFields{networkFieldIndex});
+            if ~isfield(entry,"figure") || ~isgraphics(entry.figure), continue, end
+            setFigureCanvas(entry.figure,7.0,5.4);
+            drawnow;
+            exportImageEps(entry.figure,entry.outputFile,style);
+            report.formattedFiles(end+1,1) = string(entry.outputFile); %#ok<AGROW>
+        end
     end
 end
 
