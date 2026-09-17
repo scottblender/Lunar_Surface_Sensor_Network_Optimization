@@ -6,6 +6,11 @@ function plotInfo = plotMonteCarloConferenceFigure(userConfig)
 % Small smoke-test studies are ignored automatically. The plotted quantities
 % use the actual optimization convention J = -score so local minima are shown
 % directly rather than displaying the positive score formulation.
+%
+% Each boxchart shows the local Monte Carlo objective distribution. The
+% nominal optimized solution is drawn as a short horizontal line across each
+% network-size group. No MC-mean marker is shown because the boxplot already
+% communicates the distribution center and spread more clearly.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -55,18 +60,22 @@ if ~isfolder(tableDirectory), mkdir(tableDirectory); end
 
 fig = figure("Name","Monte Carlo robustness", ...
     "Color",style.backgroundColor,"Units","inches", ...
-    "Position",[0.5 0.5 style.wideFigureWidthInches style.wideFigureHeightInches], ...
+    "Position",[0.5 0.5 style.wideFigureWidthInches 6.25], ...
     "Renderer","painters");
 layout = tiledlayout(fig,1,2,"TileSpacing","compact","Padding","compact");
 
-makePanel(nexttile(layout,1),studyState,"information","informationScore", ...
-    "Information",style);
-makePanel(nexttile(layout,2),studyState,"coverage","coverageScore", ...
-    "Coverage",style);
+[firstBox,firstNominal] = makePanel(nexttile(layout,1),studyState, ...
+    "information","informationScore","Information objective",style);
+makePanel(nexttile(layout,2),studyState, ...
+    "coverage","coverageScore","Coverage objective",style);
 
-sgtitle(layout,"Local Monte Carlo robustness", ...
-    "FontName",style.fontName,"FontSize",style.labelFontSize, ...
-    "FontWeight","bold","Color",style.textColor);
+% A single compact legend is sufficient for both panels.
+lgd = legend(firstBox.Parent,[firstBox firstNominal], ...
+    ["MC perturbations","Nominal optimum"], ...
+    "Location","northwest","Box","off");
+lgd.FontName = style.fontName;
+lgd.FontSize = style.legendFontSize;
+lgd.FontWeight = "bold";
 
 outputFile = fullfile(config.outputDirectory,"monte_carlo_robustness.eps");
 exportgraphics(fig,outputFile,"ContentType","vector", ...
@@ -86,24 +95,23 @@ plotInfo.resultsFile = resultsFile;
 fprintf("Monte Carlo robustness figure:\n  %s\n",outputFile);
 end
 
-function makePanel(ax,studyState,objectiveMode,metricField,panelTitle,style)
+function [boxHandle,nominalLegendHandle] = makePanel( ...
+    ax,studyState,objectiveMode,metricField,panelTitle,style)
 modeIndex = find(studyState.config.nominalObjectiveModes == objectiveMode,1);
 assert(~isempty(modeIndex),"MC study does not contain %s objective.",objectiveMode);
-networkSizes = studyState.config.networkSizes;
+networkSizes = double(studyState.config.networkSizes(:).');
 allValues = zeros(0,1);
 groups = zeros(0,1);
 nominal = nan(size(networkSizes));
-means = nan(size(networkSizes));
 
 for networkIndex = 1:numel(networkSizes)
     caseState = studyState.cases{modeIndex,networkIndex};
     % The optimizer minimizes J = -score. Plot that formulation directly so
-    % improved perturbations appear as lower objective values/local minima.
+    % improved perturbations appear lower on the axis as local minima.
     values = -double(caseState.rso.(metricField));
     allValues = [allValues;values(:)]; %#ok<AGROW>
     groups = [groups;repmat(networkSizes(networkIndex),numel(values),1)]; %#ok<AGROW>
     nominal(networkIndex) = -double(caseState.nominal.rso.(metricField));
-    means(networkIndex) = mean(values);
 end
 
 if objectiveMode == "information"
@@ -114,13 +122,26 @@ end
 
 hold(ax,"on");
 boxHandle = boxchart(ax,groups,allValues, ...
-    "BoxFaceColor",boxColor,"MarkerStyle",".","MarkerColor",style.grayColor);
-nominalHandle = plot(ax,networkSizes,nominal,"o", ...
-    "LineStyle","none","MarkerSize",11,"LineWidth",2.2, ...
-    "MarkerFaceColor",style.backgroundColor,"MarkerEdgeColor",style.redColor);
-meanHandle = plot(ax,networkSizes,means,"x", ...
-    "LineStyle","none","MarkerSize",12,"LineWidth",2.4, ...
-    "Color",style.textColor);
+    "BoxFaceColor",boxColor, ...
+    "MarkerStyle",".", ...
+    "MarkerColor",style.grayColor, ...
+    "LineWidth",1.25);
+
+% A short line across each group reads more naturally as the optimized
+% reference objective than a large marker and makes minima easy to compare.
+nominalLegendHandle = gobjects(1);
+halfWidth = 0.34;
+for networkIndex = 1:numel(networkSizes)
+    currentHandle = plot(ax, ...
+        networkSizes(networkIndex) + [-halfWidth halfWidth], ...
+        [nominal(networkIndex) nominal(networkIndex)], ...
+        "-","Color",style.redColor,"LineWidth",2.7);
+    if networkIndex == 1
+        nominalLegendHandle = currentHandle;
+    else
+        currentHandle.HandleVisibility = "off";
+    end
+end
 
 xlabel(ax,"Number of sensors, N_s");
 ylabel(ax,"Objective, J");
@@ -128,7 +149,7 @@ title(ax,panelTitle, ...
     "FontName",style.fontName,"FontSize",style.labelFontSize, ...
     "FontWeight","bold","Color",style.textColor);
 xticks(ax,networkSizes);
-xlim(ax,[min(networkSizes)-0.6 max(networkSizes)+0.6]);
+xlim(ax,[min(networkSizes)-0.65 max(networkSizes)+0.65]);
 ax.FontName = style.fontName;
 ax.FontSize = style.axisFontSize;
 ax.FontWeight = "bold";
@@ -140,16 +161,11 @@ ax.YGrid = "off";
 ax.XLabel.FontSize = style.labelFontSize;
 ax.YLabel.FontSize = style.labelFontSize;
 
-lgd = legend(ax,[boxHandle nominalHandle meanHandle], ...
-    ["MC samples","Nominal","MC mean"], ...
-    "Location","northoutside","Orientation","horizontal","Box","off");
-lgd.FontName = style.fontName;
-lgd.FontSize = style.legendFontSize;
-lgd.FontWeight = "bold";
-
-valuesForLimits = [allValues;nominal(:);means(:)];
+valuesForLimits = [allValues;nominal(:)];
 span = max(valuesForLimits)-min(valuesForLimits);
-if span <= 0, span = max(1,0.05*max(abs(valuesForLimits))); end
+if span <= 0
+    span = max(1,0.05*max(abs(valuesForLimits)));
+end
 ylim(ax,[min(valuesForLimits)-0.08*span max(valuesForLimits)+0.08*span]);
 end
 
