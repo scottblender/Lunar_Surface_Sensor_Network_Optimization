@@ -7,8 +7,8 @@ function report = formatProductionConferenceFigures(results,userConfig)
 % tracking, and Monte Carlo robustness.
 %
 % Raster-heavy figures and convergence plots are exported to EPS with
-% ContentType="image" for reliable LaTeX rendering. The Monte Carlo figure is
-% line/box based and is exported with MATLAB's EPS painters pipeline.
+% ContentType="image" for reliable LaTeX rendering. Monte Carlo figures are
+% line/box based and use MATLAB's EPS painters pipeline.
 
 arguments
     results (1,1) struct
@@ -88,11 +88,18 @@ if isfield(results,"operationalRsoFigure") && ...
 end
 
 if isfield(results,"monteCarlo") && isstruct(results.monteCarlo) && ...
-        isfield(results.monteCarlo,"figure") && isgraphics(results.monteCarlo.figure)
-    setFigureCanvas(results.monteCarlo.figure,style.wideFigureWidthInches,6.25);
-    drawnow;
-    exportPaintersEps(results.monteCarlo.figure,results.monteCarlo.outputFile,style);
-    report.formattedFiles(end+1,1) = string(results.monteCarlo.outputFile); %#ok<AGROW>
+        isfield(results.monteCarlo,"available") && results.monteCarlo.available
+    objectiveFields = ["information","coverage"];
+    for objectiveField = objectiveFields
+        fieldName = char(objectiveField);
+        if ~isfield(results.monteCarlo,fieldName), continue, end
+        entry = results.monteCarlo.(fieldName);
+        if ~isfield(entry,"figure") || ~isgraphics(entry.figure), continue, end
+        setFigureCanvas(entry.figure,7.0,5.4);
+        drawnow;
+        exportPaintersEps(entry.figure,entry.outputFile,style);
+        report.formattedFiles(end+1,1) = string(entry.outputFile); %#ok<AGROW>
+    end
 end
 
 fprintf("\nReformatted %d paper figure files for LaTeX placement.\n", ...
