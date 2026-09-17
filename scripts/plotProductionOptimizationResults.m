@@ -23,7 +23,7 @@ function figureInfo = plotProductionOptimizationResults(userConfig)
 %   network sizes:      [3 5 7 10]
 %   objectives:         information, coverage
 %   runs/case:          20
-%   FE/run:             6000
+%   FE/run:             12000
 %   population size:    60
 %   seeds/case:         1000:1019
 %
@@ -68,7 +68,7 @@ defaultConfig.networkSizes = [3 5 7 10];
 defaultConfig.objectiveModes = ["information","coverage"];
 defaultConfig.geometryNetworkSizes = [3 10];
 defaultConfig.numberOfRuns = 20;
-defaultConfig.functionEvaluationBudget = 6000;
+defaultConfig.functionEvaluationBudget = 12000;
 defaultConfig.populationSize = 60;
 defaultConfig.baseSeed = 1000;
 defaultConfig.studyName = "lunar_surface_production_optimization";
@@ -761,10 +761,8 @@ if isfield(database,"config") && isfield(database.config,"demSource")
     end
 end
 candidateNames = [ ...
-    "Synthetic:LunarDEM.mat"
-    "Synthetic_LunarDEM.mat"
-    "SyntheticLunarDEM.mat"
-    "Final_Lunar_DEM.mat"];
+    "Synthetic_Lunar_DEM.mat"
+    "Full_Resolution_DEM.mat"];
 for candidateIndex = 1:numel(candidateNames)
     candidatePath = string(fullfile(dataDirectory,candidateNames(candidateIndex)));
     if isfile(candidatePath)
