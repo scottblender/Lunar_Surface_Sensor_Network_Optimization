@@ -48,7 +48,7 @@ config.databaseFile = fullfile(resultsDirectory,"optimization_database.mat");
 config.demFile = "";
 config.networkSizes = [3 5 7 10];
 config.nominalObjectiveModes = ["information","coverage"];
-config.requiredOptimizationFe = 6000;
+config.requiredOptimizationFe = 12000;
 config.numberOfMonteCarloRuns = 250;
 config.maximumPerturbationRadiusKm = 15;
 config.perturbationSigmaKm = 5;
@@ -511,7 +511,7 @@ if isfield(database,"config") && isfield(database.config,"demSource")
         return
     end
 end
-names = ["Final_Lunar_DEM.mat","Synthetic_LunarDEM.mat","SyntheticLunarDEM.mat"];
+names = ["Synthetic_Lunar_DEM.mat","Full_Resolution_DEM.mat"];
 for index = 1:numel(names)
     candidate = string(fullfile(dataDirectory,names(index)));
     if isfile(candidate)
