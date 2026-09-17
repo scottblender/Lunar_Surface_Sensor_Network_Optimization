@@ -198,14 +198,17 @@ for objectiveIndex = 1:numberOfObjectives
             'JointBetterFraction','BestJointObjective','MaximumJointImprovement', ...
             'BestJointSensorIndices'});
 
+        % The detail tables already contain a numeric variable named Objective.
+        % Store the optimization mode separately as ObjectiveMode to avoid a
+        % duplicate table-variable name when prepending case metadata.
         singleTable = addvars(singleTable, ...
             repmat(objectiveMode,height(singleTable),1), ...
             repmat(networkSize,height(singleTable),1), ...
-            'Before',1,'NewVariableNames',{'Objective','NetworkSize'});
+            'Before',1,'NewVariableNames',{'ObjectiveMode','NetworkSize'});
         jointTable = addvars(jointTable, ...
             repmat(objectiveMode,height(jointTable),1), ...
             repmat(networkSize,height(jointTable),1), ...
-            'Before',1,'NewVariableNames',{'Objective','NetworkSize'});
+            'Before',1,'NewVariableNames',{'ObjectiveMode','NetworkSize'});
         singleTables{caseIndex} = singleTable;
         jointTables{caseIndex} = jointTable;
 
@@ -235,7 +238,7 @@ singleDetailTable = vertcat(singleTables{:});
 jointDetailTable = vertcat(jointTables{:});
 
 result = struct();
-result.version = "discrete_neighbor_robustness_v1";
+result.version = "discrete_neighbor_robustness_v2";
 result.created = string(datetime("now"));
 result.configuration = config;
 result.databaseFile = databaseFile;
@@ -423,7 +426,7 @@ end
 function signature = buildSignature( ...
     databaseFile,summaryFiles,networkSizes,objectiveModes,config)
 signature = struct();
-signature.version = "discrete_neighbor_robustness_v1";
+signature.version = "discrete_neighbor_robustness_v2";
 signature.databaseFile = databaseFile;
 signature.databaseStamp = fileStamp(databaseFile);
 signature.summaryFiles = summaryFiles;
