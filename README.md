@@ -186,10 +186,10 @@ The grid uses approximately uniform physical spacing rather than a fixed
 longitude increment. Longitude sampling is therefore adjusted on each latitude
 ring to account for the decreasing circumference toward the lunar poles.
 
-The current south-polar study uses the design domain
+The current production study uses the full southern-hemisphere design domain
 
 ```text
--90 deg <= latitude <= -75 deg
+-90 deg <= latitude <= 0 deg
    0 deg <= longitude < 360 deg
 ```
 
