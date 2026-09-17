@@ -1205,8 +1205,9 @@ cb.Color = style.textColor;
 end
 
 function exportVectorFigure(fig,outputFile,style)
+% Historical helper name retained for compatibility; EPS output is raster.
 exportgraphics(fig,outputFile, ...
-    "ContentType","vector", ...
+    "ContentType","image","Resolution",600, ...
     "BackgroundColor",style.backgroundColor,"Colorspace","rgb");
 end
 
