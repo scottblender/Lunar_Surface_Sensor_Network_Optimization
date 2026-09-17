@@ -50,7 +50,9 @@ style.wideFigureWidthInches = 12.0;
 style.wideFigureHeightInches = 7.0;
 style.gridFigureWidthInches = 11.0;
 style.gridFigureHeightInches = 10.5;
-style.heatmapWidthInches = 12.0;
+% Extra heatmap width prevents long operational-spacecraft labels from being
+% clipped while retaining the large manuscript font size.
+style.heatmapWidthInches = 13.5;
 style.heatmapHeightInches = 10.5;
 style.exportPaddingInches = 0.30;
 
