@@ -3,8 +3,8 @@ function result = evaluateDemResolutionValidation(productionInfo,userConfig)
 %
 % This validation does not rerun the optimization. It evaluates the exact
 % overall-best sensor sites from the completed production study using:
-%   synthetic DEM: data/SyntheticLunarDEM.mat
-%   full DEM:      data/Final_Lunar_DEM.mat
+%   synthetic DEM: data/Synthetic_Lunar_DEM.mat
+%   full DEM:      data/Full_Resolution_DEM.mat
 %
 % The comparison is limited to terrain-horizon geometry and terrain-informed
 % observability so Earth/Sun screening cannot mask terrain-model differences.
@@ -65,10 +65,10 @@ assert(isfield(databaseData,"database"), ...
 database = databaseData.database;
 
 syntheticDemFile = resolveDemFile( ...
-    config.syntheticDemFile,dataDirectory,projectRoot,"SyntheticLunarDEM.mat", ...
+    config.syntheticDemFile,dataDirectory,projectRoot,"Synthetic_Lunar_DEM.mat", ...
     'evaluateDemResolutionValidation:SyntheticDemNotFound',"synthetic");
 fullDemFile = resolveDemFile( ...
-    config.fullDemFile,dataDirectory,projectRoot,"Final_Lunar_DEM.mat", ...
+    config.fullDemFile,dataDirectory,projectRoot,"Full_Resolution_DEM.mat", ...
     'evaluateDemResolutionValidation:FullDemNotFound',"full-resolution");
 
 moonRadiusKm = double(database.config.moon.radiusKm);
@@ -235,7 +235,7 @@ summaryTable = table( ...
     'DeltaObservableEpochPercentagePoints','TerrainDecisionCount'});
 
 result = struct();
-result.version = "dem_resolution_validation_v3_explicit_dem_files";
+result.version = "dem_resolution_validation_v4_renamed_dem_files";
 result.created = string(datetime("now"));
 result.syntheticDemFile = syntheticDemFile;
 result.fullDemFile = fullDemFile;
@@ -290,7 +290,7 @@ end
 function signature = buildSignature(databaseFile,summaryFiles,syntheticDemFile, ...
     fullDemFile,selectedIndices,maximumRangeKm,rangeStepKm,azimuthStepRad)
 signature = struct();
-signature.version = "dem_resolution_validation_v3_explicit_dem_files";
+signature.version = "dem_resolution_validation_v4_renamed_dem_files";
 signature.databaseStamp = fileStamp(databaseFile);
 signature.summaryStamps = zeros(numel(summaryFiles),2);
 for index = 1:numel(summaryFiles)
