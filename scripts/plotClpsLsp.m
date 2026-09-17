@@ -23,7 +23,7 @@ style = publicationPlotStyle();
 %% Load final production DEM
 
 moonRadiusKm = 1737.4;
-demFile = fullfile(repositoryRoot,"data","Final_Lunar_DEM.mat");
+demFile = fullfile(repositoryRoot,"data","Full_Resolution_DEM.mat");
 
 assert(isfile(demFile), ...
     "Final lunar DEM was not found: %s",demFile);
