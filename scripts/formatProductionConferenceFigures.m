@@ -2,9 +2,9 @@ function report = formatProductionConferenceFigures(results,userConfig)
 % FORMATPRODUCTIONCONFERENCEFIGURES Resize and re-export paper figures only.
 %
 % Every retained manuscript figure is exported through the same EPS pipeline:
-% exportgraphics with ContentType="image" at 600 dpi. This intentionally
-% rasterizes the plotted content inside the EPS container so all paper figures
-% use the same export behavior before LaTeX placement.
+% PRINT with the OpenGL renderer at 600 dpi. This forces the plotted content
+% to be rasterized inside the EPS container instead of leaving vector paths or
+% text behind from EXPORTGRAPHICS/painters exports.
 
 arguments
     results (1,1) struct
@@ -88,7 +88,7 @@ if isfield(results,"monteCarlo") && isstruct(results.monteCarlo) && ...
     end
 end
 
-fprintf("\nReformatted %d paper figure files using the common raster EPS export.\n", ...
+fprintf("\nReformatted %d paper figure files using OpenGL raster EPS print.\n", ...
     numel(report.formattedFiles));
 end
 
@@ -126,11 +126,9 @@ end
 function exportImageEps(fig,outputFile,style)
 fig.Color = style.backgroundColor;
 fig.InvertHardcopy = "off";
+fig.Renderer = "opengl";
 drawnow;
-exportgraphics(fig,char(outputFile), ...
-    "ContentType","image", ...
-    "Resolution",600, ...
-    "BackgroundColor",style.backgroundColor);
+print(fig,char(outputFile),"-depsc","-opengl","-r600");
 end
 
 function ticks = chooseRoundFunctionEvaluationTicks(limits)
