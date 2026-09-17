@@ -13,6 +13,10 @@ function results = runProductionConferenceResults(userConfig)
 %   - synthetic-versus-full DEM terrain-resolution validation at the exact
 %     optimized sites.
 %
+% Canonical DEM files:
+%   synthetic: data/Synthetic_Lunar_DEM.mat
+%   full:      data/Full_Resolution_DEM.mat
+%
 % Main paper tables:
 %   1) conference_optimization_summary.csv;
 %   2) conference_estimation_summary.csv;
@@ -24,6 +28,22 @@ function results = runProductionConferenceResults(userConfig)
 
 arguments
     userConfig (1,1) struct = struct()
+end
+
+scriptDirectory = fileparts(mfilename("fullpath"));
+projectRoot = fileparts(scriptDirectory);
+dataDirectory = fullfile(projectRoot,"data");
+
+if ~isfield(userConfig,"demFile") || strlength(string(userConfig.demFile)) == 0
+    userConfig.demFile = fullfile(dataDirectory,"Synthetic_Lunar_DEM.mat");
+end
+if ~isfield(userConfig,"syntheticDemFile") || ...
+        strlength(string(userConfig.syntheticDemFile)) == 0
+    userConfig.syntheticDemFile = fullfile(dataDirectory,"Synthetic_Lunar_DEM.mat");
+end
+if ~isfield(userConfig,"fullDemFile") || ...
+        strlength(string(userConfig.fullDemFile)) == 0
+    userConfig.fullDemFile = fullfile(dataDirectory,"Full_Resolution_DEM.mat");
 end
 
 rootHandle = groot;
