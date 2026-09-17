@@ -1,10 +1,9 @@
 function plotInfo = plotMonteCarloConferenceFigure(userConfig)
 % PLOTMONTECARLOCONFERENCEFIGURE Create one compact MC robustness figure.
 %
-% If a completed Monte Carlo robustness study is available, one 1x2 figure is
-% produced: information-score robustness and coverage-score robustness. Each
-% panel shows the local perturbation distribution versus network size with the
-% nominal optimized score and the Monte Carlo mean overlaid.
+% If a completed full Monte Carlo robustness study is available, one 1x2
+% figure is produced: information-score robustness and coverage-score
+% robustness. Small smoke-test studies are ignored automatically.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -20,11 +19,15 @@ config = struct();
 config.resultsDirectory = resultsDirectory;
 config.outputDirectory = fullfile(resultsDirectory,"production_figures");
 config.monteCarloResultsFile = "";
+config.networkSizes = [3 5 7 10];
+config.objectiveModes = ["information","coverage"];
 config.exportResolution = 600;
 config = mergeStruct(config,userConfig);
 config.resultsDirectory = string(config.resultsDirectory);
 config.outputDirectory = string(config.outputDirectory);
 config.monteCarloResultsFile = string(config.monteCarloResultsFile);
+config.networkSizes = double(config.networkSizes(:).');
+config.objectiveModes = lower(string(config.objectiveModes(:).'));
 
 resultsFile = resolveMonteCarloResults(config);
 plotInfo = struct();
@@ -35,7 +38,7 @@ plotInfo.outputFile = "";
 plotInfo.summaryFile = "";
 
 if strlength(resultsFile) == 0
-    fprintf("\nNo completed Monte Carlo robustness study found; MC figure skipped.\n");
+    fprintf("\nNo completed full Monte Carlo robustness study found; MC figure skipped.\n");
     return
 end
 
@@ -43,7 +46,6 @@ data = load(resultsFile,"studyState");
 assert(isfield(data,"studyState") && data.studyState.completed, ...
     "Selected Monte Carlo result is incomplete: %s",resultsFile);
 studyState = data.studyState;
-networkSizes = studyState.config.networkSizes;
 
 if ~isfolder(config.outputDirectory), mkdir(config.outputDirectory); end
 tableDirectory = fullfile(config.outputDirectory,"tables");
@@ -186,7 +188,10 @@ function resultsFile = resolveMonteCarloResults(config)
 resultsFile = "";
 if strlength(config.monteCarloResultsFile) > 0
     if isfile(config.monteCarloResultsFile)
-        resultsFile = config.monteCarloResultsFile;
+        data = load(config.monteCarloResultsFile,"studyState");
+        if isfield(data,"studyState") && isFullStudy(data.studyState,config)
+            resultsFile = config.monteCarloResultsFile;
+        end
     end
     return
 end
@@ -200,14 +205,25 @@ for fileIndex = 1:numel(files)
     candidate = string(fullfile(files(fileIndex).folder,files(fileIndex).name));
     try
         data = load(candidate,"studyState");
-        if isfield(data,"studyState") && isfield(data.studyState,"completed") && ...
-                data.studyState.completed
+        if isfield(data,"studyState") && isFullStudy(data.studyState,config)
             resultsFile = candidate;
             return
         end
     catch
     end
 end
+end
+
+function tf = isFullStudy(studyState,config)
+tf = isstruct(studyState) && isfield(studyState,"completed") && ...
+    studyState.completed && isfield(studyState,"config") && ...
+    isfield(studyState.config,"networkSizes") && ...
+    isfield(studyState.config,"nominalObjectiveModes");
+if ~tf, return, end
+networkSizes = double(studyState.config.networkSizes(:).');
+objectiveModes = lower(string(studyState.config.nominalObjectiveModes(:).'));
+tf = all(ismember(config.networkSizes,networkSizes)) && ...
+    all(ismember(config.objectiveModes,objectiveModes));
 end
 
 function output = mergeStruct(defaults,override)
