@@ -3,10 +3,10 @@ function result = evaluateDemResolutionValidation(productionInfo,userConfig)
 %
 % This validation does not rerun the optimization. It evaluates the exact
 % optimized sensor sites from the completed production study using both the
-% synthetic production DEM and Final_Lunar_DEM.mat. The comparison is limited
-% to terrain-horizon geometry and terrain-informed observability so the full
-% DEM can be used as a reference without introducing Earth/Sun screening as a
-% confounding factor.
+% synthetic production DEM and the full-resolution DEM source used by
+% data/SyntheticLunarDEM.m. The comparison is limited to terrain-horizon
+% geometry and terrain-informed observability so Earth/Sun screening cannot
+% mask terrain-model differences.
 %
 % Main paper output:
 %   conference_dem_resolution_validation.csv
@@ -17,8 +17,9 @@ function result = evaluateDemResolutionValidation(productionInfo,userConfig)
 %   - network observable-epoch percentage under each DEM and the change in
 %     percentage points.
 %
-% Full-resolution DEM is treated as the reference. A false clear occurs when
-% the synthetic DEM accepts terrain LOS while the full DEM rejects it.
+% The full-resolution source DEM is treated as the reference. A false clear
+% occurs when the synthetic DEM accepts terrain LOS while the full DEM rejects
+% it.
 
 arguments
     productionInfo (1,1) struct
@@ -65,7 +66,8 @@ assert(isfield(databaseData,"database"), ...
 database = databaseData.database;
 
 syntheticDemFile = resolveSyntheticDemFile(config.syntheticDemFile,database,dataDirectory);
-fullDemFile = resolveFullDemFile(config.fullDemFile,dataDirectory,projectRoot);
+fullDemFile = resolveFullDemFile( ...
+    config.fullDemFile,dataDirectory,projectRoot,syntheticDemFile);
 assert(isfile(syntheticDemFile),"Synthetic DEM not found: %s",syntheticDemFile);
 
 moonRadiusKm = double(database.config.moon.radiusKm);
@@ -125,13 +127,11 @@ fprintf("\n============================================================\n");
 fprintf("DEM resolution validation at optimized sites\n");
 fprintf("============================================================\n");
 fprintf("Synthetic DEM: %s\n",syntheticDemFile);
-fprintf("Full DEM:      %s\n",fullDemFile);
+fprintf("Full DEM source: %s\n",fullDemFile);
 fprintf("Unique optimized sites: %d\n",numel(uniqueSelectedIndices));
 
-[syntheticDem,~] = digitalElevationModel.loadTriaxialLunarDem( ...
-    syntheticDemFile,moonRadiusKm,24,48);
-[fullDem,~] = digitalElevationModel.loadTriaxialLunarDem( ...
-    fullDemFile,moonRadiusKm,24,48);
+syntheticDem = loadDemSource(syntheticDemFile,moonRadiusKm);
+fullDem = loadDemSource(fullDemFile,moonRadiusKm);
 
 [syntheticAzimuths,syntheticHorizon] = ...
     digitalElevationModel.buildMaximumTerrainHorizonDatabase( ...
@@ -231,7 +231,7 @@ summaryTable = table( ...
     'DeltaObservableEpochPercentagePoints','TerrainDecisionCount'});
 
 result = struct();
-result.version = "dem_resolution_validation_v1";
+result.version = "dem_resolution_validation_v2";
 result.created = string(datetime("now"));
 result.syntheticDemFile = syntheticDemFile;
 result.fullDemFile = fullDemFile;
@@ -277,7 +277,8 @@ error("evaluateDemResolutionValidation:SyntheticDemNotFound", ...
     "Synthetic lunar DEM could not be resolved from the database or data directory.");
 end
 
-function fullDemFile = resolveFullDemFile(requestedFile,dataDirectory,projectRoot)
+function fullDemFile = resolveFullDemFile( ...
+    requestedFile,dataDirectory,projectRoot,syntheticDemFile)
 requestedFile = string(requestedFile);
 if strlength(requestedFile) > 0
     if isfile(requestedFile)
@@ -288,6 +289,30 @@ if strlength(requestedFile) > 0
         "Requested full-resolution DEM was not found: %s",requestedFile);
 end
 
+% The local data directory is gitignored. The project-specific generator is
+% data/SyntheticLunarDEM.m. Read that script and resolve the highest-resolution
+% DEM MAT-file it references, excluding the synthetic production DEM itself.
+generatorScript = string(fullfile(dataDirectory,"SyntheticLunarDEM.m"));
+if ~isfile(generatorScript)
+    matches = dir(fullfile(projectRoot,"**","SyntheticLunarDEM.m"));
+    if ~isempty(matches)
+        generatorScript = string(fullfile(matches(1).folder,matches(1).name));
+    end
+end
+
+if isfile(generatorScript)
+    fullDemFile = resolveDemInputFromGenerator( ...
+        generatorScript,syntheticDemFile,dataDirectory,projectRoot);
+    if strlength(fullDemFile) > 0
+        return
+    end
+    error("evaluateDemResolutionValidation:FullDemNotResolvedFromGenerator", ...
+        ["Found %s, but no full-resolution DEM MAT-file referenced by the " ...
+         "script could be resolved. Provide userConfig.fullDemFile if the " ...
+         "source DEM path is constructed dynamically."],generatorScript);
+end
+
+% Backward-compatible fallbacks for older local study layouts.
 preferredCandidates = [ ...
     string(fullfile(dataDirectory,"Final_Lunar_DEM.mat")); ...
     string(fullfile(projectRoot,"Final_Lunar_DEM.mat"))];
@@ -298,25 +323,139 @@ for index = 1:numel(preferredCandidates)
     end
 end
 
-% Data files are gitignored and may live in a user-created subdirectory. Look
-% for the canonical full-resolution filename anywhere beneath the project root
-% before requiring an explicit override.
-matches = dir(fullfile(projectRoot,"**","Final_Lunar_DEM.mat"));
-if ~isempty(matches)
-    fullDemFile = string(fullfile(matches(1).folder,matches(1).name));
+error("evaluateDemResolutionValidation:FullDemNotFound", ...
+    ["Full-resolution DEM source not found. Expected data/SyntheticLunarDEM.m " ...
+     "or provide the exact DEM MAT-file with userConfig.fullDemFile."]);
+end
+
+function fullDemFile = resolveDemInputFromGenerator( ...
+    generatorScript,syntheticDemFile,dataDirectory,projectRoot)
+fullDemFile = "";
+scriptText = fileread(generatorScript);
+
+% Extract quoted MAT-file paths from load/save statements and other literal
+% references. The full-resolution input is selected by DEM validity and grid
+% sample count, not simply by filename.
+quotedMatFiles = regexp(scriptText, ...
+    '["'']([^"'']+\.mat)["'']','tokens');
+if isempty(quotedMatFiles)
     return
 end
 
-error("evaluateDemResolutionValidation:FullDemNotFound", ...
-    ["Full-resolution DEM not found. Expected Final_Lunar_DEM.mat under " ...
-     "the project data directory or project root. Provide the exact path " ...
-     "with userConfig.fullDemFile if it is stored elsewhere."]);
+literalPaths = strings(numel(quotedMatFiles),1);
+for index = 1:numel(quotedMatFiles)
+    literalPaths(index) = string(quotedMatFiles{index}{1});
+end
+literalPaths = unique(literalPaths,"stable");
+
+scriptFolder = string(fileparts(generatorScript));
+resolvedCandidates = strings(0,1);
+for index = 1:numel(literalPaths)
+    literalPath = literalPaths(index);
+    pathCandidates = [ ...
+        literalPath; ...
+        string(fullfile(scriptFolder,literalPath)); ...
+        string(fullfile(dataDirectory,literalPath)); ...
+        string(fullfile(projectRoot,literalPath))];
+
+    for candidateIndex = 1:numel(pathCandidates)
+        candidate = pathCandidates(candidateIndex);
+        if isfile(candidate)
+            resolvedCandidates(end+1,1) = candidate; %#ok<AGROW>
+            break
+        end
+    end
+end
+
+if isempty(resolvedCandidates)
+    return
+end
+resolvedCandidates = unique(resolvedCandidates,"stable");
+
+bestScore = -Inf;
+for index = 1:numel(resolvedCandidates)
+    candidate = resolvedCandidates(index);
+    if sameFile(candidate,syntheticDemFile)
+        continue
+    end
+    score = demSampleCount(candidate);
+    if score > bestScore
+        bestScore = score;
+        fullDemFile = candidate;
+    end
+end
+
+if strlength(fullDemFile) > 0
+    fprintf("Resolved full-resolution DEM from %s:\n  %s\n", ...
+        generatorScript,fullDemFile);
+end
+end
+
+function score = demSampleCount(fileName)
+score = -Inf;
+try
+    fileVariables = whos("-file",fileName);
+catch
+    return
+end
+
+for variableIndex = 1:numel(fileVariables)
+    variableInfo = fileVariables(variableIndex);
+    variableClass = string(variableInfo.class);
+    variableName = string(variableInfo.name);
+
+    if variableClass == "griddedInterpolant"
+        try
+            loaded = load(fileName,variableName);
+            value = loaded.(variableName);
+            if numel(value.GridVectors) == 2
+                score = max(score,numel(value.Values));
+            end
+        catch
+        end
+        continue
+    end
+
+    if ~ismember(variableClass,["double","single","int8","uint8", ...
+            "int16","uint16","int32","uint32","int64","uint64"])
+        continue
+    end
+
+    variableSize = double(variableInfo.size);
+    if numel(variableSize) == 2 && variableSize(1) > 1 && ...
+            variableSize(2) == 2*variableSize(1)
+        score = max(score,prod(variableSize));
+    end
+end
+end
+
+function tf = sameFile(firstFile,secondFile)
+firstFile = string(firstFile);
+secondFile = string(secondFile);
+if strlength(secondFile) == 0
+    tf = false;
+    return
+end
+try
+    firstInfo = dir(firstFile);
+    secondInfo = dir(secondFile);
+    tf = ~isempty(firstInfo) && ~isempty(secondInfo) && ...
+        strcmpi(string(fullfile(firstInfo(1).folder,firstInfo(1).name)), ...
+        string(fullfile(secondInfo(1).folder,secondInfo(1).name)));
+catch
+    tf = strcmpi(firstFile,secondFile);
+end
+end
+
+function dem = loadDemSource(sourceFile,moonRadiusKm)
+[dem,~] = digitalElevationModel.loadTriaxialLunarDem( ...
+    string(sourceFile),moonRadiusKm,24,48);
 end
 
 function signature = buildSignature(databaseFile,summaryFiles,syntheticDemFile, ...
     fullDemFile,selectedIndices,maximumRangeKm,rangeStepKm,azimuthStepRad)
 signature = struct();
-signature.version = "dem_resolution_validation_v1";
+signature.version = "dem_resolution_validation_v2";
 signature.databaseStamp = fileStamp(databaseFile);
 signature.summaryStamps = zeros(numel(summaryFiles),2);
 for index = 1:numel(summaryFiles)
