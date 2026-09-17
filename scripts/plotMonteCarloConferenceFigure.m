@@ -78,8 +78,7 @@ lgd.FontSize = style.legendFontSize;
 lgd.FontWeight = "bold";
 
 outputFile = fullfile(config.outputDirectory,"monte_carlo_robustness.eps");
-exportgraphics(fig,outputFile,"ContentType","vector", ...
-    "BackgroundColor",style.backgroundColor,"Colorspace","rgb");
+exportPaintersEps(fig,outputFile,style);
 
 summaryTable = buildSummaryTable(studyState);
 summaryFile = fullfile(tableDirectory,"monte_carlo_summary.csv");
@@ -248,6 +247,13 @@ networkSizes = double(studyState.config.networkSizes(:).');
 objectiveModes = lower(string(studyState.config.nominalObjectiveModes(:).'));
 tf = all(ismember(config.networkSizes,networkSizes)) && ...
     all(ismember(config.objectiveModes,objectiveModes));
+end
+
+function exportPaintersEps(fig,outputFile,style)
+fig.Renderer = "painters";
+fig.Color = style.backgroundColor;
+fig.InvertHardcopy = "off";
+print(fig,char(outputFile),"-depsc","-painters");
 end
 
 function output = mergeStruct(defaults,override)
