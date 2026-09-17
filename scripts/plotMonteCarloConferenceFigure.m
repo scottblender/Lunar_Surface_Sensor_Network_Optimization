@@ -2,8 +2,10 @@ function plotInfo = plotMonteCarloConferenceFigure(userConfig)
 % PLOTMONTECARLOCONFERENCEFIGURE Create one compact MC robustness figure.
 %
 % If a completed full Monte Carlo robustness study is available, one 1x2
-% figure is produced: information-score robustness and coverage-score
-% robustness. Small smoke-test studies are ignored automatically.
+% figure is produced for the minimized information and coverage objectives.
+% Small smoke-test studies are ignored automatically. The plotted quantities
+% use the actual optimization convention J = -score so local minima are shown
+% directly rather than displaying the positive score formulation.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -58,9 +60,9 @@ fig = figure("Name","Monte Carlo robustness", ...
 layout = tiledlayout(fig,1,2,"TileSpacing","compact","Padding","compact");
 
 makePanel(nexttile(layout,1),studyState,"information","informationScore", ...
-    "Information score",style);
+    "Information",style);
 makePanel(nexttile(layout,2),studyState,"coverage","coverageScore", ...
-    "Coverage score",style);
+    "Coverage",style);
 
 sgtitle(layout,"Local Monte Carlo robustness", ...
     "FontName",style.fontName,"FontSize",style.labelFontSize, ...
@@ -84,7 +86,7 @@ plotInfo.resultsFile = resultsFile;
 fprintf("Monte Carlo robustness figure:\n  %s\n",outputFile);
 end
 
-function makePanel(ax,studyState,objectiveMode,metricField,yLabelText,style)
+function makePanel(ax,studyState,objectiveMode,metricField,panelTitle,style)
 modeIndex = find(studyState.config.nominalObjectiveModes == objectiveMode,1);
 assert(~isempty(modeIndex),"MC study does not contain %s objective.",objectiveMode);
 networkSizes = studyState.config.networkSizes;
@@ -95,10 +97,12 @@ means = nan(size(networkSizes));
 
 for networkIndex = 1:numel(networkSizes)
     caseState = studyState.cases{modeIndex,networkIndex};
-    values = caseState.rso.(metricField);
+    % The optimizer minimizes J = -score. Plot that formulation directly so
+    % improved perturbations appear as lower objective values/local minima.
+    values = -double(caseState.rso.(metricField));
     allValues = [allValues;values(:)]; %#ok<AGROW>
     groups = [groups;repmat(networkSizes(networkIndex),numel(values),1)]; %#ok<AGROW>
-    nominal(networkIndex) = caseState.nominal.rso.(metricField);
+    nominal(networkIndex) = -double(caseState.nominal.rso.(metricField));
     means(networkIndex) = mean(values);
 end
 
@@ -119,7 +123,10 @@ meanHandle = plot(ax,networkSizes,means,"x", ...
     "Color",style.textColor);
 
 xlabel(ax,"Number of sensors, N_s");
-ylabel(ax,yLabelText);
+ylabel(ax,"Objective, J");
+title(ax,panelTitle, ...
+    "FontName",style.fontName,"FontSize",style.labelFontSize, ...
+    "FontWeight","bold","Color",style.textColor);
 xticks(ax,networkSizes);
 xlim(ax,[min(networkSizes)-0.6 max(networkSizes)+0.6]);
 ax.FontName = style.fontName;
@@ -152,12 +159,12 @@ objectiveModes = studyState.config.nominalObjectiveModes;
 numberOfRows = numel(networkSizes)*numel(objectiveModes);
 objective = strings(numberOfRows,1);
 networkSize = zeros(numberOfRows,1);
-nominal = zeros(numberOfRows,1);
-meanValue = zeros(numberOfRows,1);
-stdValue = zeros(numberOfRows,1);
-medianValue = zeros(numberOfRows,1);
-minimumValue = zeros(numberOfRows,1);
-maximumValue = zeros(numberOfRows,1);
+nominalObjective = zeros(numberOfRows,1);
+meanObjective = zeros(numberOfRows,1);
+stdObjective = zeros(numberOfRows,1);
+medianObjective = zeros(numberOfRows,1);
+minimumObjective = zeros(numberOfRows,1);
+maximumObjective = zeros(numberOfRows,1);
 row = 0;
 
 for modeIndex = 1:numel(objectiveModes)
@@ -166,22 +173,23 @@ for modeIndex = 1:numel(objectiveModes)
     for networkIndex = 1:numel(networkSizes)
         row = row + 1;
         caseState = studyState.cases{modeIndex,networkIndex};
-        values = caseState.rso.(metricField);
+        values = -double(caseState.rso.(metricField));
         objective(row) = objectiveMode;
         networkSize(row) = networkSizes(networkIndex);
-        nominal(row) = caseState.nominal.rso.(metricField);
-        meanValue(row) = mean(values);
-        stdValue(row) = std(values);
-        medianValue(row) = median(values);
-        minimumValue(row) = min(values);
-        maximumValue(row) = max(values);
+        nominalObjective(row) = -double(caseState.nominal.rso.(metricField));
+        meanObjective(row) = mean(values);
+        stdObjective(row) = std(values);
+        medianObjective(row) = median(values);
+        minimumObjective(row) = min(values);
+        maximumObjective(row) = max(values);
     end
 end
 
-summaryTable = table(objective,networkSize,nominal,meanValue,stdValue, ...
-    medianValue,minimumValue,maximumValue, ...
-    'VariableNames',{'Objective','NetworkSize','Nominal','Mean','Std', ...
-    'Median','Minimum','Maximum'});
+summaryTable = table(objective,networkSize,nominalObjective,meanObjective, ...
+    stdObjective,medianObjective,minimumObjective,maximumObjective, ...
+    'VariableNames',{'Objective','NetworkSize','NominalObjective', ...
+    'MeanObjective','StdObjective','MedianObjective','MinimumObjective', ...
+    'MaximumObjective'});
 end
 
 function resultsFile = resolveMonteCarloResults(config)
