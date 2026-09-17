@@ -51,7 +51,7 @@ style.wideFigureHeightInches = 7.0;
 style.gridFigureWidthInches = 11.0;
 style.gridFigureHeightInches = 10.5;
 style.heatmapWidthInches = 12.0;
-style.heatmapHeightInches = 9.0;
+style.heatmapHeightInches = 10.5;
 style.exportPaddingInches = 0.30;
 
 end
