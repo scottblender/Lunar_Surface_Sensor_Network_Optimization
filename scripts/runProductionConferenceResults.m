@@ -71,33 +71,14 @@ diagnosticsDirectory = fullfile(tableDirectory,"diagnostics");
 if ~isfolder(supplementalDirectory), mkdir(supplementalDirectory); end
 if ~isfolder(diagnosticsDirectory), mkdir(diagnosticsDirectory); end
 
-% Objective boxplots are useful diagnostics but redundant with the mean/std
-% objective figure and Table 1, so keep them supplemental rather than main.
+% Close redundant figures that are not part of the main-paper set.
 if isfield(results.production,"objectiveDistributions")
     fields = fieldnames(results.production.objectiveDistributions);
     for fieldIndex = 1:numel(fields)
         entry = results.production.objectiveDistributions.(fields{fieldIndex});
-        if isfield(entry,"outputFile")
-            moveSupportingFile(string(entry.outputFile),supplementalDirectory);
-        end
         if isfield(entry,"figure") && isgraphics(entry.figure)
             close(entry.figure);
         end
-    end
-end
-
-% Separate operational heatmaps are superseded by the combined four-panel
-% operational tracking figure.
-legacyOperational = strings(0,1);
-if isfield(results.operationalRso,"rmsOutputFile")
-    legacyOperational(end+1,1) = string(results.operationalRso.rmsOutputFile); %#ok<AGROW>
-end
-if isfield(results.operationalRso,"observabilityOutputFile")
-    legacyOperational(end+1,1) = string(results.operationalRso.observabilityOutputFile); %#ok<AGROW>
-end
-for fileIndex = 1:numel(legacyOperational)
-    if legacyOperational(fileIndex) ~= string(results.operationalRsoFigure.outputFile)
-        moveSupportingFile(legacyOperational(fileIndex),supplementalDirectory);
     end
 end
 if isfield(results.operationalRso,"rmsFigure") && isgraphics(results.operationalRso.rmsFigure)
@@ -108,18 +89,33 @@ if isfield(results.operationalRso,"observabilityFigure") && ...
     close(results.operationalRso.observabilityFigure);
 end
 
-% Move stale predecessor plots from earlier result-pipeline versions.
-stalePlotNames = [ ...
-    "rso_information_boxplot.eps"; ...
-    "rso_coverage_boxplot.eps"; ...
-    "operational_information_boxplot.eps"; ...
-    "operational_coverage_boxplot.eps"; ...
-    "ekf_per_rso_position_rmse_heatmap.eps"; ...
-    "ekf_per_rso_observability_heatmap.eps"; ...
-    "ekf_per_rso_measurement_availability_heatmap.eps"];
-for fileIndex = 1:numel(stalePlotNames)
-    candidate = fullfile(outputDirectory,stalePlotNames(fileIndex));
-    moveSupportingFile(candidate,supplementalDirectory);
+% Explicit whitelist for the main result directory. Any other EPS/PNG/FIG file
+% is supporting material and is moved to supplemental. This also cleans stale
+% files left by older versions of the plotting pipeline.
+mainFigureNames = [ ...
+    "convergence_information.eps"; ...
+    "convergence_coverage.eps"; ...
+    "mean_objective_vs_ns_information.eps"; ...
+    "mean_objective_vs_ns_coverage.eps"; ...
+    "sensor_geometry_n3_n10_information.eps"; ...
+    "sensor_geometry_n3_n10_coverage.eps"; ...
+    "network_locations_vs_ns_information.eps"; ...
+    "network_locations_vs_ns_coverage.eps"; ...
+    "design_rso_tracking_heatmaps.eps"; ...
+    "operational_rso_tracking_heatmaps.eps"; ...
+    "monte_carlo_robustness.eps"];
+
+extensions = ["*.eps","*.png","*.fig"];
+for extensionIndex = 1:numel(extensions)
+    files = dir(fullfile(outputDirectory,extensions(extensionIndex)));
+    for fileIndex = 1:numel(files)
+        fileName = string(files(fileIndex).name);
+        if any(fileName == mainFigureNames)
+            continue
+        end
+        sourceFile = string(fullfile(files(fileIndex).folder,files(fileIndex).name));
+        moveSupportingFile(sourceFile,supplementalDirectory);
+    end
 end
 
 % Keep only the two paper-ready CSVs at tables/. Everything else is supporting
@@ -139,6 +135,7 @@ end
 info = struct();
 info.supplementalDirectory = string(supplementalDirectory);
 info.diagnosticsDirectory = string(diagnosticsDirectory);
+info.mainFigureNames = mainFigureNames;
 info.mainTableFiles = [ ...
     string(fullfile(tableDirectory,mainTableNames(1))); ...
     string(fullfile(tableDirectory,mainTableNames(2)))];
