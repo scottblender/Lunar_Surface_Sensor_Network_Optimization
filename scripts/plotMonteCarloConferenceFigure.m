@@ -1,16 +1,12 @@
 function plotInfo = plotMonteCarloConferenceFigure(userConfig)
-% PLOTMONTECARLOCONFERENCEFIGURE Create one compact MC robustness figure.
+% PLOTMONTECARLOCONFERENCEFIGURE Create separate MC robustness subfigures.
 %
-% If a completed full Monte Carlo robustness study is available, one 1x2
-% figure is produced for the minimized information and coverage objectives.
-% Small smoke-test studies are ignored automatically. The plotted quantities
-% use the actual optimization convention J = -score so local minima are shown
-% directly rather than displaying the positive score formulation.
-%
-% Each boxchart shows the local Monte Carlo objective distribution. The
-% nominal optimized solution is drawn as a short horizontal line across each
-% network-size group. No MC-mean marker is shown because the boxplot already
-% communicates the distribution center and spread more clearly.
+% A completed Monte Carlo robustness study produces one information-objective
+% figure and one coverage-objective figure. They are intentionally separate so
+% the manuscript can place them in a LaTeX subfigure environment without a
+% crowded shared legend or compressed axes. The plotted quantity is the actual
+% minimized objective J = -score, and the nominal optimized objective is shown
+% as a short horizontal reference line for each network size.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -28,7 +24,6 @@ config.outputDirectory = fullfile(resultsDirectory,"production_figures");
 config.monteCarloResultsFile = "";
 config.networkSizes = [3 5 7 10];
 config.objectiveModes = ["information","coverage"];
-config.exportResolution = 600;
 config = mergeStruct(config,userConfig);
 config.resultsDirectory = string(config.resultsDirectory);
 config.outputDirectory = string(config.outputDirectory);
@@ -40,12 +35,12 @@ resultsFile = resolveMonteCarloResults(config);
 plotInfo = struct();
 plotInfo.available = false;
 plotInfo.resultsFile = resultsFile;
-plotInfo.figure = gobjects(0);
-plotInfo.outputFile = "";
+plotInfo.information = struct();
+plotInfo.coverage = struct();
 plotInfo.summaryFile = "";
 
 if strlength(resultsFile) == 0
-    fprintf("\nNo completed full Monte Carlo robustness study found; MC figure skipped.\n");
+    fprintf("\nNo completed full Monte Carlo robustness study found; MC figures skipped.\n");
     return
 end
 
@@ -58,44 +53,50 @@ if ~isfolder(config.outputDirectory), mkdir(config.outputDirectory); end
 tableDirectory = fullfile(config.outputDirectory,"tables");
 if ~isfolder(tableDirectory), mkdir(tableDirectory); end
 
-fig = figure("Name","Monte Carlo robustness", ...
-    "Color",style.backgroundColor,"Units","inches", ...
-    "Position",[0.5 0.5 style.wideFigureWidthInches 6.25], ...
-    "Renderer","painters");
-layout = tiledlayout(fig,1,2,"TileSpacing","compact","Padding","compact");
+for objectiveMode = config.objectiveModes
+    objectiveField = char(objectiveMode);
+    metricField = objectiveMode + "Score";
 
-[firstBox,firstNominal] = makePanel(nexttile(layout,1),studyState, ...
-    "information","informationScore","Information objective",style);
-makePanel(nexttile(layout,2),studyState, ...
-    "coverage","coverageScore","Coverage objective",style);
+    fig = figure("Name",sprintf("Monte Carlo robustness: %s",objectiveMode), ...
+        "Color",style.backgroundColor,"Units","inches", ...
+        "Position",[0.5 0.5 7.0 5.4],"Renderer","painters");
+    ax = axes(fig);
 
-% A single compact legend is sufficient for both panels.
-lgd = legend(firstBox.Parent,[firstBox firstNominal], ...
-    ["MC perturbations","Nominal optimum"], ...
-    "Location","northwest","Box","off");
-lgd.FontName = style.fontName;
-lgd.FontSize = style.legendFontSize;
-lgd.FontWeight = "bold";
+    [boxHandle,nominalHandle] = makePanel( ...
+        ax,studyState,objectiveMode,metricField,style);
 
-outputFile = fullfile(config.outputDirectory,"monte_carlo_robustness.eps");
-exportPaintersEps(fig,outputFile,style);
+    lgd = legend(ax,[boxHandle nominalHandle], ...
+        ["MC perturbations","Nominal optimum"], ...
+        "Location","northoutside","Orientation","horizontal","Box","off");
+    lgd.FontName = style.fontName;
+    lgd.FontSize = style.legendFontSize;
+    lgd.FontWeight = "bold";
+
+    outputFile = fullfile(config.outputDirectory, ...
+        sprintf("monte_carlo_%s.eps",objectiveMode));
+    exportPaintersEps(fig,outputFile,style);
+
+    plotInfo.(objectiveField) = struct( ...
+        "figure",fig,"outputFile",string(outputFile));
+end
 
 summaryTable = buildSummaryTable(studyState);
 summaryFile = fullfile(tableDirectory,"monte_carlo_summary.csv");
 writetable(summaryTable,summaryFile);
 
 plotInfo.available = true;
-plotInfo.figure = fig;
-plotInfo.outputFile = string(outputFile);
 plotInfo.summaryFile = string(summaryFile);
 plotInfo.summaryTable = summaryTable;
 plotInfo.resultsFile = resultsFile;
 
-fprintf("Monte Carlo robustness figure:\n  %s\n",outputFile);
+fprintf("Monte Carlo robustness figures:\n");
+for objectiveMode = config.objectiveModes
+    fprintf("  %s\n",plotInfo.(char(objectiveMode)).outputFile);
+end
 end
 
 function [boxHandle,nominalLegendHandle] = makePanel( ...
-    ax,studyState,objectiveMode,metricField,panelTitle,style)
+    ax,studyState,objectiveMode,metricField,style)
 modeIndex = find(studyState.config.nominalObjectiveModes == objectiveMode,1);
 assert(~isempty(modeIndex),"MC study does not contain %s objective.",objectiveMode);
 networkSizes = double(studyState.config.networkSizes(:).');
@@ -105,8 +106,6 @@ nominal = nan(size(networkSizes));
 
 for networkIndex = 1:numel(networkSizes)
     caseState = studyState.cases{modeIndex,networkIndex};
-    % The optimizer minimizes J = -score. Plot that formulation directly so
-    % improved perturbations appear lower on the axis as local minima.
     values = -double(caseState.rso.(metricField));
     allValues = [allValues;values(:)]; %#ok<AGROW>
     groups = [groups;repmat(networkSizes(networkIndex),numel(values),1)]; %#ok<AGROW>
@@ -126,15 +125,15 @@ boxHandle = boxchart(ax,groups,allValues, ...
     "MarkerColor",style.grayColor, ...
     "LineWidth",1.25);
 
-% A short line across each group reads more naturally as the optimized
-% reference objective than a large marker and makes minima easy to compare.
+% Short horizontal references are visually distinct from the box median and
+% directly identify the nominal optimum without adding a large marker.
 nominalLegendHandle = gobjects(1);
-halfWidth = 0.34;
+halfWidth = 0.36;
 for networkIndex = 1:numel(networkSizes)
     currentHandle = plot(ax, ...
         networkSizes(networkIndex) + [-halfWidth halfWidth], ...
         [nominal(networkIndex) nominal(networkIndex)], ...
-        "-","Color",style.redColor,"LineWidth",2.7);
+        "-","Color",style.redColor,"LineWidth",3.0);
     if networkIndex == 1
         nominalLegendHandle = currentHandle;
     else
@@ -144,9 +143,6 @@ end
 
 xlabel(ax,"Number of sensors, N_s");
 ylabel(ax,"Objective, J");
-title(ax,panelTitle, ...
-    "FontName",style.fontName,"FontSize",style.labelFontSize, ...
-    "FontWeight","bold","Color",style.textColor);
 xticks(ax,networkSizes);
 xlim(ax,[min(networkSizes)-0.65 max(networkSizes)+0.65]);
 ax.FontName = style.fontName;
@@ -158,14 +154,16 @@ ax.Box = "on";
 ax.XGrid = "off";
 ax.YGrid = "off";
 ax.XLabel.FontSize = style.labelFontSize;
+ax.XLabel.FontWeight = "bold";
 ax.YLabel.FontSize = style.labelFontSize;
+ax.YLabel.FontWeight = "bold";
 
 valuesForLimits = [allValues;nominal(:)];
 span = max(valuesForLimits)-min(valuesForLimits);
 if span <= 0
     span = max(1,0.05*max(abs(valuesForLimits)));
 end
-ylim(ax,[min(valuesForLimits)-0.08*span max(valuesForLimits)+0.08*span]);
+ylim(ax,[min(valuesForLimits)-0.10*span max(valuesForLimits)+0.10*span]);
 end
 
 function summaryTable = buildSummaryTable(studyState)
