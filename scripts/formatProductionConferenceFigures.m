@@ -1,24 +1,17 @@
 function report = formatProductionConferenceFigures(results,userConfig)
 % FORMATPRODUCTIONCONFERENCEFIGURES Resize and re-export paper figures only.
 %
-% The production plotter also computes several diagnostic figures, but this
-% final manuscript pass deliberately touches only the compact paper set:
-% convergence, selection-frequency maps, design-RSO tracking, operational-RSO
-% tracking, and Monte Carlo robustness.
-%
-% Raster-heavy figures and convergence plots are exported to EPS with
-% ContentType="image" for reliable LaTeX rendering. Monte Carlo figures are
-% line/box based and use MATLAB's EPS painters pipeline.
+% Every retained manuscript figure is exported through the same EPS pipeline:
+% MATLAB print with the painters renderer. This keeps the export behavior
+% consistent across convergence, selection-frequency, tracking heatmaps, and
+% Monte Carlo figures before LaTeX placement.
 
 arguments
     results (1,1) struct
-    userConfig (1,1) struct = struct()
+    userConfig (1,1) struct = struct() %#ok<INUSD>
 end
 
 style = publicationPlotStyle();
-config = struct();
-config.exportResolution = 600;
-config = mergeStruct(config,userConfig);
 
 report = struct();
 report.formattedFiles = strings(0,1);
@@ -27,8 +20,7 @@ if isfield(results,"production")
     production = results.production;
     report.formattedFiles = [report.formattedFiles; ...
         formatFigureGroup(production,"convergence", ...
-        [style.exportWidthInches style.exportHeightInches],"image", ...
-        config.exportResolution,true)];
+        [style.exportWidthInches style.exportHeightInches],true,style)];
 
     if isfield(production,"networkLocations")
         fields = fieldnames(production.networkLocations);
@@ -54,9 +46,7 @@ if isfield(results,"production")
             end
             drawnow;
             outputFile = string(entry.outputFile);
-            exportgraphics(fig,outputFile,"ContentType","image", ...
-                "Resolution",config.exportResolution, ...
-                "BackgroundColor",style.backgroundColor,"Colorspace","rgb");
+            exportPaintersEps(fig,outputFile,style);
             report.formattedFiles(end+1,1) = outputFile; %#ok<AGROW>
         end
     end
@@ -67,9 +57,7 @@ if isfield(results,"perRsoEkf") && isfield(results.perRsoEkf,"figure") && ...
     setFigureCanvas(results.perRsoEkf.figure, ...
         style.heatmapWidthInches,style.heatmapHeightInches);
     drawnow;
-    exportgraphics(results.perRsoEkf.figure,results.perRsoEkf.outputFile, ...
-        "ContentType","image","Resolution",config.exportResolution, ...
-        "BackgroundColor",style.backgroundColor,"Colorspace","rgb");
+    exportPaintersEps(results.perRsoEkf.figure,results.perRsoEkf.outputFile,style);
     report.formattedFiles(end+1,1) = string(results.perRsoEkf.outputFile); %#ok<AGROW>
 end
 
@@ -79,10 +67,8 @@ if isfield(results,"operationalRsoFigure") && ...
     setFigureCanvas(results.operationalRsoFigure.figure, ...
         style.heatmapWidthInches,style.heatmapHeightInches);
     drawnow;
-    exportgraphics(results.operationalRsoFigure.figure, ...
-        results.operationalRsoFigure.outputFile, ...
-        "ContentType","image","Resolution",config.exportResolution, ...
-        "BackgroundColor",style.backgroundColor,"Colorspace","rgb");
+    exportPaintersEps(results.operationalRsoFigure.figure, ...
+        results.operationalRsoFigure.outputFile,style);
     report.formattedFiles(end+1,1) = ...
         string(results.operationalRsoFigure.outputFile); %#ok<AGROW>
 end
@@ -102,12 +88,12 @@ if isfield(results,"monteCarlo") && isstruct(results.monteCarlo) && ...
     end
 end
 
-fprintf("\nReformatted %d paper figure files for LaTeX placement.\n", ...
+fprintf("\nReformatted %d paper figure files using the common EPS/painters export.\n", ...
     numel(report.formattedFiles));
 end
 
-function files = formatFigureGroup(parent,fieldName,canvasSize,contentType, ...
-    resolution,fixConvergenceTicks)
+function files = formatFigureGroup(parent,fieldName,canvasSize, ...
+    fixConvergenceTicks,style)
 files = strings(0,1);
 if ~isfield(parent,fieldName), return, end
 group = parent.(fieldName);
@@ -132,13 +118,7 @@ for fieldIndex = 1:numel(fields)
 
     drawnow;
     outputFile = string(entry.outputFile);
-    if contentType == "painters"
-        exportPaintersEps(fig,outputFile,publicationPlotStyle());
-    else
-        exportgraphics(fig,outputFile,"ContentType","image", ...
-            "Resolution",resolution,"BackgroundColor","white", ...
-            "Colorspace","rgb");
-    end
+    exportPaintersEps(fig,outputFile,style);
     files(end+1,1) = outputFile; %#ok<AGROW>
 end
 end
@@ -147,7 +127,8 @@ function exportPaintersEps(fig,outputFile,style)
 fig.Renderer = "painters";
 fig.Color = style.backgroundColor;
 fig.InvertHardcopy = "off";
-print(fig,char(outputFile),"-depsc","-painters");
+drawnow;
+print(fig,char(outputFile),"-depsc","-painters","-r600");
 end
 
 function ticks = chooseRoundFunctionEvaluationTicks(limits)
@@ -182,12 +163,4 @@ fig.PaperUnits = "inches";
 fig.PaperSize = [widthInches heightInches];
 fig.PaperPosition = [0 0 widthInches heightInches];
 fig.PaperPositionMode = "manual";
-end
-
-function output = mergeStruct(defaults,override)
-output = defaults;
-fields = fieldnames(override);
-for fieldIndex = 1:numel(fields)
-    output.(fields{fieldIndex}) = override.(fields{fieldIndex});
-end
 end
