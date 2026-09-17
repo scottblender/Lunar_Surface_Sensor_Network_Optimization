@@ -5,6 +5,10 @@ function report = formatProductionConferenceFigures(results,userConfig)
 % final manuscript pass deliberately touches only the compact paper set:
 % convergence, selection-frequency maps, design-RSO tracking, operational-RSO
 % tracking, and Monte Carlo robustness.
+%
+% Raster-heavy figures and convergence plots are exported to EPS with
+% ContentType="image" for reliable LaTeX rendering. The Monte Carlo figure is
+% line/box based and is exported with MATLAB's EPS painters pipeline.
 
 arguments
     results (1,1) struct
@@ -23,7 +27,7 @@ if isfield(results,"production")
     production = results.production;
     report.formattedFiles = [report.formattedFiles; ...
         formatFigureGroup(production,"convergence", ...
-        [style.exportWidthInches style.exportHeightInches],"vector", ...
+        [style.exportWidthInches style.exportHeightInches],"image", ...
         config.exportResolution,true)];
 
     if isfield(production,"networkLocations")
@@ -87,9 +91,7 @@ if isfield(results,"monteCarlo") && isstruct(results.monteCarlo) && ...
         isfield(results.monteCarlo,"figure") && isgraphics(results.monteCarlo.figure)
     setFigureCanvas(results.monteCarlo.figure,style.wideFigureWidthInches,6.25);
     drawnow;
-    exportgraphics(results.monteCarlo.figure,results.monteCarlo.outputFile, ...
-        "ContentType","vector","BackgroundColor",style.backgroundColor, ...
-        "Colorspace","rgb");
+    exportPaintersEps(results.monteCarlo.figure,results.monteCarlo.outputFile,style);
     report.formattedFiles(end+1,1) = string(results.monteCarlo.outputFile); %#ok<AGROW>
 end
 
@@ -123,9 +125,8 @@ for fieldIndex = 1:numel(fields)
 
     drawnow;
     outputFile = string(entry.outputFile);
-    if contentType == "vector"
-        exportgraphics(fig,outputFile,"ContentType","vector", ...
-            "BackgroundColor","white","Colorspace","rgb");
+    if contentType == "painters"
+        exportPaintersEps(fig,outputFile,publicationPlotStyle());
     else
         exportgraphics(fig,outputFile,"ContentType","image", ...
             "Resolution",resolution,"BackgroundColor","white", ...
@@ -133,6 +134,13 @@ for fieldIndex = 1:numel(fields)
     end
     files(end+1,1) = outputFile; %#ok<AGROW>
 end
+end
+
+function exportPaintersEps(fig,outputFile,style)
+fig.Renderer = "painters";
+fig.Color = style.backgroundColor;
+fig.InvertHardcopy = "off";
+print(fig,char(outputFile),"-depsc","-painters");
 end
 
 function ticks = chooseRoundFunctionEvaluationTicks(limits)
