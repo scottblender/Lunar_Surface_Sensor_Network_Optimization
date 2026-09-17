@@ -6,7 +6,7 @@ function results = runProductionConferenceResults(userConfig)
 %   2) sensor-selection frequency: information and coverage;
 %   3) one combined design-RSO RMS/observability heatmap;
 %   4) one combined operational-RSO RMS/observability heatmap;
-%   5) two Monte Carlo robustness subfigures, when available.
+%   5) separate Monte Carlo boxplots for each objective/network size.
 %
 % Additional validation studies do not add paper figures:
 %   - discrete candidate-neighbor robustness/local optimality;
@@ -64,8 +64,7 @@ fprintf("  Operational-RSO tracking:\n    %s\n", ...
     results.operationalRsoFigure.outputFile);
 if results.monteCarlo.available
     fprintf("  Monte Carlo robustness:\n");
-    fprintf("    %s\n",results.monteCarlo.information.outputFile);
-    fprintf("    %s\n",results.monteCarlo.coverage.outputFile);
+    printMonteCarloGroup(results.monteCarlo);
 end
 
 fprintf("Paper tables:\n");
@@ -106,8 +105,14 @@ mainFigureNames = [ ...
     "network_locations_vs_ns_coverage.eps"; ...
     "design_rso_tracking_heatmaps.eps"; ...
     "operational_rso_tracking_heatmaps.eps"; ...
-    "monte_carlo_information.eps"; ...
-    "monte_carlo_coverage.eps"];
+    "monte_carlo_information_n3.eps"; ...
+    "monte_carlo_information_n5.eps"; ...
+    "monte_carlo_information_n7.eps"; ...
+    "monte_carlo_information_n10.eps"; ...
+    "monte_carlo_coverage_n3.eps"; ...
+    "monte_carlo_coverage_n5.eps"; ...
+    "monte_carlo_coverage_n7.eps"; ...
+    "monte_carlo_coverage_n10.eps"];
 
 deleteNonPaperFigures(outputDirectory,mainFigureNames);
 if isfolder(supplementalDirectory)
@@ -191,13 +196,21 @@ if isfield(results.operationalRsoFigure,"figure") && ...
     results.operationalRsoFigure.figure.Visible = "on";
 end
 if isfield(results.monteCarlo,"available") && results.monteCarlo.available
-    objectiveFields = ["information","coverage"];
-    for objectiveField = objectiveFields
-        fieldName = char(objectiveField);
-        if isfield(results.monteCarlo,fieldName) && ...
-                isfield(results.monteCarlo.(fieldName),"figure") && ...
-                isgraphics(results.monteCarlo.(fieldName).figure)
-            results.monteCarlo.(fieldName).figure.Visible = "on";
+    showMonteCarloFigures(results.monteCarlo);
+end
+end
+
+function showMonteCarloFigures(monteCarlo)
+objectiveFields = ["information","coverage"];
+for objectiveField = objectiveFields
+    fieldName = char(objectiveField);
+    if ~isfield(monteCarlo,fieldName), continue, end
+    group = monteCarlo.(fieldName);
+    networkFields = fieldnames(group);
+    for networkFieldIndex = 1:numel(networkFields)
+        entry = group.(networkFields{networkFieldIndex});
+        if isfield(entry,"figure") && isgraphics(entry.figure)
+            entry.figure.Visible = "on";
         end
     end
 end
@@ -222,6 +235,22 @@ for fieldIndex = 1:numel(fields)
     entry = groupStruct.(fields{fieldIndex});
     if isfield(entry,"outputFile")
         fprintf("    %s\n",entry.outputFile);
+    end
+end
+end
+
+function printMonteCarloGroup(monteCarlo)
+objectiveFields = ["information","coverage"];
+for objectiveField = objectiveFields
+    fieldName = char(objectiveField);
+    if ~isfield(monteCarlo,fieldName), continue, end
+    group = monteCarlo.(fieldName);
+    networkFields = fieldnames(group);
+    for networkFieldIndex = 1:numel(networkFields)
+        entry = group.(networkFields{networkFieldIndex});
+        if isfield(entry,"outputFile")
+            fprintf("    %s\n",entry.outputFile);
+        end
     end
 end
 end
