@@ -292,9 +292,9 @@ end
 % The local data directory is gitignored. The project-specific generator is
 % data/SyntheticLunarDEM.m. Read that script and resolve the highest-resolution
 % DEM MAT-file it references, excluding the synthetic production DEM itself.
-generatorScript = string(fullfile(dataDirectory,"SyntheticLunarDEM.m"));
+generatorScript = string(fullfile(dataDirectory,"SyntheticLunarDEM.mat"));
 if ~isfile(generatorScript)
-    matches = dir(fullfile(projectRoot,"**","SyntheticLunarDEM.m"));
+    matches = dir(fullfile(projectRoot,"**","SyntheticLunarDEM.mat"));
     if ~isempty(matches)
         generatorScript = string(fullfile(matches(1).folder,matches(1).name));
     end
