@@ -1,7 +1,7 @@
 function report = testProductionOptimizationResults(userConfig)
 % TESTPRODUCTIONOPTIMIZATIONRESULTS Verify the completed production campaign.
 %
-% This test discovers the newest complete 6000-FE, 20-run production study
+% This test discovers the newest complete 12000-FE, 20-run production study
 % for each requested network-size/objective case, loads every individual
 % run_###.mat result, re-processes the saved sensor network with the frozen
 % optimization database, and verifies that the stored results are internally
@@ -11,7 +11,7 @@ function report = testProductionOptimizationResults(userConfig)
 %   network sizes:  [3 5 7 10]
 %   objectives:     information, coverage
 %   runs/case:      20
-%   FE/run:         6000
+%   FE/run:         12000
 %   population:     60
 %   seeds/case:     1000:1019
 %
@@ -66,7 +66,7 @@ defaultConfig.databaseFile = fullfile(resultsDirectory,"optimization_database.ma
 defaultConfig.networkSizes = [3 5 7 10];
 defaultConfig.objectiveModes = ["information","coverage"];
 defaultConfig.numberOfRuns = 20;
-defaultConfig.functionEvaluationBudget = 6000;
+defaultConfig.functionEvaluationBudget = 12000;
 defaultConfig.populationSize = 60;
 defaultConfig.baseSeed = 1000;
 defaultConfig.studyName = "lunar_surface_production_optimization";
