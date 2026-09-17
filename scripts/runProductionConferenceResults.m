@@ -8,6 +8,10 @@ function results = runProductionConferenceResults(userConfig)
 %   4) one combined operational-RSO RMS/observability heatmap;
 %   5) two Monte Carlo robustness subfigures, when available.
 %
+% A discrete candidate-neighbor robustness study is also evaluated for the
+% best network in every N_s/objective case. It produces diagnostic CSV/MAT
+% outputs only, not another paper figure or main table.
+%
 % The two Monte Carlo files are designed to be placed side-by-side in LaTeX.
 % Mean-objective plots, best-network geometry plots, final-objective boxplots,
 % and separate operational heatmaps are redundant and are removed.
@@ -37,6 +41,8 @@ results.operationalRso = evaluateOperationalRsoNetworks(userConfig);
 results.operationalRsoFigure = ...
     plotOperationalRsoTrackingHeatmaps(results.operationalRso,userConfig);
 results.monteCarlo = plotMonteCarloConferenceFigure(userConfig);
+results.discreteNeighbor = ...
+    evaluateDiscreteNeighborRobustness(results.production,userConfig);
 results.tables = buildConferenceSummaryTables(userConfig);
 results.formatting = formatProductionConferenceFigures(results,userConfig);
 results.organization = organizeConferenceOutputs(results);
@@ -65,6 +71,8 @@ end
 fprintf("Paper tables:\n");
 fprintf("  %s\n",results.tables.optimizationFile);
 fprintf("  %s\n",results.tables.estimationFile);
+fprintf("Discrete-neighbor diagnostic summary:\n  %s\n", ...
+    results.discreteNeighbor.summaryFile);
 fprintf("Diagnostic CSVs:\n  %s\n",results.organization.diagnosticsDirectory);
 
 clear visibilityCleanup
