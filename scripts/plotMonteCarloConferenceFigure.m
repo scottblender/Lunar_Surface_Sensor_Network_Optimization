@@ -59,7 +59,7 @@ for objectiveMode = config.objectiveModes
 
     fig = figure("Name",sprintf("Monte Carlo robustness: %s",objectiveMode), ...
         "Color",style.backgroundColor,"Units","inches", ...
-        "Position",[0.5 0.5 7.0 5.4],"Renderer","painters");
+        "Position",[0.5 0.5 7.0 5.4]);
     ax = axes(fig);
 
     [boxHandle,nominalHandle] = makePanel( ...
@@ -74,7 +74,7 @@ for objectiveMode = config.objectiveModes
 
     outputFile = fullfile(config.outputDirectory, ...
         sprintf("monte_carlo_%s.eps",objectiveMode));
-    exportPaintersEps(fig,outputFile,style);
+    exportImageEps(fig,outputFile,style);
 
     plotInfo.(objectiveField) = struct( ...
         "figure",fig,"outputFile",string(outputFile));
@@ -247,11 +247,14 @@ tf = all(ismember(config.networkSizes,networkSizes)) && ...
     all(ismember(config.objectiveModes,objectiveModes));
 end
 
-function exportPaintersEps(fig,outputFile,style)
-fig.Renderer = "painters";
+function exportImageEps(fig,outputFile,style)
 fig.Color = style.backgroundColor;
 fig.InvertHardcopy = "off";
-print(fig,char(outputFile),"-depsc","-painters");
+drawnow;
+exportgraphics(fig,char(outputFile), ...
+    "ContentType","image", ...
+    "Resolution",600, ...
+    "BackgroundColor",style.backgroundColor);
 end
 
 function output = mergeStruct(defaults,override)
