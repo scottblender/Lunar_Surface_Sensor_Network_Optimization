@@ -1,29 +1,39 @@
 function results = runProductionConferenceResults(userConfig)
-% RUNPRODUCTIONCONFERENCERESULTS Generate the curated conference-paper results.
+% RUNPRODUCTIONCONFERENCERESULTS Generate only the paper-ready result set.
 %
-% Main output is intentionally compact:
-%   Optimization figures:
-%     - convergence for information and coverage;
-%     - mean objective versus N_s for information and coverage;
-%     - best-network DEM geometry for information and coverage;
-%     - sensor-selection frequency for information and coverage.
-%   Validation figures:
-%     - one combined design-RSO RMS/observability heatmap;
-%     - one combined operational-RSO RMS/observability heatmap;
-%     - one combined Monte Carlo robustness figure when MC results exist.
-%   Main tables:
-%     - conference_optimization_summary.csv;
-%     - conference_estimation_summary.csv.
+% The final paper output is intentionally minimal:
+%   1) convergence: information and coverage;
+%   2) sensor-selection frequency: information and coverage;
+%   3) one combined design-RSO RMS/observability heatmap;
+%   4) one combined operational-RSO RMS/observability heatmap;
+%   5) one combined Monte Carlo robustness figure, when available.
 %
-% Detailed diagnostics are retained under tables/diagnostics and redundant
-% plots are moved to supplemental so the main output directory stays clean.
+% This is at most seven figure files. Mean-objective plots, best-network
+% geometry plots, final-objective boxplots, and the separate operational
+% heatmaps are redundant with the retained figures/tables and are removed.
+%
+% Main paper tables:
+%   1) conference_optimization_summary.csv;
+%   2) conference_estimation_summary.csv.
+%
+% Detailed CSV diagnostics are retained under tables/diagnostics. Intermediate
+% figures are generated invisibly by legacy helpers and closed before the paper
+% figures are shown, so the runner does not flood MATLAB with figure windows.
 
 arguments
     userConfig (1,1) struct = struct()
 end
 
-results = struct();
+% Legacy helpers still compute a few diagnostic figures as part of their data
+% products. Keep them invisible during generation; reveal only the curated
+% paper figures at the end.
+rootHandle = groot;
+originalFigureVisibility = get(rootHandle,"defaultFigureVisible");
+set(rootHandle,"defaultFigureVisible","off");
+visibilityCleanup = onCleanup(@() ...
+    set(rootHandle,"defaultFigureVisible",originalFigureVisibility));
 
+results = struct();
 results.production = plotProductionOptimizationResults(userConfig);
 results.perRsoEkf = plotPerRsoEkfHeatmaps(userConfig);
 results.operationalRso = evaluateOperationalRsoNetworks(userConfig);
@@ -34,54 +44,48 @@ results.tables = buildConferenceSummaryTables(userConfig);
 results.formatting = formatProductionConferenceFigures(results,userConfig);
 results.organization = organizeConferenceOutputs(results);
 
-fprintf("\n============================================================\n");
-fprintf("Curated conference result generation complete\n");
-fprintf("============================================================\n");
-
-fprintf("Main optimization figure groups:\n");
-printGroup(results.production.convergence,"  Convergence");
-printGroup(results.production.meanObjective,"  Mean objective vs N_s");
-printGroup(results.production.geometry,"  Best-network DEM geometry");
-printGroup(results.production.networkLocations,"  Selection-frequency maps");
-
-fprintf("Main validation figures:\n");
-fprintf("  %s\n",results.perRsoEkf.outputFile);
-fprintf("  %s\n",results.operationalRsoFigure.outputFile);
-if results.monteCarlo.available
-    fprintf("  %s\n",results.monteCarlo.outputFile);
+% Restore the user's normal figure behavior before exposing the retained set.
+set(rootHandle,"defaultFigureVisible",originalFigureVisibility);
+if string(originalFigureVisibility) == "on"
+    showPaperFigures(results);
 end
 
-fprintf("Main paper tables:\n");
+fprintf("\n============================================================\n");
+fprintf("Paper result generation complete\n");
+fprintf("============================================================\n");
+
+fprintf("Paper figures:\n");
+printGroup(results.production.convergence,"  Convergence");
+printGroup(results.production.networkLocations,"  Selection-frequency maps");
+fprintf("  Design-RSO tracking:\n    %s\n",results.perRsoEkf.outputFile);
+fprintf("  Operational-RSO tracking:\n    %s\n", ...
+    results.operationalRsoFigure.outputFile);
+if results.monteCarlo.available
+    fprintf("  Monte Carlo robustness:\n    %s\n",results.monteCarlo.outputFile);
+end
+
+fprintf("Paper tables:\n");
 fprintf("  %s\n",results.tables.optimizationFile);
 fprintf("  %s\n",results.tables.estimationFile);
+fprintf("Diagnostic CSVs:\n  %s\n",results.organization.diagnosticsDirectory);
 
-fprintf("Supporting diagnostics:\n");
-fprintf("  %s\n",results.organization.diagnosticsDirectory);
-fprintf("Supplemental figures:\n");
-fprintf("  %s\n",results.organization.supplementalDirectory);
-
+clear visibilityCleanup
 end
 
 %% ------------------------------------------------------------------------
 function info = organizeConferenceOutputs(results)
 outputDirectory = string(results.production.outputDirectory);
-supplementalDirectory = fullfile(outputDirectory,"supplemental");
 tableDirectory = fullfile(outputDirectory,"tables");
 diagnosticsDirectory = fullfile(tableDirectory,"diagnostics");
-if ~isfolder(supplementalDirectory), mkdir(supplementalDirectory); end
+supplementalDirectory = fullfile(outputDirectory,"supplemental");
 if ~isfolder(diagnosticsDirectory), mkdir(diagnosticsDirectory); end
 
-% Close redundant figures that are not part of the main-paper set.
-if isfield(results.production,"objectiveDistributions")
-    fields = fieldnames(results.production.objectiveDistributions);
-    for fieldIndex = 1:numel(fields)
-        entry = results.production.objectiveDistributions.(fields{fieldIndex});
-        if isfield(entry,"figure") && isgraphics(entry.figure)
-            close(entry.figure);
-        end
-    end
-end
-if isfield(results.operationalRso,"rmsFigure") && isgraphics(results.operationalRso.rmsFigure)
+% Close figure groups that are intentionally excluded from the paper.
+closeFigureGroup(results.production,"meanObjective");
+closeFigureGroup(results.production,"geometry");
+closeFigureGroup(results.production,"objectiveDistributions");
+if isfield(results.operationalRso,"rmsFigure") && ...
+        isgraphics(results.operationalRso.rmsFigure)
     close(results.operationalRso.rmsFigure);
 end
 if isfield(results.operationalRso,"observabilityFigure") && ...
@@ -89,37 +93,32 @@ if isfield(results.operationalRso,"observabilityFigure") && ...
     close(results.operationalRso.observabilityFigure);
 end
 
-% Explicit whitelist for the main result directory. Any other EPS/PNG/FIG file
-% is supporting material and is moved to supplemental. This also cleans stale
-% files left by older versions of the plotting pipeline.
+% Only these figure files belong in the paper result set.
 mainFigureNames = [ ...
     "convergence_information.eps"; ...
     "convergence_coverage.eps"; ...
-    "mean_objective_vs_ns_information.eps"; ...
-    "mean_objective_vs_ns_coverage.eps"; ...
-    "sensor_geometry_n3_n10_information.eps"; ...
-    "sensor_geometry_n3_n10_coverage.eps"; ...
     "network_locations_vs_ns_information.eps"; ...
     "network_locations_vs_ns_coverage.eps"; ...
     "design_rso_tracking_heatmaps.eps"; ...
     "operational_rso_tracking_heatmaps.eps"; ...
     "monte_carlo_robustness.eps"];
 
-extensions = ["*.eps","*.png","*.fig"];
-for extensionIndex = 1:numel(extensions)
-    files = dir(fullfile(outputDirectory,extensions(extensionIndex)));
-    for fileIndex = 1:numel(files)
-        fileName = string(files(fileIndex).name);
-        if any(fileName == mainFigureNames)
-            continue
+% Remove every other generated figure from both the main output directory and
+% the old supplemental directory. All source result MAT/CSV data remain intact
+% and any excluded figure can be regenerated explicitly if ever needed.
+deleteNonPaperFigures(outputDirectory,mainFigureNames);
+if isfolder(supplementalDirectory)
+    deleteGeneratedFigures(supplementalDirectory);
+    try
+        if isempty(dir(fullfile(supplementalDirectory,"*.*")))
+            rmdir(supplementalDirectory);
         end
-        sourceFile = string(fullfile(files(fileIndex).folder,files(fileIndex).name));
-        moveSupportingFile(sourceFile,supplementalDirectory);
+    catch
     end
 end
 
-% Keep only the two paper-ready CSVs at tables/. Everything else is supporting
-% data and is moved one level deeper without deleting it.
+% Keep only the two paper-ready CSVs at tables/. Everything else is diagnostic
+% data rather than another manuscript table.
 mainTableNames = ["conference_optimization_summary.csv", ...
     "conference_estimation_summary.csv"];
 csvFiles = dir(fullfile(tableDirectory,"*.csv"));
@@ -133,7 +132,6 @@ for fileIndex = 1:numel(csvFiles)
 end
 
 info = struct();
-info.supplementalDirectory = string(supplementalDirectory);
 info.diagnosticsDirectory = string(diagnosticsDirectory);
 info.mainFigureNames = mainFigureNames;
 info.mainTableFiles = [ ...
@@ -141,11 +139,68 @@ info.mainTableFiles = [ ...
     string(fullfile(tableDirectory,mainTableNames(2)))];
 end
 
-function moveSupportingFile(sourceFile,destinationDirectory)
-if strlength(sourceFile) == 0 || ~isfile(sourceFile), return, end
-[~,name,extension] = fileparts(sourceFile);
-destinationFile = fullfile(destinationDirectory,string(name) + string(extension));
-movefile(sourceFile,destinationFile,"f");
+function closeFigureGroup(parent,fieldName)
+if ~isfield(parent,fieldName), return, end
+group = parent.(fieldName);
+fields = fieldnames(group);
+for fieldIndex = 1:numel(fields)
+    entry = group.(fields{fieldIndex});
+    if isfield(entry,"figure") && isgraphics(entry.figure)
+        close(entry.figure);
+    end
+end
+end
+
+function deleteNonPaperFigures(directoryName,mainFigureNames)
+extensions = ["*.eps","*.png","*.fig"];
+for extensionIndex = 1:numel(extensions)
+    files = dir(fullfile(directoryName,extensions(extensionIndex)));
+    for fileIndex = 1:numel(files)
+        fileName = string(files(fileIndex).name);
+        if any(fileName == mainFigureNames)
+            continue
+        end
+        delete(fullfile(files(fileIndex).folder,files(fileIndex).name));
+    end
+end
+end
+
+function deleteGeneratedFigures(directoryName)
+extensions = ["*.eps","*.png","*.fig"];
+for extensionIndex = 1:numel(extensions)
+    files = dir(fullfile(directoryName,extensions(extensionIndex)));
+    for fileIndex = 1:numel(files)
+        delete(fullfile(files(fileIndex).folder,files(fileIndex).name));
+    end
+end
+end
+
+function showPaperFigures(results)
+showFigureGroup(results.production,"convergence");
+showFigureGroup(results.production,"networkLocations");
+if isfield(results.perRsoEkf,"figure") && isgraphics(results.perRsoEkf.figure)
+    results.perRsoEkf.figure.Visible = "on";
+end
+if isfield(results.operationalRsoFigure,"figure") && ...
+        isgraphics(results.operationalRsoFigure.figure)
+    results.operationalRsoFigure.figure.Visible = "on";
+end
+if isfield(results.monteCarlo,"available") && results.monteCarlo.available && ...
+        isfield(results.monteCarlo,"figure") && isgraphics(results.monteCarlo.figure)
+    results.monteCarlo.figure.Visible = "on";
+end
+end
+
+function showFigureGroup(parent,fieldName)
+if ~isfield(parent,fieldName), return, end
+group = parent.(fieldName);
+fields = fieldnames(group);
+for fieldIndex = 1:numel(fields)
+    entry = group.(fields{fieldIndex});
+    if isfield(entry,"figure") && isgraphics(entry.figure)
+        entry.figure.Visible = "on";
+    end
+end
 end
 
 function printGroup(groupStruct,label)
