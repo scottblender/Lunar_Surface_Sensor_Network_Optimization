@@ -7,8 +7,10 @@ function heatmapInfo = plotPerRsoEkfHeatmaps(userConfig)
 %
 % Epoch observability is the percentage of tracking epochs for which at least
 % one selected sensor has an accepted measurement after terrain and celestial
-% screening. This definition is independent of network size and is therefore
-% directly comparable across N_s.
+% screening. Because observability depends only on the frozen visibility
+% database and selected network, it is computed directly without rerunning the
+% EKF. This keeps the results pipeline fast and makes the definition identical
+% to the operational-spacecraft validation.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -18,10 +20,7 @@ end
 scriptDirectory = fileparts(mfilename("fullpath"));
 projectRoot = fileparts(scriptDirectory);
 resultsDirectory = fullfile(projectRoot,"results");
-dataDirectory = fullfile(projectRoot,"data");
-sourceDirectory = fullfile(projectRoot,"src");
 addpath(scriptDirectory);
-addpath(sourceDirectory);
 rehash path;
 
 style = publicationPlotStyle();
@@ -30,12 +29,10 @@ config = struct();
 config.resultsDirectory = resultsDirectory;
 config.databaseFile = fullfile(resultsDirectory,"optimization_database.mat");
 config.outputDirectory = fullfile(resultsDirectory,"production_figures");
-config.demFile = "";
 config.networkSizes = [3 5 7 10];
 config.objectiveModes = ["information","coverage"];
 config.numberOfRuns = 20;
 config.functionEvaluationBudget = 6000;
-config.measurementNoiseSeed = 5000;
 config.exportResolution = 600;
 config.closeExistingFigures = false;
 config = mergeStruct(config,userConfig);
@@ -43,17 +40,12 @@ config = mergeStruct(config,userConfig);
 config.resultsDirectory = string(config.resultsDirectory);
 config.databaseFile = string(config.databaseFile);
 config.outputDirectory = string(config.outputDirectory);
-config.demFile = string(config.demFile);
 config.networkSizes = double(config.networkSizes(:).');
 config.objectiveModes = lower(string(config.objectiveModes(:).'));
 
 assert(all(ismember(config.objectiveModes,["information","coverage"])), ...
     "objectiveModes may contain only information and coverage.");
-validateattributes(config.measurementNoiseSeed,{'numeric'}, ...
-    {'scalar','integer','nonnegative'});
-if config.closeExistingFigures
-    close all;
-end
+if config.closeExistingFigures, close all; end
 
 assert(isfile(config.databaseFile), ...
     "Production optimization database was not found: %s",config.databaseFile);
@@ -65,15 +57,13 @@ numberOfEpochs = numel(database.tracking.times);
 numberOfObjects = database.meta.numberOfObjects;
 assert(numberOfEpochs > 0,"Production database contains no tracking epochs.");
 
-demFile = resolveDemFile(config,database,dataDirectory);
-
 if ~isfolder(config.outputDirectory), mkdir(config.outputDirectory); end
 tableDirectory = fullfile(config.outputDirectory,"tables");
 cacheDirectory = fullfile(config.outputDirectory,"ekf_metric_cache");
 if ~isfolder(tableDirectory), mkdir(tableDirectory); end
 if ~isfolder(cacheDirectory), mkdir(cacheDirectory); end
 
-%% Load or refresh per-RSO EKF results
+%% Load per-RSO EKF results and add epoch observability
 numberOfNetworkSizes = numel(config.networkSizes);
 numberOfObjectives = numel(config.objectiveModes);
 rmsPositionErrorKm = nan(numberOfObjects,numberOfNetworkSizes,numberOfObjectives);
@@ -90,8 +80,8 @@ for objectiveIndex = 1:numberOfObjectives
         csvFile = fullfile(tableDirectory, ...
             sprintf("ekf_per_rso_%s_n%d.csv",objectiveMode,networkSize));
 
-        [perRsoTable,sourceFile] = loadOrRefreshPerRso( ...
-            cacheFile,csvFile,database,demFile,config,objectiveMode,networkSize);
+        [perRsoTable,sourceFile] = loadAndAugmentPerRso( ...
+            cacheFile,csvFile,database,config,objectiveMode,networkSize);
         perRsoTable = sortrows(perRsoTable,"ObjectIndex");
 
         required = ["ObjectIndex","MeasurementUpdates", ...
@@ -183,7 +173,6 @@ axisPositions = [ ...
 axesHandles = gobjects(2,numberOfObjectives);
 
 for objectiveIndex = 1:numberOfObjectives
-    % RMS row
     ax = axes(fig,"Position",axisPositions(objectiveIndex,:));
     axesHandles(1,objectiveIndex) = ax;
     logValues = log10(max(rmsPositionErrorKm(:,:,objectiveIndex),10^logMinimum));
@@ -197,7 +186,6 @@ for objectiveIndex = 1:numberOfObjectives
     if objectiveIndex == 1, ylabel(ax,"RSO index"); end
     xlabel(ax,"Number of sensors, N_s");
 
-    % Observability row
     ax = axes(fig,"Position",axisPositions(2+objectiveIndex,:));
     axesHandles(2,objectiveIndex) = ax;
     imagesc(ax,1:numberOfNetworkSizes,1:numberOfObjects, ...
@@ -233,7 +221,6 @@ obsColorbar.Label.String = "Observable epochs (%)";
 obsColorbar.Ticks = 0:20:100;
 styleColorbar(obsColorbar,style);
 
-% Colorbars can resize their parent axes; restore the intended panel layout.
 for objectiveIndex = 1:numberOfObjectives
     axesHandles(1,objectiveIndex).Position = axisPositions(objectiveIndex,:);
     axesHandles(2,objectiveIndex).Position = axisPositions(2+objectiveIndex,:);
@@ -245,7 +232,6 @@ exportgraphics(fig,outputFile,"ContentType","image", ...
     "Resolution",config.exportResolution, ...
     "BackgroundColor",style.backgroundColor,"Colorspace","rgb");
 
-% Remove stale predecessor files so the main-results directory stays clean.
 staleFiles = [ ...
     fullfile(config.outputDirectory,"ekf_per_rso_position_rmse_heatmap.eps"); ...
     fullfile(config.outputDirectory,"ekf_per_rso_observability_heatmap.eps"); ...
@@ -257,7 +243,7 @@ end
 
 %% Return products
 heatmapInfo = struct();
-heatmapInfo.version = "per_rso_tracking_heatmaps_v3_epoch_observability";
+heatmapInfo.version = "per_rso_tracking_heatmaps_v4_epoch_observability";
 heatmapInfo.created = string(datetime("now"));
 heatmapInfo.configuration = config;
 heatmapInfo.numberOfEpochs = numberOfEpochs;
@@ -276,73 +262,65 @@ fprintf("Design-RSO diagnostic summary:\n  %s\n",summaryFile);
 end
 
 %% ------------------------------------------------------------------------
-function [perRsoTable,sourceFile] = loadOrRefreshPerRso( ...
-    cacheFile,csvFile,database,demFile,config,objectiveMode,networkSize)
+function [perRsoTable,sourceFile] = loadAndAugmentPerRso( ...
+    cacheFile,csvFile,database,config,objectiveMode,networkSize)
 metricCache = struct();
 haveCache = false;
+
 if isfile(cacheFile)
     data = load(cacheFile,"metricCache");
     if isfield(data,"metricCache")
         metricCache = data.metricCache;
         haveCache = true;
-        if isfield(metricCache,"perRsoTable") && ...
-                istable(metricCache.perRsoTable) && ...
-                ismember("ObservableEpochPercent", ...
-                    string(metricCache.perRsoTable.Properties.VariableNames))
-            perRsoTable = metricCache.perRsoTable;
-            sourceFile = string(cacheFile);
-            writetable(perRsoTable,csvFile);
-            return
-        end
     end
 end
 
-% Older caches contain the selected network but not epoch observability. Re-run
-% the same fixed-noise EKF once, compute the epoch metric, and refresh the cache.
-if haveCache && isfield(metricCache,"sensorIndices")
-    sensorIndices = double(metricCache.sensorIndices(:));
+if haveCache && isfield(metricCache,"perRsoTable") && ...
+        istable(metricCache.perRsoTable)
+    perRsoTable = metricCache.perRsoTable;
+    sourceFile = string(cacheFile);
+elseif isfile(csvFile)
+    perRsoTable = readtable(csvFile);
+    sourceFile = string(csvFile);
 else
-    sensorIndices = resolveBestSensorIndices( ...
-        config.resultsDirectory,networkSize,objectiveMode, ...
-        config.functionEvaluationBudget,config.numberOfRuns);
+    error("plotPerRsoEkfHeatmaps:MissingResults", ...
+        ["No per-RSO EKF result was found for %s, N_s=%d. Run " ...
+         "plotProductionOptimizationResults first."],objectiveMode,networkSize);
 end
 
-validationConfig = struct();
-validationConfig.measurementNoiseSeed = config.measurementNoiseSeed;
-validationConfig.demFile = string(demFile);
-validation = optimization.validateNetworkEkf(database,sensorIndices,validationConfig);
+if ~ismember("ObservableEpochPercent", ...
+        string(perRsoTable.Properties.VariableNames))
+    if haveCache && isfield(metricCache,"sensorIndices")
+        sensorIndices = double(metricCache.sensorIndices(:));
+    else
+        sensorIndices = resolveBestSensorIndices( ...
+            config.resultsDirectory,networkSize,objectiveMode, ...
+            config.functionEvaluationBudget,config.numberOfRuns);
+    end
+    observable = computeEpochObservability(database,sensorIndices);
+    perRsoTable = addvars(perRsoTable,observable, ...
+        'After','MeasurementUpdates','NewVariableNames','ObservableEpochPercent');
 
-numberOfObjects = database.meta.numberOfObjects;
-numberOfEpochs = numel(validation.times);
-numberOfSensors = numel(sensorIndices);
-observable = zeros(numberOfObjects,1);
-for objectIndex = 1:numberOfObjects
-    availability = reshape( ...
-        validation.measurementAvailable(:,objectIndex), ...
-        numberOfSensors,numberOfEpochs);
-    observable(objectIndex) = 100*nnz(any(availability,1))/numberOfEpochs;
+    if haveCache
+        metricCache.version = "production_best_network_ekf_metrics_v2_observability";
+        metricCache.observableEpochPercent = observable;
+        metricCache.perRsoTable = perRsoTable;
+        save(cacheFile,"metricCache");
+    end
 end
 
-perRsoTable = validation.summaryTable;
-perRsoTable = addvars(perRsoTable,observable, ...
-    'After','MeasurementUpdates','NewVariableNames','ObservableEpochPercent');
-
-metricCache.version = "production_best_network_ekf_metrics_v2_observability";
-metricCache.sensorIndices = sensorIndices;
-metricCache.measurementNoiseSeed = config.measurementNoiseSeed;
-metricCache.demFile = string(demFile);
-metricCache.meanRmsPositionErrorKm = mean(validation.rmsPositionErrorKm);
-metricCache.worstRmsPositionErrorKm = max(validation.rmsPositionErrorKm);
-metricCache.meanRmsVelocityErrorKmS = mean(validation.rmsVelocityErrorKmS);
-metricCache.worstRmsVelocityErrorKmS = max(validation.rmsVelocityErrorKmS);
-metricCache.meanPositionThreeSigmaKm = mean(validation.positionThreeSigmaNormsKm,"all");
-metricCache.meanVelocityThreeSigmaKmS = mean(validation.velocityThreeSigmaNormsKmS,"all");
-metricCache.totalMeasurementUpdates = sum(validation.measurementUpdateCounts);
-metricCache.observableEpochPercent = observable;
-metricCache.perRsoTable = perRsoTable;
-save(cacheFile,"metricCache");
 writetable(perRsoTable,csvFile);
-sourceFile = string(cacheFile);
+end
+
+function observable = computeEpochObservability(database,sensorIndices)
+availability = database.visibility.filteredAvailability(sensorIndices,:,:);
+epochObservable = squeeze(any(availability,1));
+numberOfObjects = database.meta.numberOfObjects;
+numberOfEpochs = numel(database.tracking.times);
+if numberOfObjects == 1
+    epochObservable = epochObservable(:);
+end
+observable = 100*sum(epochObservable,1).'/numberOfEpochs;
 end
 
 function sensorIndices = resolveBestSensorIndices( ...
@@ -374,31 +352,6 @@ assert(~isempty(sensorIndices), ...
     objectiveMode,networkSize);
 end
 
-function demFile = resolveDemFile(config,database,dataDirectory)
-if strlength(config.demFile) > 0 && isfile(config.demFile)
-    demFile = config.demFile;
-    return
-end
-candidates = strings(0,1);
-if isfield(database,"meta") && isfield(database.meta,"demSource")
-    candidates(end+1,1) = string(database.meta.demSource); %#ok<AGROW>
-end
-if isfield(database,"config") && isfield(database.config,"demSource")
-    candidates(end+1,1) = string(database.config.demSource); %#ok<AGROW>
-end
-candidates = [candidates; ...
-    string(fullfile(dataDirectory,"Final_Lunar_DEM.mat")); ...
-    string(fullfile(dataDirectory,"Synthetic_LunarDEM.mat")); ...
-    string(fullfile(dataDirectory,"SyntheticLunarDEM.mat"))];
-for index = 1:numel(candidates)
-    if strlength(candidates(index)) > 0 && isfile(candidates(index))
-        demFile = candidates(index);
-        return
-    end
-end
-error("plotPerRsoEkfHeatmaps:DemNotFound","No production DEM could be resolved.");
-end
-
 function styleHeatmapAxes(ax,style,networkSizes,numberOfObjects,showYLabels)
 ax.YDir = "reverse";
 ax.Color = style.backgroundColor;
@@ -413,12 +366,19 @@ ax.TickDir = "out";
 ax.Layer = "top";
 ax.XTick = 1:numel(networkSizes);
 ax.XTickLabel = string(networkSizes);
-ax.YTick = 1:numberOfObjects;
-if showYLabels
-    ax.YTickLabel = string(1:numberOfObjects);
+
+if numberOfObjects <= 12
+    yTicks = 1:numberOfObjects;
 else
-    ax.YTickLabel = strings(numberOfObjects,1);
+    yTicks = unique(round(linspace(1,numberOfObjects,10)));
 end
+ax.YTick = yTicks;
+if showYLabels
+    ax.YTickLabel = string(yTicks);
+else
+    ax.YTickLabel = strings(numel(yTicks),1);
+end
+
 ax.XLabel.FontName = style.fontName;
 ax.XLabel.FontSize = style.labelFontSize;
 ax.XLabel.FontWeight = "bold";
