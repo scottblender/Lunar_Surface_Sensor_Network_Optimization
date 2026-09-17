@@ -1,13 +1,9 @@
 function tableInfo = buildConferenceSummaryTables(userConfig)
-% BUILDCONFERENCESUMMARYTABLES Build the two main-paper result tables.
+% BUILDCONFERENCESUMMARYTABLES Build the two compact main-paper tables.
 %
-% Main-paper tables:
-%   1) Optimization summary across the 20 independent GA runs.
-%   2) Estimation/observability summary combining the design RSO population
-%      and the representative operational spacecraft validation.
-%
-% Detailed CSV products remain available as diagnostics but are intentionally
-% excluded from the main-paper table set.
+% Table 1 summarizes optimization performance across independent GA runs.
+% Table 2 combines estimation accuracy and epoch observability for both the
+% design RSO population and representative operational spacecraft.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -43,30 +39,25 @@ ekf = readtable(ekfFile,"TextType","string");
 perRso = readtable(perRsoSummaryFile,"TextType","string");
 operational = readtable(operationalFile,"TextType","string");
 
-%% Table 1: optimization summary
+%% Table 1: compact optimization summary
 requiredOptimization = [ ...
     "Objective","NetworkSize","MeanObjective","StdObjective", ...
-    "MeanInformationScore","StdInformationScore", ...
-    "MeanCoverageScore","StdCoverageScore"];
+    "MeanInformationScore","MeanCoverageScore"];
 assert(all(ismember(requiredOptimization,string(optimization.Properties.VariableNames))), ...
     "optimization_summary.csv is missing required columns.");
-
 conferenceOptimizationTable = optimization(:,cellstr(requiredOptimization));
 conferenceOptimizationTable = sortConferenceRows(conferenceOptimizationTable);
 conferenceOptimizationFile = fullfile(tableDirectory,"conference_optimization_summary.csv");
 writetable(conferenceOptimizationTable,conferenceOptimizationFile);
 
-%% Table 2: combined estimation and observability summary
-requiredEkf = ["Objective","NetworkSize","MeanRmsPositionErrorKm", ...
-    "TotalMeasurementUpdates"];
+%% Table 2: compact estimation and observability summary
+requiredEkf = ["Objective","NetworkSize"];
 requiredDesign = ["Objective","NetworkSize","MedianRmsPositionErrorKm", ...
     "WorstRsoIndex","WorstRmsPositionErrorKm","MeanObservableEpochPercent", ...
-    "MinimumObservabilityRsoIndex","MinimumObservableEpochPercent"];
-requiredOperational = ["Objective","NetworkSize","MeanRmsPositionErrorKm", ...
-    "MedianRmsPositionErrorKm","WorstSpacecraft","WorstRmsPositionErrorKm", ...
-    "MeanObservabilityPercent","MinimumObservabilityPercent", ...
-    "LeastObservableSpacecraft","TotalMeasurementUpdates"];
-
+    "MinimumObservableEpochPercent"];
+requiredOperational = ["Objective","NetworkSize","MedianRmsPositionErrorKm", ...
+    "WorstSpacecraft","WorstRmsPositionErrorKm","MeanObservabilityPercent", ...
+    "MinimumObservabilityPercent"];
 assert(all(ismember(requiredEkf,string(ekf.Properties.VariableNames))), ...
     "ekf_estimation_metrics.csv is missing required columns.");
 assert(all(ismember(requiredDesign,string(perRso.Properties.VariableNames))), ...
@@ -74,19 +65,15 @@ assert(all(ismember(requiredDesign,string(perRso.Properties.VariableNames))), ..
 assert(all(ismember(requiredOperational,string(operational.Properties.VariableNames))), ...
     "Operational-RSO summary is missing required columns.");
 
-% Design-population rows
 numberOfDesignRows = height(ekf);
 designPopulation = repmat("Design RSOs",numberOfDesignRows,1);
 designObjective = string(ekf.Objective);
 designNetworkSize = double(ekf.NetworkSize);
-designMeanRms = double(ekf.MeanRmsPositionErrorKm);
 designMedianRms = nan(numberOfDesignRows,1);
 designWorstObject = strings(numberOfDesignRows,1);
 designWorstRms = nan(numberOfDesignRows,1);
 designMeanObservable = nan(numberOfDesignRows,1);
 designMinimumObservable = nan(numberOfDesignRows,1);
-designLeastObservable = strings(numberOfDesignRows,1);
-designUpdates = double(ekf.TotalMeasurementUpdates);
 
 for rowIndex = 1:numberOfDesignRows
     objectiveMode = designObjective(rowIndex);
@@ -96,40 +83,31 @@ for rowIndex = 1:numberOfDesignRows
     assert(nnz(match) == 1, ...
         "Expected one design-RSO summary row for %s, N_s=%d.", ...
         objectiveMode,networkSize);
-
     designMedianRms(rowIndex) = double(perRso.MedianRmsPositionErrorKm(match));
-    worstIndex = double(perRso.WorstRsoIndex(match));
-    designWorstObject(rowIndex) = "RSO " + string(worstIndex);
+    designWorstObject(rowIndex) = "RSO " + string(double(perRso.WorstRsoIndex(match)));
     designWorstRms(rowIndex) = double(perRso.WorstRmsPositionErrorKm(match));
     designMeanObservable(rowIndex) = double(perRso.MeanObservableEpochPercent(match));
-    minimumIndex = double(perRso.MinimumObservabilityRsoIndex(match));
-    designLeastObservable(rowIndex) = "RSO " + string(minimumIndex);
     designMinimumObservable(rowIndex) = ...
         double(perRso.MinimumObservableEpochPercent(match));
 end
 
 designTable = table( ...
-    designPopulation,designObjective,designNetworkSize,designMeanRms, ...
-    designMedianRms,designWorstObject,designWorstRms,designMeanObservable, ...
-    designMinimumObservable,designLeastObservable,designUpdates, ...
+    designPopulation,designObjective,designNetworkSize,designMedianRms, ...
+    designWorstObject,designWorstRms,designMeanObservable, ...
+    designMinimumObservable, ...
     'VariableNames',{ ...
-    'Population','Objective','NetworkSize','MeanRmsPositionErrorKm', ...
-    'MedianRmsPositionErrorKm','WorstObject','WorstRmsPositionErrorKm', ...
-    'MeanObservableEpochPercent','MinimumObservableEpochPercent', ...
-    'LeastObservableObject','TotalMeasurementUpdates'});
+    'Population','Objective','NetworkSize','MedianRmsPositionErrorKm', ...
+    'WorstObject','WorstRmsPositionErrorKm','MeanObservableEpochPercent', ...
+    'MinimumObservableEpochPercent'});
 
-% Operational-spacecraft rows
 operationalTable = table( ...
     repmat("Operational RSOs",height(operational),1), ...
     string(operational.Objective),double(operational.NetworkSize), ...
-    double(operational.MeanRmsPositionErrorKm), ...
     double(operational.MedianRmsPositionErrorKm), ...
     string(operational.WorstSpacecraft), ...
     double(operational.WorstRmsPositionErrorKm), ...
     double(operational.MeanObservabilityPercent), ...
     double(operational.MinimumObservabilityPercent), ...
-    string(operational.LeastObservableSpacecraft), ...
-    double(operational.TotalMeasurementUpdates), ...
     'VariableNames',designTable.Properties.VariableNames);
 
 conferenceEstimationTable = [designTable;operationalTable];
@@ -137,7 +115,6 @@ conferenceEstimationTable = sortEstimationRows(conferenceEstimationTable);
 conferenceEstimationFile = fullfile(tableDirectory,"conference_estimation_summary.csv");
 writetable(conferenceEstimationTable,conferenceEstimationFile);
 
-% Remove the older main-table name so only two paper-ready CSVs remain.
 legacyEkfFile = fullfile(tableDirectory,"conference_ekf_summary.csv");
 if isfile(legacyEkfFile), delete(legacyEkfFile); end
 
@@ -158,7 +135,7 @@ fprintf("  %s\n",conferenceEstimationFile);
 
 %% Return products
 tableInfo = struct();
-tableInfo.version = "conference_summary_tables_v2";
+tableInfo.version = "conference_summary_tables_v3_compact";
 tableInfo.created = string(datetime("now"));
 tableInfo.optimization = conferenceOptimizationTable;
 tableInfo.estimation = conferenceEstimationTable;
