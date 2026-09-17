@@ -147,7 +147,7 @@ for objectiveIndex = 1:numberOfObjectives
         assert(numel(nominalIndices) == networkSize, ...
             "Saved best network size does not match the production configuration.");
 
-        [nominalObjective,~] = optimization.networkObjective( ...
+        nominalObjective = optimization.networkObjective( ...
             nominalIndices,database,objectiveMode);
 
         neighborIndices = cell(networkSize,1);
@@ -326,11 +326,14 @@ function [tableOut,result,objectiveCache] = evaluateJointSamples( ...
     numberSamples,seed,maximumAttempts,tolerance,objectiveCache)
 
 networkSize = numel(nominalIndices);
+previousRngState = rng;
+rngCleanup = onCleanup(@() rng(previousRngState));
 rng(seed,"twister");
 objectiveValues = zeros(numberSamples,1);
 improvements = zeros(numberSamples,1);
 changedSensorCounts = zeros(numberSamples,1);
 networkStrings = strings(numberSamples,1);
+proposalMatrix = zeros(numberSamples,networkSize);
 
 for sampleIndex = 1:numberSamples
     accepted = false;
@@ -349,6 +352,7 @@ for sampleIndex = 1:numberSamples
         "Unable to generate a duplicate-free discrete-neighbor sample.");
 
     canonicalProposal = sort(proposal);
+    proposalMatrix(sampleIndex,:) = canonicalProposal;
     [objectiveValues(sampleIndex),objectiveCache] = cachedObjective( ...
         canonicalProposal,database,objectiveMode,objectiveCache);
     improvements(sampleIndex) = nominalObjective-objectiveValues(sampleIndex);
@@ -367,18 +371,15 @@ result.fractionBetter = result.numberBetter/numberSamples;
 result.bestObjective = bestObjective;
 result.maximumImprovement = nominalObjective-bestObjective;
 result.bestSample = bestSample;
-result.bestSensorIndices = sscanf(erase(networkStrings(bestSample),["[","]"]),'%f').';
-if isempty(result.bestSensorIndices)
-    result.bestSensorIndices = nominalIndices;
-else
-    result.bestSensorIndices = sort(result.bestSensorIndices);
-end
+result.bestSensorIndices = proposalMatrix(bestSample,:);
 
 sampleColumn = (1:numberSamples).';
 tableOut = table(sampleColumn,objectiveValues,improvements,isBetter, ...
     changedSensorCounts,networkStrings, ...
     'VariableNames',{'Sample','Objective','Improvement','BetterThanNominal', ...
     'ChangedSensorCount','SensorIndices'});
+
+clear rngCleanup
 end
 
 %% ========================================================================
@@ -435,6 +436,7 @@ signature.objectiveModes = objectiveModes;
 signature.nearestNeighborCount = config.nearestNeighborCount;
 signature.jointSamples = config.jointSamples;
 signature.baseSeed = config.baseSeed;
+signature.maximumRegenerationAttempts = config.maximumRegenerationAttempts;
 signature.improvementTolerance = config.improvementTolerance;
 end
 
