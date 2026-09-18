@@ -14,9 +14,7 @@
 % An RSO is NOT required to be visible. Zero coverage is a valid physical
 % outcome and does not remove the RSO from the population.
 
-clear;
-close all;
-clc;
+% Do not clear the caller workspace; this test may be run by the post-build wrapper.
 
 %% ========================================================================
 %  Paths
