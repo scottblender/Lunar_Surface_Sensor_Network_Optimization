@@ -22,8 +22,8 @@ for chunkIndex = 1:numel(chunkMetadata)
     end
 
     chunkMat = matfile(string(chunkMetadata(chunkIndex).filePath));
-    globalIndices = double(chunkMat.retainedGlobalCandidateIndices(:));
-    availability = chunkMat.filteredAvailability;
+    globalIndices = double(chunkMat.retainedGlobalCandidateIndices(:,1));
+    availability = chunkMat.filteredAvailability(:,:,:);
 
     chunkCounts = reshape( ...
         sum(availability,2), ...
