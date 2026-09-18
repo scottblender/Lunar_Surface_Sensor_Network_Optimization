@@ -22,12 +22,14 @@ assert(numel(sensorLongitudesRad) == numberOfSensors, ...
     "Latitude and longitude vectors must have equal length.");
 assert(all(isfinite(sensorLatitudesRad)),"Sensor latitudes must be finite.");
 assert(all(isfinite(sensorLongitudesRad)),"Sensor longitudes must be finite.");
-assert(all(sensorLatitudesRad >= -pi/2) && ...
-    all(sensorLatitudesRad <= deg2rad(-75)), ...
-    "Sensor latitude lies outside the allowed south-polar region.");
+config = database.config;
+
+latitudeLimitsRad = sort(config.candidates.latitudeBandRad(:));
+assert(all(sensorLatitudesRad >= latitudeLimitsRad(1)-1e-12) && ...
+    all(sensorLatitudesRad <= latitudeLimitsRad(2)+1e-12), ...
+    "Sensor latitude lies outside the configured candidate domain.");
 sensorLongitudesRad = mod(sensorLongitudesRad,2*pi);
 
-config = database.config;
 moonRadiusKm = config.moon.radiusKm;
 theta0Rad = config.moon.theta0Rad;
 angularRateRadS = 2*pi/config.moon.siderealPeriodSeconds;
