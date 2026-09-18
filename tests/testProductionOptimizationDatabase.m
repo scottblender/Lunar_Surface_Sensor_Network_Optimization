@@ -11,9 +11,7 @@
 %   - analytic Jacobian agreement;
 %   - deterministic information/coverage objective evaluation.
 
-clear;
-close all;
-clc;
+% Do not clear the caller workspace; this test is also run by the post-build wrapper.
 
 %% Project paths
 
