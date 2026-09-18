@@ -19,7 +19,9 @@ end
 %% Paths and configuration
 scriptDirectory = fileparts(mfilename("fullpath"));
 projectRoot = fileparts(scriptDirectory);
+sourceDirectory = fullfile(projectRoot,"src");
 resultsDirectory = fullfile(projectRoot,"results");
+addpath(sourceDirectory);
 addpath(scriptDirectory);
 rehash path;
 
