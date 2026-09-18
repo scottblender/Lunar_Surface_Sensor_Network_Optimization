@@ -173,7 +173,7 @@ for chunkIndex = 1:6
 
     chunkMat = matfile(chunkFile);
 
-    originalIndices = double(chunkMat.originalCandidateIndices(:));
+    originalIndices = double(chunkMat.originalCandidateIndices(:,1));
     assert(numel(originalIndices) == metadata.numberOfOriginalCandidates, ...
         "Chunk %d original index count is inconsistent.",chunkIndex);
     assert(originalIndices(1) == metadata.firstOriginalCandidateIndex && ...
@@ -190,8 +190,8 @@ for chunkIndex = 1:6
     assert(terrainSize(2) == numel(database.terrain.horizonAzimuthsRad), ...
         "Chunk %d terrain azimuth dimension is inconsistent.",chunkIndex);
 
-    retainedGlobal = double(chunkMat.retainedGlobalCandidateIndices(:));
-    retainedOriginal = double(chunkMat.retainedOriginalCandidateIndices(:));
+    retainedGlobal = double(chunkMat.retainedGlobalCandidateIndices(:,1));
+    retainedOriginal = double(chunkMat.retainedOriginalCandidateIndices(:,1));
 
     assert(numel(retainedGlobal) == metadata.numberOfRetainedCandidates, ...
         "Chunk %d retained global index count is inconsistent.",chunkIndex);
