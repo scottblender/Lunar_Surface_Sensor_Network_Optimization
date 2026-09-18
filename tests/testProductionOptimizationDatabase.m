@@ -173,7 +173,7 @@ for chunkIndex = 1:6
         "Jacobian chunk file was not found: %s",chunkFile);
 
     chunkMat = matfile(chunkFile);
-    chunkSize = size(chunkMat,"measurementJacobianHistories");
+    chunkSize = size(chunkMat,'measurementJacobianHistories');
 
     expectedChunkCount = double(metadata.numberOfCandidates);
     chunkCounts(chunkIndex) = expectedChunkCount;
