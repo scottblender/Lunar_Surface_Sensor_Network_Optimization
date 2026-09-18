@@ -58,4 +58,4 @@ fprintf("\n============================================================\n");
 fprintf("Post-build production database validation complete.\n");
 fprintf("============================================================\n");
 fprintf("After the 12000-FE optimization campaign, run:\n");
-fprintf("  run(\"tests/testProductionConvergence12000Fe.m\")\n");
+fprintf('  run("tests/testProductionConvergence12000Fe.m")\n');
