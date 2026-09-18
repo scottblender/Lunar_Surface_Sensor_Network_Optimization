@@ -54,14 +54,35 @@ for chunkIndex = uniqueChunks
     chunkMat = getMatFile(chunkFile);
     requestedLocalIndices = localIndices(selectionPositions);
 
-    chunkBlock = chunkMat.measurementJacobianHistories( ...
-        :,:,requestedLocalIndices,:,:);
+    try
+        chunkBlock = chunkMat.measurementJacobianHistories( ...
+            :,:,requestedLocalIndices,:,:);
 
-    chunkBlock = reshape( ...
-        chunkBlock, ...
-        2,6,numel(selectionPositions),numberOfTimes,numberOfObjects);
+        chunkBlock = reshape( ...
+            chunkBlock, ...
+            2,6,numel(selectionPositions),numberOfTimes,numberOfObjects);
 
-    selectedJacobians(:,:,selectionPositions,:,:) = chunkBlock;
+        selectedJacobians(:,:,selectionPositions,:,:) = chunkBlock;
+    catch groupedReadError
+        % Some MATLAB/HDF5 combinations are more restrictive for
+        % noncontiguous partial indexing. Fall back to one selected sensor
+        % at a time while preserving the same global/local lookup.
+        for localSelectionIndex = 1:numel(selectionPositions)
+            selectionPosition = selectionPositions(localSelectionIndex);
+            requestedLocalIndex = requestedLocalIndices(localSelectionIndex);
+
+            try
+                sensorBlock = chunkMat.measurementJacobianHistories( ...
+                    :,:,requestedLocalIndex,:,:);
+            catch singleReadError
+                singleReadError = addCause(singleReadError,groupedReadError);
+                rethrow(singleReadError);
+            end
+
+            selectedJacobians(:,:,selectionPosition,:,:) = reshape( ...
+                sensorBlock,2,6,1,numberOfTimes,numberOfObjects);
+        end
+    end
 end
 
 end
