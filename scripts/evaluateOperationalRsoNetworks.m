@@ -320,8 +320,17 @@ end
 latitudes = sourceDatabase.candidates.latitudesRad(originalIndices);
 longitudes = sourceDatabase.candidates.longitudesRad(originalIndices);
 horizonAzimuths = sourceDatabase.terrain.horizonAzimuthsRad;
-maximumTerrainElevation = ...
-    sourceDatabase.terrain.maximumTerrainElevationRad(originalIndices,:);
+
+if isfield(sourceDatabase.terrain,"candidateChunks") && ...
+        ~isempty(sourceDatabase.terrain.candidateChunks)
+    maximumTerrainElevation = ...
+        optimization.loadChunkedCandidateData( ...
+            sourceDatabase,double(originalIndices(:)), ...
+            "maximumTerrainElevationRad");
+else
+    maximumTerrainElevation = ...
+        sourceDatabase.terrain.maximumTerrainElevationRad(originalIndices,:);
+end
 
 sunKeepout = sourceDatabase.config.visibility.minimumAngularSeparationRad;
 if isfield(sourceDatabase.config.visibility,"sunMinimumAngularSeparationRad")
