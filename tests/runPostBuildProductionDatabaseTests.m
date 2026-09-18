@@ -5,15 +5,16 @@
 %   1) tests/testProductionOptimizationDatabase.m
 %      - southern-hemisphere 15-km grid definition
 %      - 20 RSOs, three-day arc, 432 optimization epochs
-%      - compact 2x3 position-only RA/Dec Jacobian storage
-%      - stored-vs-analytic Jacobian spot checks
+%      - six equal-count full 2x6 RA/Dec Jacobian chunk files
+%      - global candidate -> chunk/local index mapping
+%      - MATFILE partial indexing and stored-vs-analytic Jacobian checks
 %      - visibility/database dimension checks
 %      - deterministic information/coverage objective smoke tests
 %
 % Optional architecture regression:
 %   2) tests/testOptimizationDatabaseScalability.m
 %      - builds a smaller temporary 20-RSO database
-%      - exercises selected-sensor slicing and compact Jacobians
+%      - exercises selected-sensor slicing and generic compact Jacobians
 %
 % The 12000-FE convergence diagnostic is intentionally NOT run here because
 % it applies after the optimization campaign, not after database generation.
