@@ -317,29 +317,33 @@ assert(maximumJacobianError < 1e-12, ...
 
 %% Objective smoke test across chunk boundaries
 
-representativeNetwork = zeros(6,1);
+nonemptyChunks = find([chunkMetadata.numberOfRetainedCandidates] > 0);
+representativeNetwork = zeros(0,1);
 
-for chunkIndex = 1:6
-    chunkGlobals = find(double(database.candidates.chunkIndex) == chunkIndex);
+for chunkIndex = nonemptyChunks(:).'
+    candidatesInChunk = find( ...
+        double(database.candidates.chunkIndex) == chunkIndex);
 
-    if isempty(chunkGlobals)
-        representativeNetwork(chunkIndex) = NaN;
-    else
-        representativeNetwork(chunkIndex) = ...
-            chunkGlobals(round((numel(chunkGlobals)+1)/2));
+    representativeNetwork(end+1,1) = ... %#ok<SAGROW>
+        candidatesInChunk(round((numel(candidatesInChunk)+1)/2));
+
+    if numel(representativeNetwork) == 3
+        break
     end
 end
 
-representativeNetwork = representativeNetwork(isfinite(representativeNetwork));
-assert(numel(representativeNetwork) >= 3, ...
-    "Fewer than three retained chunks are available for the objective smoke test.");
+if numel(representativeNetwork) < 3
+    representativeNetwork = unique(round(linspace( ...
+        1,numberOfCandidates,3))).';
+end
 
-testNetwork = representativeNetwork(1:3);
+assert(numel(representativeNetwork) == 3, ...
+    "Could not construct a representative three-sensor network.");
 
 informationObjective = optimization.networkObjective( ...
-    testNetwork,database,"information");
+    representativeNetwork,database,"information");
 coverageObjective = optimization.networkObjective( ...
-    testNetwork,database,"coverage");
+    representativeNetwork,database,"coverage");
 
 assert(isfinite(informationObjective), ...
     "Chunked information objective is nonfinite.");
@@ -347,7 +351,8 @@ assert(isfinite(coverageObjective), ...
     "Chunked coverage objective is nonfinite.");
 
 informationRepeat = optimization.networkObjective( ...
-    testNetwork,database,"information");
+    representativeNetwork,database,"information");
+
 informationTolerance = 1e-12*max(1,abs(informationObjective));
 
 assert(abs(informationRepeat-informationObjective) <= informationTolerance, ...
