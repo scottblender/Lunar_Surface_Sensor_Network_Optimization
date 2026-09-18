@@ -5,10 +5,12 @@
 %   1) tests/testProductionOptimizationDatabase.m
 %      - southern-hemisphere 15-km grid definition
 %      - 20 RSOs, three-day arc, 432 optimization epochs
-%      - six equal-count full 2x6 RA/Dec Jacobian chunk files
+%      - six equal-count candidate chunks created from terrain generation
+%      - chunked terrain, truth visibility/prefilter, final visibility, and
+%        full 2x6 RA/Dec Jacobians
 %      - global candidate -> chunk/local index mapping
 %      - MATFILE partial indexing and stored-vs-analytic Jacobian checks
-%      - visibility/database dimension checks
+%      - core/chunk database dimension checks
 %      - deterministic information/coverage objective smoke tests
 %
 % Optional architecture regression:
