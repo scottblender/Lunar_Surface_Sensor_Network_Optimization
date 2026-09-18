@@ -313,7 +313,13 @@ writetable(perRsoTable,csvFile);
 end
 
 function observable = computeEpochObservability(database,sensorIndices)
-availability = database.visibility.filteredAvailability(sensorIndices,:,:);
+if isfield(database.visibility,"candidateChunks") && ...
+        ~isempty(database.visibility.candidateChunks)
+    availability = optimization.loadChunkedCandidateData( ...
+        database,double(sensorIndices(:)),"filteredAvailability");
+else
+    availability = database.visibility.filteredAvailability(sensorIndices,:,:);
+end
 epochObservable = squeeze(any(availability,1));
 numberOfObjects = database.meta.numberOfObjects;
 numberOfEpochs = numel(database.tracking.times);
