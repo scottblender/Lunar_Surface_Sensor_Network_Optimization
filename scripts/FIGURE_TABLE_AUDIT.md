@@ -8,76 +8,131 @@ Use:
 products = generateManuscriptArtifacts();
 \`\`\`
 
-The driver writes manuscript-ready products under
-\`results/manuscript_artifacts/\` and keeps plotting logic in separate functions.
+All manuscript-ready products are written under
+\`results/manuscript_artifacts/\`. The driver is synchronized to the current
+AAS TeX source and writes \`manuscript_artifact_manifest.csv\` after each run.
 
 ## Retained model/schematic generators
 
-These are deliberately retained because they define manuscript geometry rather
-than post-processing optimization results:
+These are retained because they define manuscript geometry rather than
+post-processing optimization results:
 
 - \`plotReferenceFrameTransformations.m\`
 - \`plotAnglesOnlyMeasurementModel.m\`
 - \`plotExclusionConstraint.m\`
 
-They are called through \`generateStudyDefinitionFigures.m\`, which relocates
-their EPS outputs into the manuscript artifact directory.
+\`plotExclusionConstraint.m\` now follows the compact occultation/keep-out
+geometry used in the companion space-based paper and keeps its legend inside
+the exported Figure 6 canvas.
 
-## New consolidated generators
+## Focused manuscript generators
 
-- \`loadProductionCampaign.m\`: one loader for the frozen database and completed GA campaign.
-- \`generateManuscriptArtifacts.m\`: single manuscript driver.
+- \`loadProductionCampaign.m\`: shared frozen-database / completed-campaign loader.
 - \`exportManuscriptFigure.m\`: common EPS export path.
-- \`plotClpsDesignDomain.m\`: southern-hemisphere domain + CLPS context.
-- \`plotDemProducts.m\`: original and synthetic DEM figures.
-- \`plotProductionConvergence.m\`: convergence figures only.
-- \`plotProductionNetworkLocations.m\`: sensor-selection frequency figures only.
-- \`plotDesignRsoTrackingHeatmaps.m\`: design-RSO performance figure and table.
-- \`buildManuscriptTables.m\`: study-definition and optimization tables.
+- \`plotClpsDesignDomain.m\`: southern-hemisphere design domain + CLPS context.
+- \`plotDemProducts.m\`: original LOLA and synthetic DEM figures.
+- \`plotProductionConvergence.m\`: paired objective convergence panels.
+- \`plotProductionNetworkLocations.m\`: sensor-selection-frequency panels.
+- \`plotMeasurementScreeningBreakdown.m\`: stacked LOS/screening breakdown.
+- \`plotDesignRsoTrackingHeatmaps.m\`: design-RSO RMSE/observability.
+- \`plotOperationalRsoTrackingHeatmaps.m\`: operational-RSO RMSE/observability.
+- \`plotMonteCarloConferenceFigure.m\`: one MC boxplot per objective/network size.
+- \`generateDomainComparisonProducts.m\`: restricted-domain location + metric figures and table.
+- \`buildManuscriptTables.m\`: core manuscript tables.
+- \`buildOperationalManuscriptTable.m\`: four-row operational/legacy spacecraft table.
+- \`writeOptimizationWorkflowTikz.m\`: current manuscript TikZ workflow.
+- \`validateManuscriptArtifacts.m\`: artifact/filename manifest check.
 
-Development-only plotting retained for regression/pilot use:
-- `plotOptimizationPilotResults.m` (required by the pilot-result regression test).
+## Current Results-section exports
 
-Existing focused validation functions remain in place:
-\`evaluateOperationalRsoNetworks.m\`, \`evaluateDiscreteNeighborRobustness.m\`,
-\`evaluateDemResolutionValidation.m\`, and \`plotMonteCarloConferenceFigure.m\`.
+The current production driver creates or expects:
 
-## Retired / removed
+\`\`\`text
+convergence_information.eps
+convergence_coverage.eps
 
-The following were redundant, pilot-only, or mixed too many concerns:
+network_locations_vs_ns_information.eps
+network_locations_vs_ns_coverage.eps
 
-- \`runAllPublicationPlots.m\`: superseded by the consolidated driver.
-- \`runProductionConferenceResults.m\`: superseded by the consolidated driver.
-- \`formatProductionConferenceFigures.m\`: export is now centralized.
-- \`plotOptimizationPilotResults.m\`: pilot-only, not a manuscript product.
-- \`plotMonteCarloRobustness.m\`: duplicate/older MC presentation.
-- \`exportRsoPopulationTable.m\`: subsumed by \`buildManuscriptTables.m\`.
-- \`buildConferenceSummaryTables.m\`: subsumed by \`buildManuscriptTables.m\`.
-- \`plotClpsLsp.m\`: south-polar-only legacy view; replaced by the manuscript's
-  southern-hemisphere design-domain plot.
-- \`plotProductionOptimizationResults.m\`: monolithic generator; replaced by the
-  shared campaign loader plus focused result-plot functions.
+screening_breakdown_information.eps
+screening_breakdown_coverage.eps
 
-## Manuscript coverage
+design_rso_tracking_heatmaps.eps
 
-The consolidated pipeline covers the current manuscript outputs:
+monte_carlo_information_n3.eps
+monte_carlo_coverage_n3.eps
+monte_carlo_information_n5.eps
+monte_carlo_coverage_n5.eps
+monte_carlo_information_n7.eps
+monte_carlo_coverage_n7.eps
+monte_carlo_information_n10.eps
+monte_carlo_coverage_n10.eps
 
-- CLPS/design-domain context
-- MCI/MR/ENU reference frames
-- RA/Dec measurement geometry
-- original LOLA and synthetic DEM figures
-- celestial occultation/exclusion geometry
-- optimization convergence
-- sensor-selection frequency
-- design-RSO RMSE/observability
-- operational-RSO RMSE/observability
-- Monte Carlo robustness when MC results exist
-- CLPS, RSO-population, exclusion, IOD/P0, GA-parameter, optimization-result,
-  design-tracking, operational-tracking, and DEM-validation tables
+domain_comparison_locations.eps
+domain_comparison_metrics.eps
 
-The optimization workflow remains a TikZ manuscript figure because it is a
-process diagram rather than a numerical MATLAB result; `writeOptimizationWorkflowTikz.m`
-regenerates its source into the artifact directory. The restricted-domain
-comparison is generated by `generateDomainComparisonProducts.m` when the matched
-south-polar campaign/database paths are supplied; the driver intentionally does
-not invent that result when the restricted campaign is absent.
+operational_rso_tracking_heatmaps.eps
+\`\`\`
+
+The screening plots are generated from the overall-best network for each
+objective/network-size case. Because the chunked production database stores
+only final accepted masks, the plotting routine recomputes full terrain/Earth/
+Sun diagnostics only for the selected sites rather than rebuilding diagnostics
+for the entire candidate grid.
+
+## Current manuscript tables
+
+Core tables use filenames matching their TeX roles:
+
+\`\`\`text
+tables/completed_clps_landing_sites.csv
+tables/planned_clps_landing_regions.csv
+tables/optimization_rso_population.csv
+tables/lunar_peaks_dem.csv
+tables/dominant_craters.csv
+tables/celestial_exclusion_parameters.csv
+tables/iod_prior_weighting.csv
+tables/P0_initial_covariance.csv
+tables/optimization_parameters.csv
+tables/network_summary.csv
+tables/measurement_screening_breakdown.csv
+tables/domain_comparison.csv
+tables/spacecraft_tracking.csv
+\`\`\`
+
+The restricted-domain and operational tables are optional because they require
+their corresponding completed validation/campaign data.
+
+## Restricted-domain comparison
+
+A matched south-polar campaign is not fabricated. Supply:
+
+\`\`\`matlab
+cfg.restrictedResultsDirectory = "...";
+cfg.restrictedDatabaseFile = "...";
+% cfg.restrictedStudyName = "..."; % only if different from the full campaign
+products = generateManuscriptArtifacts(cfg);
+\`\`\`
+
+This produces:
+
+- \`domain_comparison_locations.eps\`
+- \`domain_comparison_metrics.eps\`
+- \`tables/domain_comparison.csv\`
+
+## Retired / removed manuscript runners
+
+The following were redundant, legacy, or mixed too many concerns:
+
+- \`runAllPublicationPlots.m\`
+- \`runProductionConferenceResults.m\`
+- \`formatProductionConferenceFigures.m\`
+- \`plotMonteCarloRobustness.m\`
+- \`exportRsoPopulationTable.m\`
+- \`buildConferenceSummaryTables.m\`
+- \`plotClpsLsp.m\`
+- \`plotProductionOptimizationResults.m\`
+- \`plotPerRsoEkfHeatmaps.m\`
+
+Development-only \`plotOptimizationPilotResults.m\` is retained because the
+pilot-result regression test still depends on it.

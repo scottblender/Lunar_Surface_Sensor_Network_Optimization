@@ -7,15 +7,11 @@ function results = evaluateOperationalRsoNetworks(userConfig)
 % spacecraft are NOT used to redesign the network; this is an out-of-sample
 % validation of the networks optimized against the 20-object RSO population.
 %
-% Two paper-ready figures are generated:
-%   1) per-spacecraft RMS position-error heatmap;
-%   2) per-spacecraft observability heatmap, where an epoch is observable
-%      when at least one selected surface sensor has an accepted measurement
-%      after terrain and celestial screening.
-%
-% One compact conference table is written with aggregate EKF and
-% observability metrics for each objective/network-size case. A detailed
-% per-spacecraft CSV is also retained as supporting data.
+% This function is data-focused. It evaluates every production network case,
+% caches the operational/legacy validation metrics, and writes supporting
+% CSVs. The combined manuscript heatmap is generated separately by
+% plotOperationalRsoTrackingHeatmaps, while buildOperationalManuscriptTable
+% writes the four-row table used by the current TeX source.
 %
 % Usage:
 %   results = evaluateOperationalRsoNetworks();
@@ -34,8 +30,6 @@ dataDirectory = fullfile(projectRoot,"data");
 addpath(sourceDirectory);
 addpath(scriptDirectory);
 rehash path;
-
-style = publicationPlotStyle();
 
 config = struct();
 config.resultsDirectory = resultsDirectory;
@@ -134,6 +128,7 @@ if config.reuseCache && ~config.forceRecompute && isfile(cacheFile)
     cached = load(cacheFile,"operationalResults");
     if isfield(cached,"operationalResults") && ...
             isfield(cached.operationalResults,"signature") && ...
+            isfield(cached.operationalResults,"maximumObservationGapMinutes") && ...
             signaturesMatch(cached.operationalResults.signature,signature)
         operationalResults = cached.operationalResults;
         useCachedResults = true;
@@ -166,6 +161,7 @@ if ~useCachedResults
     meanPositionThreeSigmaKm = nan(size(rmsPositionErrorKm));
     observabilityPercent = nan(size(rmsPositionErrorKm));
     measurementUpdates = nan(size(rmsPositionErrorKm));
+    maximumObservationGapMinutes = nan(size(rmsPositionErrorKm));
 
     perObjectRows = cell(numberOfNetworkSizes*numberOfObjectives,1);
     caseCounter = 0;
@@ -195,6 +191,13 @@ if ~useCachedResults
             currentObservability = ...
                 100*sum(epochObservable,1).'/numberOfTimes;
 
+            cadenceMinutes = median(diff(operationalDatabase.tracking.times))/60;
+            currentMaximumGapMinutes = zeros(numberOfObjects,1);
+            for objectIndex = 1:numberOfObjects
+                currentMaximumGapMinutes(objectIndex) = ...
+                    longestFalseRun(epochObservable(:,objectIndex))*cadenceMinutes;
+            end
+
             rmsPositionErrorKm(:,networkIndex,objectiveIndex) = ...
                 validation.rmsPositionErrorKm;
             rmsVelocityErrorKmS(:,networkIndex,objectiveIndex) = ...
@@ -205,6 +208,8 @@ if ~useCachedResults
                 currentObservability;
             measurementUpdates(:,networkIndex,objectiveIndex) = ...
                 validation.measurementUpdateCounts;
+            maximumObservationGapMinutes(:,networkIndex,objectiveIndex) = ...
+                currentMaximumGapMinutes;
 
             perObjectRows{caseCounter} = table( ...
                 repmat(objectiveMode,numberOfObjects,1), ...
@@ -212,12 +217,13 @@ if ~useCachedResults
                 (1:numberOfObjects).',spacecraftNames, ...
                 validation.rmsPositionErrorKm,validation.rmsVelocityErrorKmS, ...
                 squeeze(mean(validation.positionThreeSigmaNormsKm,1)).', ...
-                currentObservability,validation.measurementUpdateCounts, ...
+                currentObservability,currentMaximumGapMinutes, ...
+                validation.measurementUpdateCounts, ...
                 'VariableNames',{ ...
                 'Objective','NetworkSize','ObjectIndex','Spacecraft', ...
                 'RmsPositionErrorKm','RmsVelocityErrorKmS', ...
                 'MeanPositionThreeSigmaKm','ObservableEpochPercent', ...
-                'MeasurementUpdates'});
+                'MaximumObservationGapMinutes','MeasurementUpdates'});
         end
     end
 
@@ -227,7 +233,7 @@ if ~useCachedResults
         observabilityPercent,measurementUpdates);
 
     operationalResults = struct();
-    operationalResults.version = "operational_rso_validation_v1";
+    operationalResults.version = "operational_rso_validation_v2";
     operationalResults.created = string(datetime("now"));
     operationalResults.signature = signature;
     operationalResults.summaryFiles = summaryFiles;
@@ -239,6 +245,8 @@ if ~useCachedResults
     operationalResults.meanPositionThreeSigmaKm = meanPositionThreeSigmaKm;
     operationalResults.observabilityPercent = observabilityPercent;
     operationalResults.measurementUpdates = measurementUpdates;
+    operationalResults.maximumObservationGapMinutes = ...
+        maximumObservationGapMinutes;
     operationalResults.summaryTable = summaryTable;
     operationalResults.detailedTable = detailedTable;
     save(cacheFile,"operationalResults","-v7.3");
@@ -261,33 +269,17 @@ fprintf("Operational-RSO summary table\n");
 fprintf("============================================================\n");
 disp(summaryTable);
 
-%% Figure 1: operational-spacecraft RMS position error
-rmsOutputFile = fullfile(config.outputDirectory, ...
-    "operational_rso_position_rmse_heatmap.eps");
-rmsFigure = makeRmsHeatmap( ...
-    rmsPositionErrorKm,spacecraftNames,config,style,rmsOutputFile);
-
-%% Figure 2: operational-spacecraft observability
-observabilityOutputFile = fullfile(config.outputDirectory, ...
-    "operational_rso_observability_heatmap.eps");
-observabilityFigure = makeObservabilityHeatmap( ...
-    observabilityPercent,spacecraftNames,config,style,observabilityOutputFile);
+%% Combined manuscript figure is generated separately by
+% plotOperationalRsoTrackingHeatmaps so this evaluator remains data-only.
 
 %% Return products
 results = operationalResults;
 results.cacheFile = string(cacheFile);
 results.summaryFile = string(summaryFile);
 results.detailedFile = string(detailedFile);
-results.rmsFigure = rmsFigure;
-results.rmsOutputFile = string(rmsOutputFile);
-results.observabilityFigure = observabilityFigure;
-results.observabilityOutputFile = string(observabilityOutputFile);
 results.demFile = string(demFile);
 
-fprintf("Operational-RSO figures:\n");
-fprintf("  RMS position error: %s\n",rmsOutputFile);
-fprintf("  Observability:      %s\n",observabilityOutputFile);
-fprintf("Operational-RSO table:\n  %s\n",summaryFile);
+fprintf("Operational-RSO supporting table:\n  %s\n",summaryFile);
 
 end
 
@@ -662,6 +654,18 @@ tf = string(a.databaseFile) == string(b.databaseFile) && ...
     isequal(string(a.objectiveModes),string(b.objectiveModes)) && ...
     isequal(string(a.networkKeys),string(b.networkKeys)) && ...
     isequal(a.measurementNoiseSeed,b.measurementNoiseSeed);
+end
+
+function longest = longestFalseRun(values)
+values = logical(values(:));
+transitions = diff([true;values;true]);
+starts = find(transitions == -1);
+stops = find(transitions == 1)-1;
+if isempty(starts)
+    longest = 0;
+else
+    longest = max(stops-starts+1);
+end
 end
 
 function output = mergeStruct(defaults,override)

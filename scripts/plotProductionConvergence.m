@@ -1,5 +1,8 @@
 function plotInfo = plotProductionConvergence(campaign,userConfig)
 % PLOTPRODUCTIONCONVERGENCE Generate the two manuscript convergence figures.
+%
+% Both objective figures use the same network-size ordering and a fixed
+% upper-right legend so the paired manuscript panels are directly comparable.
 
 arguments
     campaign (1,1) struct
@@ -27,7 +30,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     fig = figure("Name",objectiveMode + " convergence", ...
         "Color",style.backgroundColor,"Units","inches", ...
         "Position",[1 1 8.5 5.2],"Renderer","opengl");
-    ax = axes(fig);
+    ax = axes(fig,"Position",[0.13 0.15 0.82 0.79]);
     hold(ax,"on");
 
     handles = gobjects(numel(config.networkSizes),1);
@@ -35,27 +38,32 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     for networkIndex = 1:numel(config.networkSizes)
         studyState = campaign.studies{networkIndex,objectiveIndex};
-        [fe,meanHistory,stdHistory] = aggregateConvergence( ...
-            studyState,config.numberOfRuns);
-        c = networkColors(networkIndex,:);
+        [fe,meanHistory,stdHistory] = ...
+            aggregateConvergence(studyState,config.numberOfRuns);
+        currentColor = networkColors(networkIndex,:);
 
         fill(ax,[fe;flipud(fe)], ...
             [meanHistory-stdHistory;flipud(meanHistory+stdHistory)], ...
-            c,"FaceAlpha",0.13,"EdgeColor","none","HandleVisibility","off");
+            currentColor,"FaceAlpha",0.13,"EdgeColor","none", ...
+            "HandleVisibility","off");
+
         handles(networkIndex) = plot(ax,fe,meanHistory, ...
-            "Color",c,"LineWidth",2.3);
-        labels(networkIndex) = sprintf("N_s = %d",config.networkSizes(networkIndex));
+            "Color",currentColor,"LineWidth",2.3);
+        labels(networkIndex) = ...
+            sprintf("N_s = %d",config.networkSizes(networkIndex));
     end
 
     xlabel(ax,"Function evaluations");
     ylabel(ax,"Incumbent objective, J");
     xlim(ax,[config.populationSize config.functionEvaluationBudget]);
     applyAxesStyle(ax,style);
-    lgd = legend(ax,handles,labels,"Location","best","Interpreter","tex");
+
+    lgd = legend(ax,handles,labels, ...
+        "Location","northeast","Interpreter","tex","Box","off");
     lgd.FontName = style.fontName;
     lgd.FontSize = style.legendFontSize;
     lgd.FontWeight = "bold";
-    lgd.Box = "on";
+    lgd.AutoUpdate = "off";
 
     outputFile = fullfile(outputDirectory, ...
         sprintf("convergence_%s.eps",objectiveMode));

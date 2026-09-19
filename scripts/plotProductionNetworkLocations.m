@@ -1,5 +1,9 @@
 function plotInfo = plotProductionNetworkLocations(campaign,userConfig)
 % PLOTPRODUCTIONNETWORKLOCATIONS Plot sensor-selection frequency by N_s.
+%
+% Marker area scales with the number of independent GA runs in which a site
+% appears. A true marker-size legend is kept inside the first tile so the
+% explanation remains part of the exported EPS instead of being clipped.
 
 arguments
     campaign (1,1) struct
@@ -11,7 +15,9 @@ config = campaign.configuration;
 database = campaign.database;
 projectRoot = string(campaign.projectRoot);
 outputDirectory = string(campaign.outputDirectory);
-if isfield(userConfig,"outputDirectory"), outputDirectory = string(userConfig.outputDirectory); end
+if isfield(userConfig,"outputDirectory")
+    outputDirectory = string(userConfig.outputDirectory);
+end
 if ~isfolder(outputDirectory), mkdir(outputDirectory); end
 
 demFile = "";
@@ -24,11 +30,16 @@ if strlength(demFile)==0
         if isfile(candidates(k)), demFile=candidates(k); break, end
     end
 end
-assert(strlength(demFile)>0 && isfile(demFile),"No manuscript DEM could be resolved.");
+assert(strlength(demFile)>0 && isfile(demFile), ...
+    "No manuscript DEM could be resolved.");
 
 moonRadiusKm = database.config.moon.radiusKm;
-[dem,~] = digitalElevationModel.loadTriaxialLunarDem(demFile,moonRadiusKm,24,48);
+[dem,~] = digitalElevationModel.loadTriaxialLunarDem( ...
+    demFile,moonRadiusKm,24,48);
 background = buildSouthernHemisphereBackground(dem,moonRadiusKm);
+
+minimumMarkerArea = 18;
+maximumMarkerArea = 145;
 
 plotInfo = struct();
 for objectiveIndex = 1:numel(config.objectiveModes)
@@ -39,8 +50,9 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     fig = figure("Name",objectiveMode+" network locations", ...
         "Color",style.backgroundColor,"Units","inches", ...
-        "Position",[1 1 11 10.5],"Renderer","opengl");
-    layout = tiledlayout(fig,2,2,"TileSpacing","compact","Padding","compact");
+        "Position",[1 1 11 9.6],"Renderer","opengl");
+    layout = tiledlayout(fig,2,2, ...
+        "TileSpacing","compact","Padding","compact");
     axesHandles = gobjects(numel(config.networkSizes),1);
 
     for networkIndex = 1:numel(config.networkSizes)
@@ -54,17 +66,47 @@ for objectiveIndex = 1:numel(config.objectiveModes)
             indices=double(studyState.runStates{runIndex}.bestSensorIndices(:));
             counts(indices)=counts(indices)+1;
         end
+
         selected=find(counts>0);
         [xKm,yKm]=candidateXY(selected,database,moonRadiusKm);
-        markerArea=18+145*(counts(selected)/config.numberOfRuns);
+        markerArea=minimumMarkerArea + ...
+            (maximumMarkerArea-minimumMarkerArea) .* ...
+            (counts(selected)/config.numberOfRuns);
+
         scatter(ax,xKm,yKm,markerArea,"o", ...
             "MarkerFaceColor",objectiveColor, ...
-            "MarkerEdgeColor",[1 1 1],"LineWidth",0.8);
+            "MarkerEdgeColor",[1 1 1],"LineWidth",0.8, ...
+            "HandleVisibility","off");
 
         title(ax,sprintf("N_s = %d",config.networkSizes(networkIndex)), ...
             "FontName",style.fontName,"FontSize",style.labelFontSize, ...
             "FontWeight","bold");
     end
+
+    % Marker-size legend is attached to the first axes so it is guaranteed
+    % to be contained by the fixed export canvas.
+    legendCounts = unique([1,ceil(config.numberOfRuns/2),config.numberOfRuns]);
+    legendHandles = gobjects(numel(legendCounts),1);
+    legendLabels = strings(numel(legendCounts),1);
+    for legendIndex=1:numel(legendCounts)
+        countValue = legendCounts(legendIndex);
+        areaValue = minimumMarkerArea + ...
+            (maximumMarkerArea-minimumMarkerArea)*(countValue/config.numberOfRuns);
+        legendHandles(legendIndex)=scatter(axesHandles(1),nan,nan,areaValue,"o", ...
+            "MarkerFaceColor",objectiveColor, ...
+            "MarkerEdgeColor",[1 1 1],"LineWidth",0.8);
+        legendLabels(legendIndex)=sprintf("%d/%d runs", ...
+            countValue,config.numberOfRuns);
+    end
+
+    lgd=legend(axesHandles(1),legendHandles,legendLabels, ...
+        "Location","northeast","Box","off");
+    lgd.FontName=style.fontName;
+    lgd.FontSize=max(14,style.legendFontSize-2);
+    lgd.FontWeight="bold";
+    lgd.Title.String="Selection frequency";
+    lgd.Title.FontWeight="bold";
+    lgd.AutoUpdate="off";
 
     cb=colorbar(axesHandles(end));
     cb.Layout.Tile="east";
@@ -75,23 +117,16 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     cb.FontSize=style.axisFontSize;
     cb.FontWeight="bold";
 
-    annotation(fig,"textbox",[0.08 0.012 0.84 0.045], ...
-        "String",sprintf("Marker area scales with selection frequency across %d runs", ...
-        config.numberOfRuns), ...
-        "HorizontalAlignment","center","VerticalAlignment","middle", ...
-        "EdgeColor","none","FontName",style.fontName, ...
-        "FontSize",style.annotationFontSize,"FontWeight","bold", ...
-        "Interpreter","none");
-
     outputFile=fullfile(outputDirectory, ...
         sprintf("network_locations_vs_ns_%s.eps",objectiveMode));
-    exportManuscriptFigure(fig,string(outputFile),11,10.5);
+    exportManuscriptFigure(fig,string(outputFile),11,9.6);
     plotInfo.(fieldName)=struct("figure",fig,"outputFile",string(outputFile));
 end
 end
 
 function b=buildSouthernHemisphereBackground(dem,moonRadiusKm)
-lon=linspace(0,360,721); lat=linspace(-90,0,361);
+lon=linspace(0,360,721);
+lat=linspace(-90,0,361);
 [lonM,latM]=meshgrid(lon,lat);
 elev=double(dem(deg2rad(latM),deg2rad(lonM)));
 r=moonRadiusKm.*deg2rad(90+latM);
@@ -104,25 +139,37 @@ function drawBackground(ax,b,style)
 hold(ax,"on");
 surf(ax,b.x,b.y,zeros(size(b.x)),b.elevation, ...
     "EdgeColor","none","FaceColor","interp");
-view(ax,2); colormap(ax,turbo(256)); clim(ax,b.limits);
+view(ax,2);
+colormap(ax,turbo(256));
+clim(ax,b.limits);
+
 for lat=[-75 -45]
     r=b.moonRadiusKm*deg2rad(90+lat);
     th=linspace(0,360,721);
-    plot(ax,r*sind(th),r*cosd(th),"--","Color",[.18 .18 .18],"LineWidth",0.8);
+    plot(ax,r*sind(th),r*cosd(th),"--", ...
+        "Color",[.18 .18 .18],"LineWidth",0.8);
 end
+
 for lon=[0 90 180 270]
     plot(ax,[0 b.radius]*sind(lon),[0 b.radius]*cosd(lon),"--", ...
         "Color",[.18 .18 .18],"LineWidth",0.8);
 end
-axis(ax,"equal"); axis(ax,"off");
-lim=b.radius+70; xlim(ax,[-lim lim]); ylim(ax,[-lim lim]);
-ax.FontName=style.fontName; ax.FontWeight="bold";
+
+axis(ax,"equal");
+axis(ax,"off");
+lim=b.radius+70;
+xlim(ax,[-lim lim]);
+ylim(ax,[-lim lim]);
+ax.FontName=style.fontName;
+ax.FontWeight="bold";
 end
 
 function [x,y]=candidateXY(indices,database,moonRadiusKm)
 lat=rad2deg(database.candidates.latitudesRad(indices));
 lon=rad2deg(database.candidates.longitudesRad(indices));
 r=moonRadiusKm.*deg2rad(90+lat);
-x=r.*sind(lon); y=r.*cosd(lon);
-x=x(:); y=y(:);
+x=r.*sind(lon);
+y=r.*cosd(lon);
+x=x(:);
+y=y(:);
 end

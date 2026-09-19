@@ -4,7 +4,7 @@ function [initialStatesMoonInertial,rsoCatalog] = ...
 %
 % Included spacecraft:
 %   1. LRO
-%   2. Chandrayaan-2
+%   2. Chandrayaan-1
 %   3. Danuri
 %   4. Queqiao-2
 %
@@ -27,7 +27,7 @@ end
 
 names = [
     "LRO"
-    "Chandrayaan-2"
+    "Chandrayaan-1"
     "Danuri"
     "Queqiao-2"
 ];
@@ -93,7 +93,7 @@ trueAnomalyRad = deg2rad([
 
 sourceReferences = [
     "https://svs.gsfc.nasa.gov/3576"
-    "https://www.isro.gov.in/Chandrayaan2_science.html"
+    "https://www.isro.gov.in/Chandrayaan1.html"
     "https://kari.re.kr/eng/contents/194"
     "Representative observed orbit; replace with dated ephemeris"
 ];

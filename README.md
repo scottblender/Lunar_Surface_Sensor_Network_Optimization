@@ -152,7 +152,7 @@ The RSO-generation package supports three selections:
 The representative operational set currently contains:
 
 - LRO
-- Chandrayaan-2
+- Chandrayaan-1
 - Danuri
 - Queqiao-2
 
@@ -369,16 +369,10 @@ Local DEM and generated data should be placed under
 data/
 ```
 
-The CLPS south-polar plotting script currently expects
-
-```text
-data/new_lunar_interpolant_model.mat
-```
-
-containing a processed lunar `griddedInterpolant`.
-
-The repository intentionally does not track local contents of `data/` or
-`results/`.
+The production manuscript figures resolve the processed lunar DEMs from
+`data/Synthetic_Lunar_DEM.mat` and `data/Full_Resolution_DEM.mat`, as
+appropriate. The repository intentionally does not track local contents of
+`data/` or `results/`.
 
 ## Recommended validation sequence
 
@@ -429,11 +423,15 @@ results/manuscript_artifacts/
 
 The driver calls focused plot/table functions for the CLPS design-domain map,
 reference-frame and RA/Dec schematics, original/synthetic DEM figures,
-optimization convergence, sensor-selection frequency, design- and operational-
-RSO tracking, Monte Carlo robustness when available, and manuscript tables.
-The optimization workflow remains a TikZ figure and is regenerated as
+celestial occultation/exclusion geometry, optimization convergence,
+sensor-selection frequency, measurement-screening breakdown, design- and
+operational-RSO tracking, Monte Carlo robustness when available, matched
+restricted-domain comparison when supplied, and manuscript tables. The
+optimization workflow remains a TikZ figure and is regenerated as
 `optimization_workflow.tex`.
 
+The driver also writes `manuscript_artifact_manifest.csv`, which checks the
+expected manuscript figures/tables and reports missing optional products.
 A complete audit of retained and retired plotting scripts is documented in
 `scripts/FIGURE_TABLE_AUDIT.md`.
 
@@ -472,5 +470,7 @@ components needed for lunar surface sensor-network optimization:
 - Coverage and information objectives
 - Regression tests for the major modeling components
 
-The next layer of the project can use these components to perform discrete
-sensor-site optimization over the precomputed candidate network.
+The production workflow uses these components to perform discrete GA
+sensor-site optimization over the precomputed candidate network and to
+generate the manuscript figures, tables, and validation products from the
+completed campaign.
