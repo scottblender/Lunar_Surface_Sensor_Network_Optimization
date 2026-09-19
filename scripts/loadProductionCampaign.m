@@ -147,6 +147,15 @@ tf = studyState.numberOfRuns == config.numberOfRuns && ...
     cfg.populationSize == config.populationSize && ...
     cfg.baseSeed == config.baseSeed && ...
     string(cfg.studyName) == config.studyName;
+
+% When the study summary records the frozen database path, require it to
+% match the requested campaign database. This prevents full-domain and
+% restricted-domain studies stored under the same results root from being
+% mixed by the manuscript loader.
+if tf && isfield(cfg,"databaseFile")
+    tf = normalizePath(string(cfg.databaseFile)) == ...
+        normalizePath(string(config.databaseFile));
+end
 end
 
 function timestamp = extractTimestamp(folderName)
@@ -155,6 +164,13 @@ if isempty(tokens)
     timestamp = NaT;
 else
     timestamp = datetime(string(tokens{1}),"InputFormat","yyyyMMdd_HHmmss");
+end
+end
+
+function value = normalizePath(value)
+value = replace(string(value),"\","/");
+if ispc
+    value = lower(value);
 end
 end
 

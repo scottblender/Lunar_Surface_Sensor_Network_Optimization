@@ -8,7 +8,17 @@ function result = generateDomainComparisonProducts(fullCampaign,userConfig)
 % It also uses a compact common-budget table:
 %   tables/domain_comparison.csv
 %
-% Required userConfig fields:
+% Preferred configuration:
+%   restrictedCampaignAnchor
+%       Folder name, folder path, or study_summary.mat for any one case in
+%       the restricted campaign. Example:
+%       "ga_coverage_n3_20260915_121933"
+%
+% The anchor lets this function infer the restricted frozen database and
+% study name even when full- and restricted-domain runs live under the same
+% results/optimization_runs directory.
+%
+% Legacy explicit configuration is also supported:
 %   restrictedResultsDirectory
 %   restrictedDatabaseFile
 %
@@ -23,21 +33,70 @@ arguments
     userConfig (1,1) struct
 end
 
-assert(isfield(userConfig,"restrictedResultsDirectory") && ...
-    strlength(string(userConfig.restrictedResultsDirectory))>0, ...
-    "Set userConfig.restrictedResultsDirectory for the south-polar campaign.");
-assert(isfield(userConfig,"restrictedDatabaseFile") && ...
-    strlength(string(userConfig.restrictedDatabaseFile))>0, ...
-    "Set userConfig.restrictedDatabaseFile for the south-polar campaign.");
-
 restrictedConfig=fullCampaign.configuration;
-restrictedConfig.resultsDirectory=string(userConfig.restrictedResultsDirectory);
-restrictedConfig.databaseFile=string(userConfig.restrictedDatabaseFile);
 restrictedConfig.outputDirectory=string(fullCampaign.outputDirectory);
-if isfield(userConfig,"restrictedStudyName") && ...
-        strlength(string(userConfig.restrictedStudyName))>0
-    restrictedConfig.studyName=string(userConfig.restrictedStudyName);
+
+anchor="";
+if isfield(userConfig,"restrictedCampaignAnchor")
+    anchor=string(userConfig.restrictedCampaignAnchor);
 end
+
+if strlength(anchor)>0
+    [anchorSummaryFile,anchorStudy]=resolveCampaignAnchor( ...
+        anchor,string(fullCampaign.projectRoot), ...
+        string(fullCampaign.configuration.resultsDirectory));
+
+    restrictedConfig.resultsDirectory= ...
+        string(fullCampaign.configuration.resultsDirectory);
+    if isfield(userConfig,"restrictedResultsDirectory") && ...
+            strlength(string(userConfig.restrictedResultsDirectory))>0
+        restrictedConfig.resultsDirectory= ...
+            string(userConfig.restrictedResultsDirectory);
+    end
+
+    assert(isfield(anchorStudy.config,"databaseFile"), ...
+        "Restricted anchor study does not record config.databaseFile.");
+    restrictedConfig.databaseFile=string(anchorStudy.config.databaseFile);
+    restrictedConfig.studyName=string(anchorStudy.config.studyName);
+
+    % If the stored path no longer exists, try the same database basename
+    % directly under the active results directory.
+    if ~isfile(restrictedConfig.databaseFile)
+        [~,databaseName,databaseExtension]= ...
+            fileparts(restrictedConfig.databaseFile);
+        relocatedDatabase=fullfile( ...
+            restrictedConfig.resultsDirectory, ...
+            databaseName+databaseExtension);
+        assert(isfile(relocatedDatabase), ...
+            ["Restricted database from anchor study was not found:\n%s\n" ...
+             "Also tried:\n%s"], ...
+            restrictedConfig.databaseFile,relocatedDatabase);
+        restrictedConfig.databaseFile=string(relocatedDatabase);
+    end
+
+    fprintf("Restricted campaign anchor:\n  %s\n",anchorSummaryFile);
+    fprintf("Restricted database:\n  %s\n",restrictedConfig.databaseFile);
+else
+    assert(isfield(userConfig,"restrictedResultsDirectory") && ...
+        strlength(string(userConfig.restrictedResultsDirectory))>0, ...
+        ["Set restrictedCampaignAnchor, or provide " ...
+         "restrictedResultsDirectory and restrictedDatabaseFile."]);
+    assert(isfield(userConfig,"restrictedDatabaseFile") && ...
+        strlength(string(userConfig.restrictedDatabaseFile))>0, ...
+        ["Set restrictedCampaignAnchor, or provide " ...
+         "restrictedResultsDirectory and restrictedDatabaseFile."]);
+
+    restrictedConfig.resultsDirectory= ...
+        string(userConfig.restrictedResultsDirectory);
+    restrictedConfig.databaseFile= ...
+        string(userConfig.restrictedDatabaseFile);
+
+    if isfield(userConfig,"restrictedStudyName") && ...
+            strlength(string(userConfig.restrictedStudyName))>0
+        restrictedConfig.studyName=string(userConfig.restrictedStudyName);
+    end
+end
+
 restrictedCampaign=loadProductionCampaign(restrictedConfig);
 
 networkSizes=fullCampaign.configuration.networkSizes;
@@ -356,4 +415,35 @@ if isempty(starts)
 else
     longest=max(stops-starts+1);
 end
+end
+
+function [summaryFile,studyState]=resolveCampaignAnchor(anchor,projectRoot,resultsDirectory)
+anchor=string(anchor);
+candidates=strings(0,1);
+
+if isfile(anchor)
+    candidates(end+1,1)=anchor;
+elseif isfolder(anchor)
+    candidates(end+1,1)=fullfile(anchor,"study_summary.mat");
+else
+    candidates(end+1,1)=fullfile( ...
+        resultsDirectory,"optimization_runs",anchor,"study_summary.mat");
+    candidates(end+1,1)=fullfile(projectRoot,anchor,"study_summary.mat");
+end
+
+summaryFile="";
+for k=1:numel(candidates)
+    if isfile(candidates(k))
+        summaryFile=candidates(k);
+        break
+    end
+end
+
+assert(strlength(summaryFile)>0, ...
+    "Restricted campaign anchor could not be resolved: %s",anchor);
+
+data=load(summaryFile,"studyState");
+assert(isfield(data,"studyState") && isfield(data.studyState,"config"), ...
+    "Restricted campaign anchor does not contain a valid studyState.");
+studyState=data.studyState;
 end

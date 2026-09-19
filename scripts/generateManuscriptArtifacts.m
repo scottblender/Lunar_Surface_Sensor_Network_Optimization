@@ -41,6 +41,7 @@ defaults.generateRobustnessValidation=true;
 defaults.generateDemValidation=true;
 defaults.validateArtifacts=true;
 defaults.strictArtifactValidation=false;
+defaults.restrictedCampaignAnchor="";
 defaults.restrictedResultsDirectory="";
 defaults.restrictedDatabaseFile="";
 defaults.restrictedStudyName="";
@@ -50,6 +51,7 @@ defaults.operationalTableObjective="information";
 defaults.operationalTableNetworkSize=10;
 config=mergeStruct(defaults,userConfig);
 config.outputDirectory=string(config.outputDirectory);
+config.restrictedCampaignAnchor=string(config.restrictedCampaignAnchor);
 config.restrictedResultsDirectory=string(config.restrictedResultsDirectory);
 config.restrictedDatabaseFile=string(config.restrictedDatabaseFile);
 config.restrictedStudyName=string(config.restrictedStudyName);
@@ -118,13 +120,15 @@ end
 
 %% Restricted-domain comparison
 
-if strlength(config.restrictedResultsDirectory)>0 && ...
-        strlength(config.restrictedDatabaseFile)>0
+if strlength(config.restrictedCampaignAnchor)>0 || ...
+        (strlength(config.restrictedResultsDirectory)>0 && ...
+         strlength(config.restrictedDatabaseFile)>0)
     products.domainComparison=runJob("restricted-domain comparison", ...
         @()generateDomainComparisonProducts(campaign,config),false);
 else
     fprintf(["SKIP restricted-domain comparison: set " ...
-        "restrictedResultsDirectory and restrictedDatabaseFile.\n"]);
+        "restrictedCampaignAnchor (preferred), or the explicit restricted " ...
+        "results/database paths.\n"]);
 end
 
 %% Operational/legacy spacecraft evaluation
