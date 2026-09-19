@@ -344,9 +344,8 @@ optimization.precomputeTrackingData
 
 so candidate networks can reuse common propagated target and visibility data.
 
-The current `main` branch provides the physical models, precomputation
-pipeline, and objective functions used for sensor-network design. A single
-`run_opt.m`-style end-to-end optimizer entry point has not yet been added.
+The production optimizer is driven by `scripts/runGlobalOptimization.m`,
+with the full multi-case batch campaign available under `scripts/batch/`.
 
 ## Getting started
 
@@ -414,27 +413,29 @@ The focused celestial-visibility regression verifies:
 Terrain tests separately validate the local horizon geometry and
 terrain-aware line-of-sight gate.
 
-## Figure-generation scripts
+## Manuscript figure and table generation
 
-Manuscript and study-definition graphics are located in `scripts/`.
+All manuscript artifacts are now generated from one driver:
 
 ```matlab
-% Reference-frame geometry
-run("scripts/plotReferenceFrameTransformations.m");
-
-% Surface RA/Dec measurement geometry
-run("scripts/plotAnglesOnlyMeasurementModel.m");
-
-% CLPS and lunar south-polar deployment context
-run("scripts/plotClpsLsp.m");
+products = generateManuscriptArtifacts();
 ```
 
-`plotClpsLsp.m` generates the detailed south-polar DEM figure showing completed
-CLPS landing sites, planned deployment regions, and the optimization-domain
-boundary.
+By default, outputs are written to
 
-Generated EPS, PDF, and PNG files are ignored by Git and should be regenerated
-locally when needed.
+```text
+results/manuscript_artifacts/
+```
+
+The driver calls focused plot/table functions for the CLPS design-domain map,
+reference-frame and RA/Dec schematics, original/synthetic DEM figures,
+optimization convergence, sensor-selection frequency, design- and operational-
+RSO tracking, Monte Carlo robustness when available, and manuscript tables.
+The optimization workflow remains a TikZ figure and is regenerated as
+`optimization_workflow.tex`.
+
+A complete audit of retained and retired plotting scripts is documented in
+`scripts/FIGURE_TABLE_AUDIT.md`.
 
 ## Data and outputs
 
