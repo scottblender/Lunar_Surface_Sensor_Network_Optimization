@@ -26,8 +26,9 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     fig = figure("Name",objectiveMode + " convergence", ...
         "Color",style.backgroundColor,"Units","inches", ...
-        "Position",[1 1 7.0 4.5],"Renderer","opengl");
-    ax = axes(fig,"Position",[0.13 0.17 0.82 0.66]);
+        "Position",[1 1 7.0 4.8],"Renderer","opengl");
+    % Extra left margin prevents the manuscript-size y label from clipping.
+    ax = axes(fig,"Position",[0.20 0.18 0.75 0.62]);
     hold(ax,"on");
 
     handles = gobjects(numel(config.networkSizes),1);
@@ -48,7 +49,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     end
 
     xlabel(ax,"Function evaluations");
-    ylabel(ax,"Incumbent objective, J");
+    ylabel(ax,"Mean best-so-far objective, J");
     xlim(ax,[config.populationSize config.functionEvaluationBudget]);
     applyAxesStyle(ax,style);
     lgd = legend(ax,handles,labels, ...
@@ -63,7 +64,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     outputFile = fullfile(outputDirectory, ...
         sprintf("convergence_%s.eps",objectiveMode));
-    exportManuscriptFigure(fig,string(outputFile),7.0,4.5);
+    exportManuscriptFigure(fig,string(outputFile),7.0,4.8);
 
     plotInfo.(objectiveField) = struct( ...
         "figure",fig,"outputFile",string(outputFile));
@@ -80,7 +81,7 @@ for runIndex = 1:numberOfRuns
     currentFe = double(runState.history.fe(:));
     currentBest = double(runState.history.bestJ(:));
     assert(isequal(currentFe,fe), ...
-        "Run %d uses a different FE history grid.",runIndex);
+        sprintf('Run %d uses a different FE history grid.',runIndex));
     allHistories(:,runIndex) = currentBest;
 end
 meanHistory = mean(allHistories,2);

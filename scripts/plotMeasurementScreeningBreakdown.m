@@ -75,8 +75,9 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     fig = figure("Name",objectiveMode + " measurement screening", ...
         "Color",style.backgroundColor,"Units","inches", ...
-        "Position",[1 1 7.5 5.6],"Renderer","opengl");
-    ax = axes(fig,"Position",[0.11 0.16 0.84 0.62]);
+        "Position",[1 1 7.5 5.8],"Renderer","opengl");
+    % Reserve enough left margin for the long y-axis label at paper font size.
+    ax = axes(fig,"Position",[0.18 0.16 0.77 0.62]);
     hold(ax,"on");
 
     x = 1:numel(config.networkSizes);
@@ -140,11 +141,11 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     lgd.AutoUpdate = "off";
     drawnow;
     lgd.Units = "normalized";
-    lgd.Position = [0.30 0.79 0.65 0.18];
+    lgd.Position = [0.27 0.79 0.68 0.18];
 
     outputFile = fullfile(outputDirectory, ...
         sprintf("screening_breakdown_%s.eps",objectiveMode));
-    exportManuscriptFigure(fig,string(outputFile),7.5,5.6);
+    exportManuscriptFigure(fig,string(outputFile),7.5,5.8);
 
     plotInfo.(objectiveField) = struct( ...
         "figure",fig,"outputFile",string(outputFile), ...
@@ -316,8 +317,8 @@ indices = zeros(numel(trackingTimes),1);
 for timeIndex = 1:numel(trackingTimes)
     [difference,matchIndex] = min(abs(fullTimes-trackingTimes(timeIndex)));
     assert(difference < 1e-8, ...
-        "Could not align ephemerides with tracking time %.6f s.", ...
-        trackingTimes(timeIndex));
+        sprintf('Could not align ephemerides with tracking time %.6f s.', ...
+        trackingTimes(timeIndex)));
     indices(timeIndex) = matchIndex;
 end
 
@@ -339,8 +340,8 @@ for sensorIndex = 1:numel(latitudesRad)
         cos(candidateLon-longitudesRad(sensorIndex)));
     [distance,index] = min(hypot(dLat,dLon));
     assert(distance < 1e-7, ...
-        sprintf(["Could not map optimized sensor %d into the final " ...
-        "full-domain candidate database (angular mismatch %.3g rad)."], ...
+        sprintf(['Could not map optimized sensor %d into the final ' ...
+        'full-domain candidate database (angular mismatch %.3g rad).'], ...
         sensorIndex,distance));
     indices(sensorIndex) = index;
 end
