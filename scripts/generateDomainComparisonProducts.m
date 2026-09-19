@@ -35,32 +35,57 @@ end
 
 restrictedConfig=fullCampaign.configuration;
 restrictedConfig.outputDirectory=string(fullCampaign.outputDirectory);
+restrictedConfig.resultsDirectory= ...
+    string(fullCampaign.configuration.resultsDirectory);
+
+if isfield(userConfig,"restrictedResultsDirectory") && ...
+        strlength(string(userConfig.restrictedResultsDirectory))>0
+    restrictedConfig.resultsDirectory= ...
+        string(userConfig.restrictedResultsDirectory);
+end
+
+restrictedDate="";
+if isfield(userConfig,"restrictedCampaignDate")
+    restrictedDate=string(userConfig.restrictedCampaignDate);
+end
 
 anchor="";
 if isfield(userConfig,"restrictedCampaignAnchor")
     anchor=string(userConfig.restrictedCampaignAnchor);
 end
 
+referenceSummaryFile="";
+referenceStudy=[];
+
 if strlength(anchor)>0
-    [anchorSummaryFile,anchorStudy]=resolveCampaignAnchor( ...
+    [referenceSummaryFile,referenceStudy]=resolveCampaignAnchor( ...
         anchor,string(fullCampaign.projectRoot), ...
-        string(fullCampaign.configuration.resultsDirectory));
+        restrictedConfig.resultsDirectory);
 
-    restrictedConfig.resultsDirectory= ...
-        string(fullCampaign.configuration.resultsDirectory);
-    if isfield(userConfig,"restrictedResultsDirectory") && ...
-            strlength(string(userConfig.restrictedResultsDirectory))>0
-        restrictedConfig.resultsDirectory= ...
-            string(userConfig.restrictedResultsDirectory);
+    anchorDate=extractCampaignDate(referenceSummaryFile);
+    if strlength(restrictedDate)==0
+        restrictedDate=anchorDate;
+    else
+        assert(restrictedDate==anchorDate, ...
+            "restrictedCampaignDate does not match restrictedCampaignAnchor.");
     end
+elseif strlength(restrictedDate)>0
+    [referenceSummaryFile,referenceStudy]=resolveCampaignDate( ...
+        restrictedDate,restrictedConfig.resultsDirectory);
+end
 
-    assert(isfield(anchorStudy.config,"databaseFile"), ...
-        "Restricted anchor study does not record config.databaseFile.");
-    restrictedConfig.databaseFile=string(anchorStudy.config.databaseFile);
-    restrictedConfig.studyName=string(anchorStudy.config.studyName);
+if ~isempty(referenceStudy)
+    assert(isfield(referenceStudy.config,"databaseFile"), ...
+        "Restricted campaign reference does not record config.databaseFile.");
 
-    % If the stored path no longer exists, try the same database basename
-    % directly under the active results directory.
+    restrictedConfig.databaseFile=string(referenceStudy.config.databaseFile);
+    restrictedConfig.studyName=string(referenceStudy.config.studyName);
+
+    % The date identifies the complete restricted campaign. All matching
+    % N_s/objective folders from that date are loaded, not just the anchor.
+    restrictedConfig.campaignDate=restrictedDate;
+    restrictedConfig.requireDatabaseMatch=false;
+
     if ~isfile(restrictedConfig.databaseFile)
         [~,databaseName,databaseExtension]= ...
             fileparts(restrictedConfig.databaseFile);
@@ -68,26 +93,21 @@ if strlength(anchor)>0
             restrictedConfig.resultsDirectory, ...
             databaseName+databaseExtension);
         assert(isfile(relocatedDatabase), ...
-            ["Restricted database from anchor study was not found:\n%s\n" ...
+            ["Restricted database from the dated campaign was not found:\n%s\n" ...
              "Also tried:\n%s"], ...
             restrictedConfig.databaseFile,relocatedDatabase);
         restrictedConfig.databaseFile=string(relocatedDatabase);
     end
 
-    fprintf("Restricted campaign anchor:\n  %s\n",anchorSummaryFile);
+    fprintf("Restricted campaign date: %s\n",restrictedDate);
+    fprintf("Restricted campaign reference:\n  %s\n",referenceSummaryFile);
     fprintf("Restricted database:\n  %s\n",restrictedConfig.databaseFile);
 else
-    assert(isfield(userConfig,"restrictedResultsDirectory") && ...
-        strlength(string(userConfig.restrictedResultsDirectory))>0, ...
-        ["Set restrictedCampaignAnchor, or provide " ...
-         "restrictedResultsDirectory and restrictedDatabaseFile."]);
     assert(isfield(userConfig,"restrictedDatabaseFile") && ...
         strlength(string(userConfig.restrictedDatabaseFile))>0, ...
-        ["Set restrictedCampaignAnchor, or provide " ...
-         "restrictedResultsDirectory and restrictedDatabaseFile."]);
+        ["Set restrictedCampaignDate/restrictedCampaignAnchor, or provide " ...
+         "restrictedDatabaseFile explicitly."]);
 
-    restrictedConfig.resultsDirectory= ...
-        string(userConfig.restrictedResultsDirectory);
     restrictedConfig.databaseFile= ...
         string(userConfig.restrictedDatabaseFile);
 

@@ -23,6 +23,8 @@ defaults.functionEvaluationBudget = 12000;
 defaults.populationSize = 60;
 defaults.baseSeed = 1000;
 defaults.studyName = "lunar_surface_production_optimization";
+defaults.campaignDate = "";
+defaults.requireDatabaseMatch = true;
 defaults.maximumCampaignSpanHours = 168;
 config = mergeStruct(defaults,userConfig);
 
@@ -32,6 +34,8 @@ config.outputDirectory = string(config.outputDirectory);
 config.networkSizes = double(config.networkSizes(:).');
 config.objectiveModes = lower(string(config.objectiveModes(:).'));
 config.studyName = string(config.studyName);
+config.campaignDate = string(config.campaignDate);
+config.requireDatabaseMatch = logical(config.requireDatabaseMatch);
 
 assert(isfile(config.databaseFile), ...
     "Production optimization database was not found: %s",config.databaseFile);
@@ -65,6 +69,14 @@ for networkIndex = 1:numberOfNetworkSizes
         for fileIndex = 1:numel(allSummaryFiles)
             candidateFile = string(fullfile( ...
                 allSummaryFiles(fileIndex).folder,allSummaryFiles(fileIndex).name));
+
+            studyDirectory = string(fileparts(candidateFile));
+            [~,folderName] = fileparts(studyDirectory);
+            if strlength(config.campaignDate) > 0 && ...
+                    extractDateToken(folderName) ~= config.campaignDate
+                continue
+            end
+
             loaded = load(candidateFile,"studyState");
             if ~isfield(loaded,"studyState")
                 continue
@@ -74,7 +86,6 @@ for networkIndex = 1:numberOfNetworkSizes
                 continue
             end
 
-            studyDirectory = string(fileparts(candidateFile));
             complete = true;
             for runIndex = 1:config.numberOfRuns
                 if ~isfile(fullfile(studyDirectory,sprintf("run_%03d.mat",runIndex)))
@@ -152,9 +163,18 @@ tf = studyState.numberOfRuns == config.numberOfRuns && ...
 % match the requested campaign database. This prevents full-domain and
 % restricted-domain studies stored under the same results root from being
 % mixed by the manuscript loader.
-if tf && isfield(cfg,"databaseFile")
+if tf && config.requireDatabaseMatch && isfield(cfg,"databaseFile")
     tf = normalizePath(string(cfg.databaseFile)) == ...
         normalizePath(string(config.databaseFile));
+end
+end
+
+function dateToken = extractDateToken(folderName)
+tokens = regexp(string(folderName),"_(\d{8})_\d{6}$","tokens","once");
+if isempty(tokens)
+    dateToken = "";
+else
+    dateToken = string(tokens{1});
 end
 end
 
