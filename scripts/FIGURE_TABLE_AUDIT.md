@@ -35,6 +35,9 @@ their EPS outputs into the manuscript artifact directory.
 - \`plotDesignRsoTrackingHeatmaps.m\`: design-RSO performance figure and table.
 - \`buildManuscriptTables.m\`: study-definition and optimization tables.
 
+Development-only plotting retained for regression/pilot use:
+- `plotOptimizationPilotResults.m` (required by the pilot-result regression test).
+
 Existing focused validation functions remain in place:
 \`evaluateOperationalRsoNetworks.m\`, \`evaluateDiscreteNeighborRobustness.m\`,
 \`evaluateDemResolutionValidation.m\`, and \`plotMonteCarloConferenceFigure.m\`.
