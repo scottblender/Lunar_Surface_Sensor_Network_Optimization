@@ -317,7 +317,7 @@ assert(maximumJacobianError < 1e-12, ...
 
 %% Objective smoke test across chunk boundaries
 
-nonemptyChunks = find([chunkMetadata.numberOfRetainedCandidates] > 0);
+nonemptyChunks = find([chunks.numberOfRetainedCandidates] > 0);
 representativeNetwork = zeros(0,1);
 
 for chunkIndex = nonemptyChunks(:).'
