@@ -61,6 +61,7 @@ restrictedConfig.resultsDirectory = resultsDirectory;
 restrictedConfig.outputDirectory = string(fullCampaign.outputDirectory);
 restrictedConfig.campaignDate = "";
 restrictedConfig.campaignDates = restrictedDate;
+restrictedConfig.functionEvaluationBudget = 6000;
 restrictedConfig.requireDatabaseMatch = false;
 
 if isfield(referenceStudy.config,"studyName")
