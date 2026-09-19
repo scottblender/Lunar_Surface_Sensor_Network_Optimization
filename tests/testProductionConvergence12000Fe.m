@@ -1,37 +1,69 @@
 %% testProductionConvergence12000Fe
-% Post-run convergence diagnostic for the revised production campaign.
+% Post-run convergence/consistency diagnostic for the 12000-FE production
+% campaign.
 %
-% This script does not rerun the optimizer. It finds the newest complete
-% 12000-FE / 20-run study for every objective and network size, verifies the
-% saved best-so-far histories, and reports terminal-slope and run-to-run
-% dispersion metrics. Convergence should be judged from a near-zero terminal
-% slope together with a small across-run standard deviation; no arbitrary
-% pass/fail numerical threshold is imposed here.
+% The script does not rerun the optimizer. It finds the newest complete
+% 12000-FE / 20-run production study for every objective and network size,
+% verifies the saved best-so-far histories, prints quantitative convergence
+% metrics, and plots all 20 independent histories for every case.
+%
+% "Consistent plateau" is intentionally a diagnostic label rather than a
+% mathematical proof of global convergence. The thresholds below are
+% explicit and easy to change.
 
 clear;
+close all;
 clc;
 
-%% Project paths and production definition
+%% ========================================================================
+%  Project paths and production definition
+%  ========================================================================
 
 testDirectory = fileparts(mfilename("fullpath"));
 projectRoot = fileparts(testDirectory);
 runRoot = fullfile(projectRoot,"results","optimization_runs");
+resultsDirectory = fullfile(projectRoot,"results");
 
 assert(isfolder(runRoot), ...
     "Optimization result directory was not found: %s",runRoot);
 
 networkSizes = [3 5 7 10];
 objectiveModes = ["information","coverage"];
+
 numberOfRuns = 20;
 functionEvaluationBudget = 12000;
 populationSize = 60;
 baseSeed = 1000;
 studyName = "lunar_surface_production_optimization";
+
+%% ========================================================================
+%  Diagnostic settings
+%  ========================================================================
+
+% Final quarter of the FE history is treated as the terminal window.
 terminalWindowFraction = 0.25;
 
-%% Discover completed studies
+% A run is considered to have reached its practical plateau when at most 1%
+% of that run's total best-so-far improvement remains.
+plateauRemainingFraction = 0.01;
+
+% Heuristic consistency thresholds. These are diagnostics, not proofs.
+maximumP90LateImprovementFraction = 0.05;
+maximumFinalStdToMeanGain = 0.05;
+plateauCheckFractionOfBudget = 0.90;
+minimumFractionRunsPlateaued = 0.80;
+
+% Interactive diagnostic figures are useful after a completed campaign.
+showPerCaseFigures = true;
+showSummaryFigure = true;
+writeSummaryCsv = true;
+
+%% ========================================================================
+%  Discover completed studies
+%  ========================================================================
 
 summaryFiles = dir(fullfile(runRoot,"*","study_summary.mat"));
+
 assert(~isempty(summaryFiles), ...
     "No production study summaries were found.");
 
@@ -42,60 +74,152 @@ numberOfCases = numel(networkSizes)*numel(objectiveModes);
 
 objectiveColumn = strings(numberOfCases,1);
 networkSizeColumn = zeros(numberOfCases,1);
+
 finalMeanObjective = zeros(numberOfCases,1);
 finalStdObjective = zeros(numberOfCases,1);
-relativeFinalStd = zeros(numberOfCases,1);
+bestWorstGap = zeros(numberOfCases,1);
+meanTotalGain = zeros(numberOfCases,1);
+
 terminalSlopePer1000Fe = zeros(numberOfCases,1);
-terminalImprovement = zeros(numberOfCases,1);
-terminalImprovementFraction = zeros(numberOfCases,1);
-terminalMeanStd = zeros(numberOfCases,1);
+normalizedTerminalSlopePer1000Fe = zeros(numberOfCases,1);
+meanLateImprovementFraction = zeros(numberOfCases,1);
+p90LateImprovementFraction = zeros(numberOfCases,1);
+
+medianPlateauFe = zeros(numberOfCases,1);
+fractionRunsPlateauedByCheckFe = zeros(numberOfCases,1);
+finalStdToMeanGain = zeros(numberOfCases,1);
+
+consistentPlateau = false(numberOfCases,1);
+diagnosticLabel = strings(numberOfCases,1);
 studyFileColumn = strings(numberOfCases,1);
+
+historyByCase = cell(numberOfCases,1);
+feByCase = cell(numberOfCases,1);
+finalObjectivesByCase = cell(numberOfCases,1);
+lateFractionsByCase = cell(numberOfCases,1);
+plateauFeByCase = cell(numberOfCases,1);
 
 row = 0;
 
 for objectiveIndex = 1:numel(objectiveModes)
+
     objectiveMode = objectiveModes(objectiveIndex);
 
     for networkIndex = 1:numel(networkSizes)
+
         networkSize = networkSizes(networkIndex);
         row = row + 1;
 
         [studyState,summaryFile] = findStudy( ...
-            summaryFiles,networkSize,objectiveMode,numberOfRuns, ...
-            functionEvaluationBudget,populationSize,baseSeed,studyName);
+            summaryFiles, ...
+            networkSize, ...
+            objectiveMode, ...
+            numberOfRuns, ...
+            functionEvaluationBudget, ...
+            populationSize, ...
+            baseSeed, ...
+            studyName);
 
         assert(numel(studyState.runStates) == numberOfRuns, ...
             "Study contains the wrong number of runs.");
 
+        assert(numel(studyState.bestObjectives) == numberOfRuns, ...
+            "Study best-objective vector has the wrong length.");
+
         referenceFe = double(studyState.runStates{1}.history.fe(:));
+
         assert(referenceFe(end) == functionEvaluationBudget, ...
             "Convergence history does not reach 12000 FE.");
 
+        assert(all(diff(referenceFe) > 0), ...
+            "FE history is not strictly increasing.");
+
         historyMatrix = zeros(numel(referenceFe),numberOfRuns);
+        runFinalObjectives = zeros(numberOfRuns,1);
+        runTotalGain = zeros(numberOfRuns,1);
+        runLateImprovementFraction = zeros(numberOfRuns,1);
+        runPlateauFe = zeros(numberOfRuns,1);
+
+        terminalStartFe = ...
+            functionEvaluationBudget*(1-terminalWindowFraction);
+
+        terminalStartIndex = ...
+            find(referenceFe >= terminalStartFe,1,"first");
+
+        assert(~isempty(terminalStartIndex), ...
+            "Unable to identify the terminal convergence window.");
 
         for runIndex = 1:numberOfRuns
+
             runState = studyState.runStates{runIndex};
+
             runFe = double(runState.history.fe(:));
             runBest = double(runState.history.bestJ(:));
 
             assert(isequal(runFe,referenceFe), ...
                 "Run FE histories are not aligned.");
+
             assert(numel(runBest) == numel(referenceFe), ...
                 "Run best-objective history has the wrong length.");
+
+            assert(all(isfinite(runBest)), ...
+                "Run convergence history contains nonfinite values.");
+
             assert(all(diff(runBest) <= 1e-12), ...
                 "Saved best-so-far history increased within a run.");
+
             assert(runState.searchFunctionEvaluations == ...
                 functionEvaluationBudget, ...
                 "Saved run did not use the full 12000-FE budget.");
 
+            objectiveTolerance = ...
+                1e-10*max(1,abs(runState.bestObjective));
+
+            assert(abs(runBest(end)-runState.bestObjective) <= ...
+                objectiveTolerance, ...
+                "Run history does not terminate at the stored incumbent.");
+
             historyMatrix(:,runIndex) = runBest;
+            runFinalObjectives(runIndex) = runBest(end);
+
+            totalGain = runBest(1)-runBest(end);
+            lateGain = runBest(terminalStartIndex)-runBest(end);
+
+            gainTolerance = ...
+                1e-12*max(1,abs(runBest(1)));
+
+            if totalGain > gainTolerance
+                lateFraction = lateGain/totalGain;
+            else
+                lateFraction = 0;
+            end
+
+            runTotalGain(runIndex) = totalGain;
+            runLateImprovementFraction(runIndex) = lateFraction;
+
+            plateauThreshold = ...
+                plateauRemainingFraction*max(totalGain,0);
+
+            remainingImprovement = ...
+                runBest-runBest(end);
+
+            plateauIndex = find( ...
+                remainingImprovement <= ...
+                plateauThreshold + gainTolerance, ...
+                1, ...
+                "first");
+
+            assert(~isempty(plateauIndex), ...
+                "Unable to identify practical plateau FE.");
+
+            runPlateauFe(runIndex) = referenceFe(plateauIndex);
         end
+
+        %% Mean-history terminal diagnostics
 
         meanHistory = mean(historyMatrix,2);
         stdHistory = std(historyMatrix,0,2);
 
-        terminalStartFe = ...
-            functionEvaluationBudget*(1-terminalWindowFraction);
         terminalMask = referenceFe >= terminalStartFe;
         terminalFe = referenceFe(terminalMask);
         terminalMean = meanHistory(terminalMask);
@@ -106,73 +230,233 @@ for objectiveIndex = 1:numel(objectiveModes)
         coefficients = polyfit(terminalFe,terminalMean,1);
         slopePerFe = coefficients(1);
 
-        terminalDelta = terminalMean(1)-terminalMean(end);
-        totalDelta = meanHistory(1)-meanHistory(end);
+        finalMean = mean(runFinalObjectives);
+        finalStd = std(runFinalObjectives);
+        caseMeanGain = mean(runTotalGain);
 
-        if abs(totalDelta) > eps(max(1,abs(meanHistory(1))))
-            terminalFraction = terminalDelta/totalDelta;
-        else
-            terminalFraction = 0;
-        end
+        gainScale = max( ...
+            caseMeanGain, ...
+            1e-12*max(1,abs(finalMean)));
 
-        finalMean = mean(studyState.bestObjectives(:));
-        finalStd = std(studyState.bestObjectives(:));
+        caseP90LateFraction = ...
+            localPercentile(runLateImprovementFraction,90);
+
+        caseMedianPlateauFe = median(runPlateauFe);
+
+        plateauCheckFe = ...
+            plateauCheckFractionOfBudget*functionEvaluationBudget;
+
+        caseFractionPlateaued = ...
+            mean(runPlateauFe <= plateauCheckFe);
+
+        caseFinalStdToGain = ...
+            finalStd/gainScale;
+
+        caseNormalizedSlope = ...
+            abs(slopePerFe*1000)/gainScale;
+
+        caseConsistent = ...
+            caseP90LateFraction <= ...
+                maximumP90LateImprovementFraction && ...
+            caseFinalStdToGain <= ...
+                maximumFinalStdToMeanGain && ...
+            caseFractionPlateaued >= ...
+                minimumFractionRunsPlateaued;
+
+        caseLabel = classifyDiagnostic( ...
+            caseP90LateFraction, ...
+            caseFinalStdToGain, ...
+            caseFractionPlateaued, ...
+            maximumP90LateImprovementFraction, ...
+            maximumFinalStdToMeanGain, ...
+            minimumFractionRunsPlateaued);
+
+        %% Store case summary
 
         objectiveColumn(row) = objectiveMode;
         networkSizeColumn(row) = networkSize;
+
         finalMeanObjective(row) = finalMean;
         finalStdObjective(row) = finalStd;
-        relativeFinalStd(row) = finalStd/max(1,abs(finalMean));
+        bestWorstGap(row) = ...
+            max(runFinalObjectives)-min(runFinalObjectives);
+        meanTotalGain(row) = caseMeanGain;
+
         terminalSlopePer1000Fe(row) = slopePerFe*1000;
-        terminalImprovement(row) = terminalDelta;
-        terminalImprovementFraction(row) = terminalFraction;
-        terminalMeanStd(row) = mean(stdHistory(terminalMask));
+        normalizedTerminalSlopePer1000Fe(row) = caseNormalizedSlope;
+        meanLateImprovementFraction(row) = ...
+            mean(runLateImprovementFraction);
+        p90LateImprovementFraction(row) = ...
+            caseP90LateFraction;
+
+        medianPlateauFe(row) = caseMedianPlateauFe;
+        fractionRunsPlateauedByCheckFe(row) = ...
+            caseFractionPlateaued;
+        finalStdToMeanGain(row) = ...
+            caseFinalStdToGain;
+
+        consistentPlateau(row) = caseConsistent;
+        diagnosticLabel(row) = caseLabel;
         studyFileColumn(row) = string(summaryFile);
+
+        historyByCase{row} = historyMatrix;
+        feByCase{row} = referenceFe;
+        finalObjectivesByCase{row} = runFinalObjectives;
+        lateFractionsByCase{row} = runLateImprovementFraction;
+        plateauFeByCase{row} = runPlateauFe;
+
+        %% Per-case convergence figure
+
+        if showPerCaseFigures
+            makeConvergenceFigure( ...
+                referenceFe, ...
+                historyMatrix, ...
+                terminalStartFe, ...
+                networkSize, ...
+                objectiveMode, ...
+                finalMean, ...
+                finalStd, ...
+                caseLabel);
+        end
     end
 end
 
+%% ========================================================================
+%  Summary table
+%  ========================================================================
+
 convergenceTable = table( ...
-    objectiveColumn,networkSizeColumn,finalMeanObjective,finalStdObjective, ...
-    relativeFinalStd,terminalSlopePer1000Fe,terminalImprovement, ...
-    terminalImprovementFraction,terminalMeanStd,studyFileColumn, ...
+    objectiveColumn, ...
+    networkSizeColumn, ...
+    finalMeanObjective, ...
+    finalStdObjective, ...
+    bestWorstGap, ...
+    meanTotalGain, ...
+    finalStdToMeanGain, ...
+    terminalSlopePer1000Fe, ...
+    normalizedTerminalSlopePer1000Fe, ...
+    meanLateImprovementFraction, ...
+    p90LateImprovementFraction, ...
+    medianPlateauFe, ...
+    fractionRunsPlateauedByCheckFe, ...
+    consistentPlateau, ...
+    diagnosticLabel, ...
+    studyFileColumn, ...
     'VariableNames',{ ...
-    'Objective','NetworkSize','FinalMeanObjective','FinalStdObjective', ...
-    'RelativeFinalStd','TerminalSlopePer1000Fe','TerminalImprovement', ...
-    'TerminalImprovementFraction','TerminalMeanStd','StudySummaryFile'});
+        'Objective', ...
+        'NetworkSize', ...
+        'FinalMeanObjective', ...
+        'FinalStdObjective', ...
+        'BestWorstGap', ...
+        'MeanTotalGain', ...
+        'FinalStdToMeanGain', ...
+        'TerminalSlopePer1000Fe', ...
+        'NormalizedTerminalSlopePer1000Fe', ...
+        'MeanLateImprovementFraction', ...
+        'P90LateImprovementFraction', ...
+        'MedianPlateauFe', ...
+        'FractionRunsPlateauedBy90PctFe', ...
+        'ConsistentPlateau', ...
+        'Diagnostic', ...
+        'StudySummaryFile'});
 
 fprintf("\n");
 fprintf("============================================================\n");
-fprintf("12000-FE production convergence diagnostics\n");
-fprintf("Terminal window: final %.0f%% of FE history\n", ...
-    100*terminalWindowFraction);
+fprintf("12000-FE production convergence/consistency diagnostics\n");
 fprintf("============================================================\n");
+fprintf("Terminal window:               final %.0f%% of FE history\n", ...
+    100*terminalWindowFraction);
+fprintf("Practical plateau definition:  <= %.1f%% of run improvement remains\n", ...
+    100*plateauRemainingFraction);
+fprintf("P90 late-improvement limit:    %.1f%%\n", ...
+    100*maximumP90LateImprovementFraction);
+fprintf("Final std / mean-gain limit:   %.1f%%\n", ...
+    100*maximumFinalStdToMeanGain);
+fprintf("Plateau check FE:              %.0f%% of budget (%d FE)\n", ...
+    100*plateauCheckFractionOfBudget, ...
+    round(plateauCheckFractionOfBudget*functionEvaluationBudget));
+fprintf("Required plateaued runs:       %.0f%%\n", ...
+    100*minimumFractionRunsPlateaued);
+fprintf("============================================================\n\n");
+
 disp(convergenceTable);
 
-fprintf("\nInterpretation:\n");
-fprintf("  TerminalSlopePer1000Fe -> 0 indicates a plateau.\n");
-fprintf("  TerminalImprovementFraction -> 0 indicates little late improvement.\n");
-fprintf("  FinalStdObjective and RelativeFinalStd quantify run-to-run spread.\n");
-fprintf("No hard convergence threshold is imposed; inspect these metrics with the\n");
-fprintf("mean +/- std convergence figures.\n");
+fprintf("\nInterpretation\n");
+fprintf("-------------------------------------------\n");
+fprintf("P90LateImprovementFraction:\n");
+fprintf("  90%% of runs improved by no more than this fraction of their\n");
+fprintf("  total run improvement during the final 25%% of the FE budget.\n");
 fprintf("\n");
-fprintf("testProductionConvergence12000Fe passed structural checks.\n");
+fprintf("MedianPlateauFe:\n");
+fprintf("  median FE at which <=1%% of each run's eventual improvement remained.\n");
+fprintf("\n");
+fprintf("FinalStdToMeanGain:\n");
+fprintf("  final run-to-run objective spread normalized by the mean optimization\n");
+fprintf("  gain. Small values indicate that independent runs finish similarly.\n");
+fprintf("\n");
+fprintf("NormalizedTerminalSlopePer1000Fe:\n");
+fprintf("  magnitude of the mean terminal slope per 1000 FE, normalized by\n");
+fprintf("  the mean total optimization gain. Values near zero indicate a plateau.\n");
+fprintf("\n");
+fprintf("ConsistentPlateau is a heuristic diagnostic, not proof of global\n");
+fprintf("optimality. Inspect the individual best-so-far curves as well.\n");
 
-%% Local helper
+%% ========================================================================
+%  Summary figure: late improvement across all eight cases
+%  ========================================================================
+
+if showSummaryFigure
+    makeLateImprovementSummaryFigure( ...
+        objectiveColumn, ...
+        networkSizeColumn, ...
+        lateFractionsByCase);
+end
+
+%% ========================================================================
+%  Optional CSV output
+%  ========================================================================
+
+if writeSummaryCsv
+    csvFile = fullfile( ...
+        resultsDirectory, ...
+        "production_convergence_12000fe_summary.csv");
+
+    writetable(convergenceTable,csvFile);
+
+    fprintf("\nConvergence summary written to:\n  %s\n",csvFile);
+end
+
+fprintf("\n");
+fprintf("testProductionConvergence12000Fe passed all structural checks.\n");
+
+%% =========================================================================
+%  Local helpers
+%  =========================================================================
 
 function [studyState,summaryFile] = findStudy( ...
-    summaryFiles,networkSize,objectiveMode,numberOfRuns, ...
-    functionEvaluationBudget,populationSize,baseSeed,studyName)
+    summaryFiles, ...
+    networkSize, ...
+    objectiveMode, ...
+    numberOfRuns, ...
+    functionEvaluationBudget, ...
+    populationSize, ...
+    baseSeed, ...
+    studyName)
 
 for fileIndex = 1:numel(summaryFiles)
+
     candidateFile = fullfile( ...
-        summaryFiles(fileIndex).folder,summaryFiles(fileIndex).name);
+        summaryFiles(fileIndex).folder, ...
+        summaryFiles(fileIndex).name);
 
     data = load(candidateFile,"studyState");
+
     if ~isfield(data,"studyState")
         continue
     end
 
     candidate = data.studyState;
+
     if ~isfield(candidate,"config") || ...
             ~isfield(candidate,"numberOfRuns") || ...
             candidate.numberOfRuns ~= numberOfRuns
@@ -180,9 +464,14 @@ for fileIndex = 1:numel(summaryFiles)
     end
 
     cfg = candidate.config;
+
     requiredFields = [ ...
-        "networkSize","objectiveMode","functionEvaluationBudget", ...
-        "populationSize","baseSeed","studyName"];
+        "networkSize", ...
+        "objectiveMode", ...
+        "functionEvaluationBudget", ...
+        "populationSize", ...
+        "baseSeed", ...
+        "studyName"];
 
     if ~all(isfield(cfg,cellstr(requiredFields)))
         continue
@@ -206,4 +495,235 @@ error( ...
     "testProductionConvergence12000Fe:StudyNotFound", ...
     "No complete 12000-FE production study found for N=%d, %s.", ...
     networkSize,objectiveMode);
+
+end
+
+function value = localPercentile(values,percent)
+
+values = sort(values(:));
+numberOfValues = numel(values);
+
+assert(numberOfValues >= 1, ...
+    "Cannot evaluate a percentile of an empty array.");
+
+if numberOfValues == 1
+    value = values(1);
+    return
+end
+
+position = 1 + (numberOfValues-1)*(percent/100);
+lowerIndex = floor(position);
+upperIndex = ceil(position);
+
+if lowerIndex == upperIndex
+    value = values(lowerIndex);
+else
+    interpolationFraction = position-lowerIndex;
+    value = ...
+        values(lowerIndex) + ...
+        interpolationFraction*( ...
+            values(upperIndex)-values(lowerIndex));
+end
+
+end
+
+function label = classifyDiagnostic( ...
+    p90LateFraction, ...
+    stdToGain, ...
+    fractionPlateaued, ...
+    lateThreshold, ...
+    spreadThreshold, ...
+    plateauFractionThreshold)
+
+lateOkay = p90LateFraction <= lateThreshold;
+spreadOkay = stdToGain <= spreadThreshold;
+plateauOkay = fractionPlateaued >= plateauFractionThreshold;
+
+if lateOkay && spreadOkay && plateauOkay
+    label = "consistent plateau";
+elseif ~lateOkay && spreadOkay
+    label = "still improving";
+elseif lateOkay && ~spreadOkay
+    label = "plateau, run spread remains";
+elseif ~plateauOkay
+    label = "mixed plateau timing";
+else
+    label = "mixed";
+end
+
+end
+
+function makeConvergenceFigure( ...
+    fe, ...
+    historyMatrix, ...
+    terminalStartFe, ...
+    networkSize, ...
+    objectiveMode, ...
+    finalMean, ...
+    finalStd, ...
+    diagnosticLabel)
+
+figureName = sprintf( ...
+    "Convergence - %s - N%d", ...
+    char(objectiveMode), ...
+    networkSize);
+
+figure( ...
+    "Name",figureName, ...
+    "Color","w");
+
+hold on;
+
+% One dummy line provides a compact legend entry for all independent runs.
+runLegendHandle = plot( ...
+    NaN,NaN, ...
+    "-", ...
+    "Color",[0.70 0.70 0.70], ...
+    "LineWidth",1);
+
+for runIndex = 1:size(historyMatrix,2)
+    plot( ...
+        fe, ...
+        historyMatrix(:,runIndex), ...
+        "-", ...
+        "Color",[0.78 0.78 0.78], ...
+        "LineWidth",0.8, ...
+        "HandleVisibility","off");
+end
+
+meanHistory = mean(historyMatrix,2);
+stdHistory = std(historyMatrix,0,2);
+
+bandX = [fe;flipud(fe)];
+bandY = [ ...
+    meanHistory-stdHistory
+    flipud(meanHistory+stdHistory)];
+
+bandHandle = fill( ...
+    bandX, ...
+    bandY, ...
+    [0.85 0.85 0.85], ...
+    "EdgeColor","none", ...
+    "FaceAlpha",0.45);
+
+meanHandle = plot( ...
+    fe, ...
+    meanHistory, ...
+    "k-", ...
+    "LineWidth",2.2);
+
+terminalHandle = xline( ...
+    terminalStartFe, ...
+    "--", ...
+    "Terminal window", ...
+    "LineWidth",1.2, ...
+    "LabelVerticalAlignment","bottom");
+
+grid on;
+box on;
+
+xlabel("Function evaluations");
+ylabel("Best-so-far objective J");
+
+title( ...
+    sprintf( ...
+        "%s, N = %d | final mean = %.6g, std = %.3g | %s", ...
+        upperFirst(objectiveMode), ...
+        networkSize, ...
+        finalMean, ...
+        finalStd, ...
+        diagnosticLabel), ...
+    "Interpreter","none");
+
+legend( ...
+    [runLegendHandle,bandHandle,meanHandle,terminalHandle], ...
+    ["Independent runs","Mean \pm 1 std","Mean","Final 25%"], ...
+    "Location","best");
+
+set(gca, ...
+    "FontSize",11, ...
+    "LineWidth",1);
+
+hold off;
+
+end
+
+function makeLateImprovementSummaryFigure( ...
+    objectiveColumn, ...
+    networkSizeColumn, ...
+    lateFractionsByCase)
+
+caseLabels = strings(0,1);
+values = zeros(0,1);
+
+for caseIndex = 1:numel(lateFractionsByCase)
+
+    currentValues = ...
+        100*lateFractionsByCase{caseIndex}(:);
+
+    label = sprintf( ...
+        "%s N=%d", ...
+        upperFirst(objectiveColumn(caseIndex)), ...
+        networkSizeColumn(caseIndex));
+
+    values = [values;currentValues]; %#ok<AGROW>
+    caseLabels = [ ...
+        caseLabels
+        repmat(string(label),numel(currentValues),1)]; %#ok<AGROW>
+end
+
+orderedLabels = strings(numel(lateFractionsByCase),1);
+
+for caseIndex = 1:numel(lateFractionsByCase)
+    orderedLabels(caseIndex) = sprintf( ...
+        "%s N=%d", ...
+        upperFirst(objectiveColumn(caseIndex)), ...
+        networkSizeColumn(caseIndex));
+end
+
+x = categorical( ...
+    caseLabels, ...
+    orderedLabels, ...
+    "Ordinal",true);
+
+figure( ...
+    "Name","Late-improvement consistency across production cases", ...
+    "Color","w");
+
+boxchart(x,values);
+
+grid on;
+box on;
+
+ylabel("Improvement during final 25% of FE budget (% of total run gain)");
+xlabel("Optimization case");
+
+title( ...
+    "Run-to-run terminal improvement across 12000-FE production cases");
+
+yline( ...
+    5, ...
+    "--", ...
+    "5% reference", ...
+    "LabelHorizontalAlignment","left");
+
+set(gca, ...
+    "FontSize",11, ...
+    "LineWidth",1);
+
+end
+
+function output = upperFirst(input)
+
+input = string(input);
+
+if strlength(input) == 0
+    output = input;
+    return
+end
+
+characters = char(input);
+characters(1) = upper(characters(1));
+output = string(characters);
+
 end
