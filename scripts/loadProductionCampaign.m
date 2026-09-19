@@ -44,7 +44,7 @@ config.campaignDates = config.campaignDates(strlength(config.campaignDates) > 0)
 config.requireDatabaseMatch = logical(config.requireDatabaseMatch);
 
 assert(isfile(config.databaseFile), ...
-    "Production optimization database was not found: %s",config.databaseFile);
+    sprintf("Production optimization database was not found: %s",config.databaseFile));
 databaseData = load(config.databaseFile,"database");
 assert(isfield(databaseData,"database"), ...
     "optimization_database.mat does not contain database.");
@@ -52,11 +52,11 @@ database = databaseData.database;
 
 runRoot = fullfile(config.resultsDirectory,"optimization_runs");
 assert(isfolder(runRoot), ...
-    "Optimization result directory was not found: %s",runRoot);
+    sprintf("Optimization result directory was not found: %s",runRoot));
 
 allSummaryFiles = dir(fullfile(runRoot,"**","study_summary.mat"));
 assert(~isempty(allSummaryFiles), ...
-    "No study_summary.mat files were found under %s.",runRoot);
+    sprintf("No study_summary.mat files were found under %s.",runRoot));
 [~,order] = sort([allSummaryFiles.datenum],"descend");
 allSummaryFiles = allSummaryFiles(order);
 
@@ -112,10 +112,11 @@ for networkIndex = 1:numberOfNetworkSizes
         end
 
         assert(found, ...
-            ["Could not find a complete production study for N_s=%d, %s. " ...
-             "Expected %d runs and %d FE/run."], ...
+            sprintf(["Could not find a complete production study for N_s=%d, %s. " ...
+            "Expected %d runs and %d FE/run. Campaign dates: %s."], ...
             networkSize,objectiveMode,config.numberOfRuns, ...
-            config.functionEvaluationBudget);
+            config.functionEvaluationBudget, ...
+            strjoin(config.campaignDates,", ")));
     end
 end
 
@@ -125,7 +126,7 @@ assert(numel(unique(summaryFiles)) == numel(summaryFiles), ...
 if all(~isnat(campaignTimes),"all")
     spanHours = hours(max(campaignTimes(:))-min(campaignTimes(:)));
     assert(spanHours <= config.maximumCampaignSpanHours, ...
-        "Selected production studies span %.2f hr; expected one campaign.",spanHours);
+        sprintf("Selected production studies span %.2f hr; expected one campaign.",spanHours));
 else
     spanHours = NaN;
 end

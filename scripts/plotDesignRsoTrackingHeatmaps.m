@@ -93,7 +93,7 @@ writetable(detailTable,detailFile);
 
 fig=figure("Name","Design RSO tracking performance", ...
     "Color",style.backgroundColor,"Units","inches", ...
-    "Position",[1 1 13.5 10.5],"Renderer","opengl");
+    "Position",[1 1 9.5 7.4],"Renderer","opengl");
 layout=tiledlayout(fig,2,nO,"TileSpacing","compact","Padding","compact");
 
 for objectiveIndex=1:nO
@@ -117,7 +117,7 @@ end
 colormap(fig,turbo(256));
 
 outputFile=fullfile(outputDirectory,"design_rso_tracking_heatmaps.eps");
-exportManuscriptFigure(fig,string(outputFile),13.5,10.5);
+exportManuscriptFigure(fig,string(outputFile),9.5,7.4);
 
 plotInfo=struct("figure",fig,"outputFile",string(outputFile), ...
     "detailTable",detailTable,"detailFile",string(detailFile));

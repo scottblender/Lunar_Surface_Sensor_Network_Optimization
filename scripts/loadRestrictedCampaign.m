@@ -72,31 +72,20 @@ if isfield(userConfig,"restrictedStudyName") && ...
     restrictedConfig.studyName = string(userConfig.restrictedStudyName);
 end
 
-if isfield(userConfig,"restrictedDatabaseFile") && ...
-        strlength(string(userConfig.restrictedDatabaseFile)) > 0
-    restrictedConfig.databaseFile = string(userConfig.restrictedDatabaseFile);
-else
-    assert(isfield(referenceStudy.config,"databaseFile"), ...
-        "Restricted reference study does not record config.databaseFile.");
-    restrictedConfig.databaseFile = string(referenceStudy.config.databaseFile);
-end
-
-if ~isfile(restrictedConfig.databaseFile)
-    [~,databaseName,databaseExtension] = fileparts(restrictedConfig.databaseFile);
-    relocatedDatabase = fullfile( ...
-        restrictedConfig.resultsDirectory,databaseName + databaseExtension);
-    assert(isfile(relocatedDatabase), ...
-        ["Restricted database was not found:\n%s\nAlso tried:\n%s"], ...
-        restrictedConfig.databaseFile,relocatedDatabase);
-    restrictedConfig.databaseFile = string(relocatedDatabase);
-end
+% Use the current full-domain frozen database as the common physical model.
+% The 20260915 studies are selected by date, and their stored best sensor
+% latitudes/longitudes are mapped into this database by downstream plotting
+% routines. This avoids relying on a historical restricted database path that
+% may have been overwritten when the final 20260918/20260919 database was built.
+restrictedConfig.databaseFile = string(fullCampaign.databaseFile);
+restrictedConfig.requireDatabaseMatch = false;
 
 restrictedCampaign = loadProductionCampaign(restrictedConfig);
 
 fprintf("\nRestricted-domain campaign loaded\n");
 fprintf("  Date:      %s\n",restrictedDate);
 fprintf("  Reference: %s\n",referenceSummary);
-fprintf("  Database:  %s\n",restrictedConfig.databaseFile);
+fprintf("  Physical database: %s\n",restrictedConfig.databaseFile);
 fprintf("  Cases:\n");
 for objectiveIndex = 1:numel(restrictedCampaign.configuration.objectiveModes)
     for networkIndex = 1:numel(restrictedCampaign.configuration.networkSizes)
@@ -132,8 +121,8 @@ for fileIndex = 1:numel(files)
 end
 
 assert(strlength(summaryFile) > 0, ...
-    "No optimization study was found for restricted campaign date %s.", ...
-    campaignDate);
+    sprintf("No optimization study was found for restricted campaign date %s.", ...
+    campaignDate));
 end
 
 function [summaryFile,studyState] = resolveAnchor(anchor,projectRoot,resultsDirectory)
@@ -159,7 +148,7 @@ for k = 1:numel(candidates)
 end
 
 assert(strlength(summaryFile) > 0, ...
-    "Restricted campaign anchor could not be resolved: %s",anchor);
+    sprintf("Restricted campaign anchor could not be resolved: %s",anchor));
 
 data = load(summaryFile,"studyState");
 assert(isfield(data,"studyState") && isfield(data.studyState,"config"), ...
@@ -171,6 +160,6 @@ function campaignDate = extractDate(summaryFile)
 [~,folderName] = fileparts(fileparts(summaryFile));
 tokens = regexp(string(folderName),"_(\d{8})_\d{6}$","tokens","once");
 assert(~isempty(tokens), ...
-    "Could not extract YYYYMMDD date from %s.",summaryFile);
+    sprintf("Could not extract YYYYMMDD date from %s.",summaryFile));
 campaignDate = string(tokens{1});
 end

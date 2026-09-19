@@ -75,8 +75,8 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     fig = figure("Name",objectiveMode + " measurement screening", ...
         "Color",style.backgroundColor,"Units","inches", ...
-        "Position",[1 1 7.5 5.5],"Renderer","opengl");
-    ax = axes(fig,"Position",[0.11 0.16 0.57 0.76]);
+        "Position",[1 1 7.5 5.6],"Renderer","opengl");
+    ax = axes(fig,"Position",[0.11 0.16 0.84 0.62]);
     hold(ax,"on");
 
     x = 1:numel(config.networkSizes);
@@ -132,16 +132,19 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     end
 
     lgd = legend(ax,legendHandles,legendLabels, ...
-        "Location","northeastoutside","Box","off", ...
-        "Orientation","vertical","NumColumns",1);
+        "Location","none","Box","off", ...
+        "Orientation","horizontal","NumColumns",2);
     lgd.FontName = style.fontName;
-    lgd.FontSize = max(13,style.legendFontSize-3);
+    lgd.FontSize = 13;
     lgd.FontWeight = "bold";
     lgd.AutoUpdate = "off";
+    drawnow;
+    lgd.Units = "normalized";
+    lgd.Position = [0.30 0.79 0.65 0.18];
 
     outputFile = fullfile(outputDirectory, ...
         sprintf("screening_breakdown_%s.eps",objectiveMode));
-    exportManuscriptFigure(fig,string(outputFile),7.5,5.5);
+    exportManuscriptFigure(fig,string(outputFile),7.5,5.6);
 
     plotInfo.(objectiveField) = struct( ...
         "figure",fig,"outputFile",string(outputFile), ...
@@ -195,7 +198,11 @@ row = 0;
 for objectiveIndex = 1:nO
     for networkIndex = 1:nN
         studyState = campaign.studies{networkIndex,objectiveIndex};
-        sensorIndices = double(studyState.overallBestSensorIndices(:));
+        runState = studyState.runStates{studyState.overallBestRunIndex};
+        sensorLatitudesRad = double(runState.bestSensorLatitudesRad(:));
+        sensorLongitudesRad = double(runState.bestSensorLongitudesRad(:));
+        sensorIndices = mapCandidateIndices( ...
+            database,sensorLatitudesRad,sensorLongitudesRad);
 
         if isfield(database.terrain,"candidateChunks") && ...
                 ~isempty(database.terrain.candidateChunks)
@@ -316,6 +323,27 @@ end
 
 earthPositions = double(database.ephemeris.earthPositionsMci(:,indices));
 sunPositions = double(database.ephemeris.sunPositionsMci(:,indices));
+end
+
+function indices = mapCandidateIndices(database,latitudesRad,longitudesRad)
+candidateLat = double(database.candidates.latitudesRad(:));
+candidateLon = mod(double(database.candidates.longitudesRad(:)),2*pi);
+longitudesRad = mod(double(longitudesRad(:)),2*pi);
+latitudesRad = double(latitudesRad(:));
+
+indices = zeros(numel(latitudesRad),1);
+for sensorIndex = 1:numel(latitudesRad)
+    dLat = candidateLat-latitudesRad(sensorIndex);
+    dLon = atan2( ...
+        sin(candidateLon-longitudesRad(sensorIndex)), ...
+        cos(candidateLon-longitudesRad(sensorIndex)));
+    [distance,index] = min(hypot(dLat,dLon));
+    assert(distance < 1e-7, ...
+        sprintf(["Could not map optimized sensor %d into the final " ...
+        "full-domain candidate database (angular mismatch %.3g rad)."], ...
+        sensorIndex,distance));
+    indices(sensorIndex) = index;
+end
 end
 
 function applyAxesStyle(ax,style)

@@ -27,7 +27,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     fig = figure("Name",objectiveMode + " convergence", ...
         "Color",style.backgroundColor,"Units","inches", ...
         "Position",[1 1 7.0 4.5],"Renderer","opengl");
-    ax = axes(fig,"Position",[0.13 0.17 0.57 0.74]);
+    ax = axes(fig,"Position",[0.13 0.17 0.82 0.66]);
     hold(ax,"on");
 
     handles = gobjects(numel(config.networkSizes),1);
@@ -51,11 +51,15 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     ylabel(ax,"Incumbent objective, J");
     xlim(ax,[config.populationSize config.functionEvaluationBudget]);
     applyAxesStyle(ax,style);
-    lgd = legend(ax,handles,labels,"Location","northeastoutside","Interpreter","tex");
+    lgd = legend(ax,handles,labels, ...
+        "Location","none","Orientation","horizontal", ...
+        "NumColumns",2,"Interpreter","tex","Box","off");
     lgd.FontName = style.fontName;
-    lgd.FontSize = style.legendFontSize;
+    lgd.FontSize = max(14,style.legendFontSize-2);
     lgd.FontWeight = "bold";
-    lgd.Box = "on";
+    drawnow;
+    lgd.Units = "normalized";
+    lgd.Position = [0.49 0.845 0.46 0.12];
 
     outputFile = fullfile(outputDirectory, ...
         sprintf("convergence_%s.eps",objectiveMode));
