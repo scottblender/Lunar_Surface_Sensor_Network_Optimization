@@ -40,6 +40,7 @@ config.networkSizes = [3 5 7 10];
 config.objectiveModes = ["information","coverage"];
 config.numberOfRuns = 20;
 config.functionEvaluationBudget = 12000;
+config.campaignDates = ["20260918","20260919"];
 config.measurementNoiseSeed = 5000;
 config.reuseCache = true;
 config.forceRecompute = false;
@@ -51,6 +52,7 @@ config.outputDirectory = string(config.outputDirectory);
 config.demFile = string(config.demFile);
 config.networkSizes = double(config.networkSizes(:).');
 config.objectiveModes = lower(string(config.objectiveModes(:).'));
+config.campaignDates = string(config.campaignDates(:));
 
 assert(all(ismember(config.objectiveModes,["information","coverage"])), ...
     "objectiveModes may contain only information and coverage.");
@@ -121,6 +123,7 @@ signature.networkSizes = config.networkSizes;
 signature.objectiveModes = config.objectiveModes;
 signature.networkKeys = networkKeys;
 signature.measurementNoiseSeed = config.measurementNoiseSeed;
+signature.campaignDates = config.campaignDates;
 
 %% Reuse completed operational validation when possible
 useCachedResults = false;
@@ -593,6 +596,21 @@ for fileIndex = 1:numel(files)
             continue
         end
         candidate = data.studyState;
+
+        [~,studyFolder] = fileparts(files(fileIndex).folder);
+        tokens = regexp(string(studyFolder),"_(\d{8})_\d{6}$","tokens","once");
+        if ~isempty(config.campaignDates)
+            if isempty(tokens) || ~ismember(string(tokens{1}),config.campaignDates)
+                continue
+            end
+        end
+
+        if isfield(candidate.config,"databaseFile") && ...
+                normalizePath(string(candidate.config.databaseFile)) ~= ...
+                normalizePath(string(config.databaseFile))
+            continue
+        end
+
         if candidate.config.networkSize ~= networkSize || ...
                 lower(string(candidate.config.objectiveMode)) ~= objectiveMode || ...
                 candidate.config.functionEvaluationBudget ~= config.functionEvaluationBudget || ...
@@ -642,7 +660,7 @@ end
 
 function tf = signaturesMatch(a,b)
 required = ["databaseFile","databaseDatenum","demFile","networkSizes", ...
-    "objectiveModes","networkKeys","measurementNoiseSeed"];
+    "objectiveModes","networkKeys","measurementNoiseSeed","campaignDates"];
 tf = all(isfield(a,cellstr(required)));
 if ~tf
     return
@@ -653,7 +671,15 @@ tf = string(a.databaseFile) == string(b.databaseFile) && ...
     isequal(a.networkSizes,b.networkSizes) && ...
     isequal(string(a.objectiveModes),string(b.objectiveModes)) && ...
     isequal(string(a.networkKeys),string(b.networkKeys)) && ...
-    isequal(a.measurementNoiseSeed,b.measurementNoiseSeed);
+    isequal(a.measurementNoiseSeed,b.measurementNoiseSeed) && ...
+    isequal(sort(string(a.campaignDates(:))),sort(string(b.campaignDates(:))));
+end
+
+function value = normalizePath(value)
+value = replace(string(value),"\","/");
+if ispc
+    value = lower(value);
+end
 end
 
 function longest = longestFalseRun(values)

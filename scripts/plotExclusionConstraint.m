@@ -43,9 +43,7 @@ target = sensor + targetRange*[cos(thetaTarget),sin(thetaTarget)];
 fig = figure("Name","Celestial-body exclusion constraint", ...
     "Color",backgroundColor,"Units","inches", ...
     "Position",[1 1 5.4 4.1],"Renderer","opengl");
-% Preserve the original geometry, but reserve a narrow strip at the top
-% for the legend so it is guaranteed to remain inside the EPS canvas.
-ax = axes(fig,"Units","normalized","Position",[0.03 0.04 0.94 0.80]);
+ax = axes(fig,"Units","normalized","Position",[0.03 0.04 0.94 0.92]);
 hold(ax,"on");
 axis(ax,"equal");
 axis(ax,"off");
@@ -76,27 +74,17 @@ plot(ax,[sensor(1),body(1)],[sensor(2),body(2)],"--", ...
     "Color",bodyDirectionColor,"LineWidth",1.7);
 
 boundaryLength = 3.52;
-hOcc = gobjects(1);
-hMin = gobjects(1);
 for signValue = [-1 1]
     pointOcc = sensor + boundaryLength*[cos(signValue*thetaOcc),sin(signValue*thetaOcc)];
-    currentOcc = plot(ax,[sensor(1),pointOcc(1)],[sensor(2),pointOcc(2)],":", ...
+    plot(ax,[sensor(1),pointOcc(1)],[sensor(2),pointOcc(2)],":", ...
         "Color",occultationColor,"LineWidth",2.0);
 
     pointMin = sensor + boundaryLength*[cos(signValue*thetaRequired),sin(signValue*thetaRequired)];
-    currentMin = plot(ax,[sensor(1),pointMin(1)],[sensor(2),pointMin(2)],"--", ...
+    plot(ax,[sensor(1),pointMin(1)],[sensor(2),pointMin(2)],"--", ...
         "Color",minimumAngleColor,"LineWidth",2.3);
-
-    if signValue > 0
-        hOcc = currentOcc;
-        hMin = currentMin;
-    else
-        currentOcc.HandleVisibility = "off";
-        currentMin.HandleVisibility = "off";
-    end
 end
 
-hLos = plot(ax,[sensor(1),target(1)],[sensor(2),target(2)],"-", ...
+plot(ax,[sensor(1),target(1)],[sensor(2),target(2)],"-", ...
     "Color",lineOfSightColor,"LineWidth",2.4);
 
 plot(ax,sensor(1),sensor(2),"o","MarkerSize",10, ...
@@ -148,19 +136,6 @@ text(ax,targetLabel(1)+0.02,targetLabel(2)+0.19,"$\theta_b$", ...
 xlim(ax,[-2.90 1.90]);
 ylim(ax,[-1.32 2.48]);
 ax.LooseInset = max(ax.TightInset,0.005);
-
-% Keep the requested legend inside the fixed export canvas. This is the only
-% structural change to the original manuscript schematic.
-lgd = legend(ax,[hLos hOcc hMin], ...
-    ["RSO LOS","Occultation boundary","Minimum separation"], ...
-    "Location","none","Orientation","horizontal", ...
-    "NumColumns",2,"Box","off");
-lgd.FontName = fontName;
-lgd.FontSize = 15;
-lgd.FontWeight = "bold";
-drawnow;
-lgd.Units = "normalized";
-lgd.Position = [0.08 0.855 0.84 0.12];
 
 outputFile = fullfile(scriptDirectory,"Exclusion_Constraint_Schematic.eps");
 fig.InvertHardcopy = "off";

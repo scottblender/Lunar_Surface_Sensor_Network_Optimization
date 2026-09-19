@@ -27,6 +27,8 @@ end
 
 numberOfObjects=database.meta.numberOfObjects;
 numberOfTimes=database.meta.numberOfOptimizationEpochs;
+databaseInfo=dir(campaign.databaseFile);
+databaseDatenum=databaseInfo.datenum;
 nN=numel(config.networkSizes); nO=numel(config.objectiveModes);
 rms=nan(numberOfObjects,nN,nO);
 observable=nan(numberOfObjects,nN,nO);
@@ -46,8 +48,11 @@ for objectiveIndex=1:nO
         useCache=false;
         if isfile(cacheFile)
             d=load(cacheFile,"metricCache");
-            if isfield(d,"metricCache") && isequal(d.metricCache.sensors,sensors) && ...
-                    d.metricCache.measurementNoiseSeed==measurementNoiseSeed
+            if isfield(d,"metricCache") && ...
+                    isfield(d.metricCache,"databaseDatenum") && ...
+                    isequal(d.metricCache.sensors,sensors) && ...
+                    d.metricCache.measurementNoiseSeed==measurementNoiseSeed && ...
+                    isequal(d.metricCache.databaseDatenum,databaseDatenum)
                 metricCache=d.metricCache; useCache=true;
             end
         end
@@ -60,6 +65,8 @@ for objectiveIndex=1:nO
             metricCache=struct();
             metricCache.sensors=sensors;
             metricCache.measurementNoiseSeed=measurementNoiseSeed;
+            metricCache.databaseFile=string(campaign.databaseFile);
+            metricCache.databaseDatenum=databaseDatenum;
             metricCache.rmsPositionErrorKm=validation.rmsPositionErrorKm;
             metricCache.rmsVelocityErrorKmS=validation.rmsVelocityErrorKmS;
             metricCache.observableEpochPercent=100*sum(epochObservable,1).'/numberOfTimes;

@@ -49,6 +49,11 @@ config.demFile = "";
 config.networkSizes = [3 5 7 10];
 config.nominalObjectiveModes = ["information","coverage"];
 config.requiredOptimizationFe = 12000;
+config.optimizationCampaignDates = ["20260918","20260919"];
+config.optimizationStudyName = "lunar_surface_production_optimization";
+config.optimizationNumberOfRuns = 20;
+config.optimizationPopulationSize = 60;
+config.optimizationBaseSeed = 1000;
 config.numberOfMonteCarloRuns = 250;
 config.maximumPerturbationRadiusKm = 15;
 config.perturbationSigmaKm = 5;
@@ -63,6 +68,8 @@ config.databaseFile = string(config.databaseFile);
 config.demFile = string(config.demFile);
 config.networkSizes = double(config.networkSizes(:).');
 config.nominalObjectiveModes = lower(string(config.nominalObjectiveModes(:).'));
+config.optimizationCampaignDates = string(config.optimizationCampaignDates(:));
+config.optimizationStudyName = string(config.optimizationStudyName);
 
 validateattributes(config.numberOfMonteCarloRuns,{'numeric'}, ...
     {'scalar','integer','positive'});
@@ -94,21 +101,41 @@ fprintf("Lunar surface Monte Carlo robustness study\n");
 fprintf("============================================================\n");
 fprintf("Network sizes:             %s\n",mat2str(config.networkSizes));
 fprintf("Nominal objectives:        %s\n",strjoin(config.nominalObjectiveModes,", "));
+fprintf("Optimization dates:        %s\n", ...
+    strjoin(config.optimizationCampaignDates,", "));
 fprintf("Realizations / case:       %d\n",config.numberOfMonteCarloRuns);
 fprintf("Perturbation sigma:        %.3f km\n",config.perturbationSigmaKm);
 fprintf("Maximum perturbation:      %.3f km\n",config.maximumPerturbationRadiusKm);
 fprintf("Parallel evaluation:       %d\n",config.useParallel);
 fprintf("Operational spacecraft:    %d\n",config.includeOperationalSpacecraft);
 
-%% Recover nominal optimized networks
+%% Recover nominal optimized networks from the NEW production campaign
+campaignConfig = struct();
+campaignConfig.resultsDirectory = resultsDirectory;
+campaignConfig.databaseFile = config.databaseFile;
+campaignConfig.outputDirectory = fullfile(resultsDirectory,"manuscript_artifacts");
+campaignConfig.networkSizes = config.networkSizes;
+campaignConfig.objectiveModes = config.nominalObjectiveModes;
+campaignConfig.numberOfRuns = config.optimizationNumberOfRuns;
+campaignConfig.functionEvaluationBudget = config.requiredOptimizationFe;
+campaignConfig.populationSize = config.optimizationPopulationSize;
+campaignConfig.baseSeed = config.optimizationBaseSeed;
+campaignConfig.studyName = config.optimizationStudyName;
+campaignConfig.campaignDates = config.optimizationCampaignDates;
+campaignConfig.requireDatabaseMatch = true;
+
+nominalCampaign = loadProductionCampaign(campaignConfig);
+
 numberOfModes = numel(config.nominalObjectiveModes);
 numberOfNetworkSizes = numel(config.networkSizes);
 nominalNetworks = cell(numberOfModes,numberOfNetworkSizes);
+
 for modeIndex = 1:numberOfModes
     for networkIndex = 1:numberOfNetworkSizes
-        nominalNetworks{modeIndex,networkIndex} = findNominalNetwork( ...
-            resultsDirectory,rsoDatabase,config.networkSizes(networkIndex), ...
-            config.nominalObjectiveModes(modeIndex),config.requiredOptimizationFe);
+        studyState = nominalCampaign.studies{networkIndex,modeIndex};
+        nominalNetworks{modeIndex,networkIndex} = nominalNetworkFromStudy( ...
+            nominalCampaign.database,studyState, ...
+            nominalCampaign.studySummaryFiles(networkIndex,modeIndex));
     end
 end
 
@@ -146,7 +173,7 @@ resultsFile = fullfile(studyDirectory,"monte_carlo_results.mat");
 checkpointFile = fullfile(studyDirectory,"checkpoint.mat");
 
 studyState = struct();
-studyState.version = "lunar_surface_monte_carlo_robustness_v2";
+studyState.version = "lunar_surface_monte_carlo_robustness_v3";
 studyState.created = string(datetime("now"));
 studyState.studyDirectory = string(studyDirectory);
 studyState.resultsFile = string(resultsFile);
@@ -264,7 +291,11 @@ fprintf("\nMonte Carlo robustness study complete.\n");
 fprintf("Results: %s\n",resultsFile);
 
 if config.runPlotsAfterStudy
-    plotMonteCarloRobustness(string(resultsFile));
+    plotConfig = struct();
+    plotConfig.monteCarloResultsFile = string(resultsFile);
+    plotConfig.optimizationCampaignDates = config.optimizationCampaignDates;
+    plotConfig.outputDirectory = fullfile(resultsDirectory,"manuscript_artifacts");
+    plotMonteCarloConferenceFigure(plotConfig);
 end
 
 end
@@ -319,48 +350,18 @@ end
 end
 
 %% ------------------------------------------------------------------------
-function nominalNetwork = findNominalNetwork( ...
-    resultsDirectory,database,networkSize,objectiveMode,requiredFe)
+function nominalNetwork = nominalNetworkFromStudy(database,studyState,summaryFile)
+sensorIndices = double(studyState.overallBestSensorIndices(:));
 
-summaryFiles = dir(fullfile(resultsDirectory,"optimization_runs", ...
-    "**","study_summary.mat"));
-bestObjective = Inf;
-bestStudy = [];
-bestSummaryFile = "";
-
-for fileIndex = 1:numel(summaryFiles)
-    summaryFile = fullfile(summaryFiles(fileIndex).folder,summaryFiles(fileIndex).name);
-    data = load(summaryFile,"studyState");
-    if ~isfield(data,"studyState") || ~isfield(data.studyState,"config")
-        continue
-    end
-    candidateStudy = data.studyState;
-    if candidateStudy.config.networkSize ~= networkSize || ...
-            lower(string(candidateStudy.config.objectiveMode)) ~= lower(string(objectiveMode)) || ...
-            candidateStudy.config.functionEvaluationBudget ~= requiredFe
-        continue
-    end
-    if candidateStudy.overallBestObjective < bestObjective
-        bestObjective = candidateStudy.overallBestObjective;
-        bestStudy = candidateStudy;
-        bestSummaryFile = string(summaryFile);
-    end
-end
-
-assert(~isempty(bestStudy), ...
-    ["No completed optimization study found for N_s=%d, objective=%s, " ...
-     "FE=%d."],networkSize,objectiveMode,requiredFe);
-
-sensorIndices = double(bestStudy.overallBestSensorIndices(:));
 nominalNetwork = struct();
-nominalNetwork.networkSize = networkSize;
-nominalNetwork.objectiveMode = string(objectiveMode);
+nominalNetwork.networkSize = studyState.config.networkSize;
+nominalNetwork.objectiveMode = string(studyState.config.objectiveMode);
 nominalNetwork.sensorIndices = sensorIndices;
 nominalNetwork.latitudesRad = database.candidates.latitudesRad(sensorIndices);
 nominalNetwork.longitudesRad = database.candidates.longitudesRad(sensorIndices);
-nominalNetwork.optimizationObjective = bestStudy.overallBestObjective;
-nominalNetwork.summaryFile = bestSummaryFile;
-nominalNetwork.bestRunIndex = bestStudy.overallBestRunIndex;
+nominalNetwork.optimizationObjective = studyState.overallBestObjective;
+nominalNetwork.summaryFile = string(summaryFile);
+nominalNetwork.bestRunIndex = studyState.overallBestRunIndex;
 end
 
 %% ------------------------------------------------------------------------

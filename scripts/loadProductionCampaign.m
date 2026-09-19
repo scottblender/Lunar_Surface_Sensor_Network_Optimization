@@ -24,6 +24,7 @@ defaults.populationSize = 60;
 defaults.baseSeed = 1000;
 defaults.studyName = "lunar_surface_production_optimization";
 defaults.campaignDate = "";
+defaults.campaignDates = strings(0,1);
 defaults.requireDatabaseMatch = true;
 defaults.maximumCampaignSpanHours = 168;
 config = mergeStruct(defaults,userConfig);
@@ -35,6 +36,11 @@ config.networkSizes = double(config.networkSizes(:).');
 config.objectiveModes = lower(string(config.objectiveModes(:).'));
 config.studyName = string(config.studyName);
 config.campaignDate = string(config.campaignDate);
+config.campaignDates = string(config.campaignDates(:));
+if strlength(config.campaignDate) > 0
+    config.campaignDates = unique([config.campaignDates;config.campaignDate],"stable");
+end
+config.campaignDates = config.campaignDates(strlength(config.campaignDates) > 0);
 config.requireDatabaseMatch = logical(config.requireDatabaseMatch);
 
 assert(isfile(config.databaseFile), ...
@@ -72,8 +78,8 @@ for networkIndex = 1:numberOfNetworkSizes
 
             studyDirectory = string(fileparts(candidateFile));
             [~,folderName] = fileparts(studyDirectory);
-            if strlength(config.campaignDate) > 0 && ...
-                    extractDateToken(folderName) ~= config.campaignDate
+            if ~isempty(config.campaignDates) && ...
+                    ~ismember(extractDateToken(folderName),config.campaignDates)
                 continue
             end
 
@@ -125,7 +131,7 @@ else
 end
 
 campaign = struct();
-campaign.version = "manuscript_campaign_v1";
+campaign.version = "manuscript_campaign_v2";
 campaign.projectRoot = string(projectRoot);
 campaign.configuration = config;
 campaign.databaseFile = config.databaseFile;

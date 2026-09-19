@@ -24,12 +24,14 @@ config.outputDirectory = fullfile(resultsDirectory,"production_figures");
 config.monteCarloResultsFile = "";
 config.networkSizes = [3 5 7 10];
 config.objectiveModes = ["information","coverage"];
+config.optimizationCampaignDates = ["20260918","20260919"];
 config = mergeStruct(config,userConfig);
 config.resultsDirectory = string(config.resultsDirectory);
 config.outputDirectory = string(config.outputDirectory);
 config.monteCarloResultsFile = string(config.monteCarloResultsFile);
 config.networkSizes = double(config.networkSizes(:).');
 config.objectiveModes = lower(string(config.objectiveModes(:).'));
+config.optimizationCampaignDates = string(config.optimizationCampaignDates(:));
 
 resultsFile = resolveMonteCarloResults(config);
 plotInfo = struct();
@@ -72,16 +74,16 @@ for objectiveMode = config.objectiveModes
         fig = figure("Name",sprintf("Monte Carlo robustness: %s, N_s=%d", ...
             objectiveMode,networkSize), ...
             "Color",style.backgroundColor,"Units","inches", ...
-            "Position",[0.5 0.5 7.0 5.4],"Renderer","opengl");
+            "Position",[0.5 0.5 7.4 5.2],"Renderer","opengl");
         fig.InvertHardcopy = "off";
-        ax = axes(fig,"Units","normalized","Position",[0.18 0.18 0.78 0.68]);
+        ax = axes(fig,"Units","normalized","Position",[0.16 0.18 0.56 0.72]);
 
         [boxHandle,nominalHandle] = makeSingleBoxplot( ...
             ax,values,nominal,networkSize,objectiveMode,style);
 
         lgd = legend(ax,[boxHandle nominalHandle], ...
             ["MC perturbations","Nominal optimum"], ...
-            "Location","northoutside","Orientation","horizontal","Box","off");
+            "Location","northeastoutside","Orientation","vertical","Box","off");
         lgd.FontName = style.fontName;
         lgd.FontSize = style.legendFontSize;
         lgd.FontWeight = "bold";
@@ -236,6 +238,15 @@ networkSizes = double(studyState.config.networkSizes(:).');
 objectiveModes = lower(string(studyState.config.nominalObjectiveModes(:).'));
 tf = all(ismember(config.networkSizes,networkSizes)) && ...
     all(ismember(config.objectiveModes,objectiveModes));
+
+if tf && ~isempty(config.optimizationCampaignDates)
+    if ~isfield(studyState.config,"optimizationCampaignDates")
+        tf = false;
+        return
+    end
+    sourceDates = string(studyState.config.optimizationCampaignDates(:));
+    tf = isequal(sort(sourceDates),sort(config.optimizationCampaignDates));
+end
 end
 
 function exportImageEps(fig,outputFile,style)
@@ -243,8 +254,8 @@ fig.Color = style.backgroundColor;
 fig.InvertHardcopy = "off";
 fig.Renderer = "opengl";
 fig.PaperUnits = "inches";
-fig.PaperSize = [7.0 5.4];
-fig.PaperPosition = [0 0 7.0 5.4];
+fig.PaperSize = [7.4 5.2];
+fig.PaperPosition = [0 0 7.4 5.2];
 fig.PaperPositionMode = "manual";
 drawnow;
 print(fig,char(outputFile),"-depsc","-opengl","-r600");

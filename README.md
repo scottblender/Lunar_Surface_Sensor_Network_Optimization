@@ -110,42 +110,47 @@ terrain-aware line-of-sight gate.
 
 ## Manuscript figure and table generation
 
-All manuscript artifacts are now generated from one driver:
+The manuscript plotting pipeline is explicitly scoped to the final production
+campaigns so historical results are not mixed into the paper:
+
+- full southern-hemisphere campaign: `20260918` and `20260919`
+- restricted south-polar campaign: `20260915`
+
+Generate all manuscript figures and tables with:
 
 ```matlab
-products = generateManuscriptArtifacts();
+products = generateManuscriptArtifacts(struct( ...
+    "clearOutputDirectory",true));
 ```
 
-By default, outputs are written to
+Outputs are written to:
 
 ```text
 results/manuscript_artifacts/
 ```
 
-The driver calls focused plot/table functions for the CLPS design-domain map,
-reference-frame and RA/Dec schematics, original/synthetic DEM figures,
-celestial occultation/exclusion geometry, optimization convergence,
-sensor-selection frequency, measurement-screening breakdown, design- and
-operational-RSO tracking, Monte Carlo robustness when available, matched
-restricted-domain comparison when supplied, and manuscript tables. The
-optimization workflow remains a TikZ figure and is regenerated as
-`optimization_workflow.tex`.
+The driver prints the exact study-summary files selected for both domains.
 
-The driver also writes `manuscript_artifact_manifest.csv`, which checks the
-expected manuscript figures/tables and reports missing optional products.
-For a restricted-domain campaign stored under the same `results/optimization_runs`
-tree, identify any one study folder from that campaign and pass it as an
-anchor. The driver infers the restricted database and study name from the
-saved `studyState.config`:
+The Monte Carlo robustness study must be rerun whenever the nominal optimized
+networks change. The final MC runner is scoped to the same 20260918/20260919
+full-domain campaign:
 
 ```matlab
-cfg = struct();
-cfg.restrictedCampaignAnchor = "ga_coverage_n3_20260915_121933";
-products = generateManuscriptArtifacts(cfg);
+mcConfig = struct();
+mcConfig.numberOfMonteCarloRuns = 1000;
+mcConfig.optimizationCampaignDates = ["20260918","20260919"];
+mcConfig.runPlotsAfterStudy = true;
+studyState = runMonteCarloRobustness(mcConfig);
 ```
 
-A complete audit of retained and retired plotting scripts is documented in
-`scripts/FIGURE_TABLE_AUDIT.md`.
+After the MC run completes, rerun `generateManuscriptArtifacts` to refresh the
+complete paper artifact set.
+
+Manuscript plotting conventions: no standard plot grid lines; legends are
+outside the upper-right of the plot area when needed; the detailed CLPS
+geographic figure is the exception and keeps its original centered legend.
+
+A complete audit is documented in `scripts/FIGURE_TABLE_AUDIT.md`.
 
 ## Data and outputs
 

@@ -26,8 +26,8 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     fig = figure("Name",objectiveMode + " convergence", ...
         "Color",style.backgroundColor,"Units","inches", ...
-        "Position",[1 1 8.5 5.2],"Renderer","opengl");
-    ax = axes(fig);
+        "Position",[1 1 7.0 4.5],"Renderer","opengl");
+    ax = axes(fig,"Position",[0.13 0.17 0.57 0.74]);
     hold(ax,"on");
 
     handles = gobjects(numel(config.networkSizes),1);
@@ -51,7 +51,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     ylabel(ax,"Incumbent objective, J");
     xlim(ax,[config.populationSize config.functionEvaluationBudget]);
     applyAxesStyle(ax,style);
-    lgd = legend(ax,handles,labels,"Location","northeast","Interpreter","tex");
+    lgd = legend(ax,handles,labels,"Location","northeastoutside","Interpreter","tex");
     lgd.FontName = style.fontName;
     lgd.FontSize = style.legendFontSize;
     lgd.FontWeight = "bold";
@@ -59,7 +59,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     outputFile = fullfile(outputDirectory, ...
         sprintf("convergence_%s.eps",objectiveMode));
-    exportManuscriptFigure(fig,string(outputFile),8.5,5.2);
+    exportManuscriptFigure(fig,string(outputFile),7.0,4.5);
 
     plotInfo.(objectiveField) = struct( ...
         "figure",fig,"outputFile",string(outputFile));
@@ -90,10 +90,8 @@ ax.FontWeight = "bold";
 ax.LineWidth = 0.9;
 ax.TickDir = "out";
 ax.Box = "on";
-ax.XGrid = "on";
-ax.YGrid = "on";
-ax.GridColor = style.gridColor;
-ax.GridAlpha = 0.55;
+ax.XGrid = "off";
+ax.YGrid = "off";
 ax.Layer = "top";
 ax.XLabel.FontSize = style.labelFontSize;
 ax.XLabel.FontWeight = "bold";

@@ -1,138 +1,79 @@
 # Manuscript figure/table generator audit
 
+## Campaign selection
+
+The paper pipeline is date-scoped to avoid mixing historical results:
+
+- Southern-hemisphere optimization: `20260918`, `20260919`
+- Restricted south-polar optimization: `20260915`
+
+`loadProductionCampaign.m` accepts multiple campaign dates. The master driver
+prints every selected study summary before plotting.
+
 ## Canonical entry point
 
-Use:
+```matlab
+products = generateManuscriptArtifacts(struct( ...
+    "clearOutputDirectory",true));
+```
 
-\`\`\`matlab
-products = generateManuscriptArtifacts();
-\`\`\`
+Outputs are written to `results/manuscript_artifacts/`.
 
-All manuscript-ready products are written under
-\`results/manuscript_artifacts/\`. The driver is synchronized to the current
-AAS TeX source and writes \`manuscript_artifact_manifest.csv\` after each run.
+## Figure conventions
 
-## Retained model/schematic generators
+- No standard Cartesian plot grid lines.
+- Legends are outside and upper-right when used.
+- The celestial exclusion schematic has no legend.
+- The detailed CLPS geographic figure preserves the original mission callouts
+  and uses a centered legend beneath the composition.
+- Export sizes are selected for final conference-paper placement rather than
+  only for on-screen display.
+- Operational tracking uses a reduced export canvas.
 
-These are retained because they define manuscript geometry rather than
-post-processing optimization results:
+## Screening and domain comparison
 
-- \`plotReferenceFrameTransformations.m\`
-- \`plotAnglesOnlyMeasurementModel.m\`
-- \`plotExclusionConstraint.m\`
+`plotMeasurementScreeningBreakdown.m` shows adjacent stacked bars for BOTH
+optimization domains at every network size for each objective.
 
-\`plotExclusionConstraint.m\` now follows the compact occultation/keep-out
-geometry used in the companion space-based paper and keeps its legend inside
-the exported Figure 6 canvas.
+`generateDomainComparisonProducts.m` explicitly compares the southern-
+hemisphere and restricted south-polar studies using grouped bars and a
+selected-site comparison.
 
-## Focused manuscript generators
+## Monte Carlo source control
 
-- \`loadProductionCampaign.m\`: shared frozen-database / completed-campaign loader.
-- \`exportManuscriptFigure.m\`: common EPS export path.
-- \`plotClpsDesignDomain.m\`: southern-hemisphere design domain + CLPS context.
-- \`plotDemProducts.m\`: original LOLA and synthetic DEM figures.
-- \`plotProductionConvergence.m\`: paired objective convergence panels.
-- \`plotProductionNetworkLocations.m\`: sensor-selection-frequency panels.
-- \`plotMeasurementScreeningBreakdown.m\`: stacked LOS/screening breakdown.
-- \`plotDesignRsoTrackingHeatmaps.m\`: design-RSO RMSE/observability.
-- \`plotOperationalRsoTrackingHeatmaps.m\`: operational-RSO RMSE/observability.
-- \`plotMonteCarloConferenceFigure.m\`: one MC boxplot per objective/network size.
-- \`generateDomainComparisonProducts.m\`: restricted-domain location + metric figures and table.
-- \`buildManuscriptTables.m\`: core manuscript tables.
-- \`buildOperationalManuscriptTable.m\`: four-row operational/legacy spacecraft table.
-- \`writeOptimizationWorkflowTikz.m\`: current manuscript TikZ workflow.
-- \`validateManuscriptArtifacts.m\`: artifact/filename manifest check.
+`runMonteCarloRobustness.m` now loads the exact full-domain campaign specified
+by `optimizationCampaignDates`; it no longer searches all historical
+optimization folders and chooses the best matching study.
 
-## Current Results-section exports
+For the final manuscript:
 
-The current production driver creates or expects:
+```matlab
+mcConfig = struct();
+mcConfig.numberOfMonteCarloRuns = 1000;
+mcConfig.optimizationCampaignDates = ["20260918","20260919"];
+mcConfig.runPlotsAfterStudy = true;
+studyState = runMonteCarloRobustness(mcConfig);
+```
 
-\`\`\`text
-convergence_information.eps
-convergence_coverage.eps
+`plotMonteCarloConferenceFigure.m` rejects completed MC files that do not
+record the requested source optimization dates.
 
-network_locations_vs_ns_information.eps
-network_locations_vs_ns_coverage.eps
+## Table exports
 
-screening_breakdown_information.eps
-screening_breakdown_coverage.eps
+The CSVs mirror the corresponding TeX table column structures:
 
-design_rso_tracking_heatmaps.eps
+- `completed_clps_landing_sites.csv`
+- `planned_clps_landing_regions.csv`
+- `optimization_rso_population.csv`
+- `lunar_peaks_dem.csv`
+- `dominant_craters.csv`
+- `celestial_exclusion_parameters.csv`
+- `iod_prior_weighting.csv`
+- `P0_initial_covariance.csv`
+- `optimization_parameters.csv`
+- `network_summary.csv`
+- `measurement_screening_breakdown.csv`
+- `domain_comparison.csv`
+- `spacecraft_tracking.csv`
 
-monte_carlo_information_n3.eps
-monte_carlo_coverage_n3.eps
-monte_carlo_information_n5.eps
-monte_carlo_coverage_n5.eps
-monte_carlo_information_n7.eps
-monte_carlo_coverage_n7.eps
-monte_carlo_information_n10.eps
-monte_carlo_coverage_n10.eps
-
-domain_comparison_locations.eps
-domain_comparison_metrics.eps
-
-operational_rso_tracking_heatmaps.eps
-\`\`\`
-
-The screening plots are generated from the overall-best network for each
-objective/network-size case. Because the chunked production database stores
-only final accepted masks, the plotting routine recomputes full terrain/Earth/
-Sun diagnostics only for the selected sites rather than rebuilding diagnostics
-for the entire candidate grid.
-
-## Current manuscript tables
-
-Core tables use filenames matching their TeX roles:
-
-\`\`\`text
-tables/completed_clps_landing_sites.csv
-tables/planned_clps_landing_regions.csv
-tables/optimization_rso_population.csv
-tables/lunar_peaks_dem.csv
-tables/dominant_craters.csv
-tables/celestial_exclusion_parameters.csv
-tables/iod_prior_weighting.csv
-tables/P0_initial_covariance.csv
-tables/optimization_parameters.csv
-tables/network_summary.csv
-tables/measurement_screening_breakdown.csv
-tables/domain_comparison.csv
-tables/spacecraft_tracking.csv
-\`\`\`
-
-The restricted-domain and operational tables are optional because they require
-their corresponding completed validation/campaign data.
-
-## Restricted-domain comparison
-
-A matched south-polar campaign is not fabricated. Supply:
-
-\`\`\`matlab
-cfg.restrictedResultsDirectory = "...";
-cfg.restrictedDatabaseFile = "...";
-% cfg.restrictedStudyName = "..."; % only if different from the full campaign
-products = generateManuscriptArtifacts(cfg);
-\`\`\`
-
-This produces:
-
-- \`domain_comparison_locations.eps\`
-- \`domain_comparison_metrics.eps\`
-- \`tables/domain_comparison.csv\`
-
-## Retired / removed manuscript runners
-
-The following were redundant, legacy, or mixed too many concerns:
-
-- \`runAllPublicationPlots.m\`
-- \`runProductionConferenceResults.m\`
-- \`formatProductionConferenceFigures.m\`
-- \`plotMonteCarloRobustness.m\`
-- \`exportRsoPopulationTable.m\`
-- \`buildConferenceSummaryTables.m\`
-- \`plotClpsLsp.m\`
-- \`plotProductionOptimizationResults.m\`
-- \`plotPerRsoEkfHeatmaps.m\`
-
-Development-only \`plotOptimizationPilotResults.m\` is retained because the
-pilot-result regression test still depends on it.
+`manuscript_artifact_manifest.csv` reports which expected outputs are present.

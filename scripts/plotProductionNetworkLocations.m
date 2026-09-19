@@ -39,7 +39,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     fig = figure("Name",objectiveMode+" network locations", ...
         "Color",style.backgroundColor,"Units","inches", ...
-        "Position",[1 1 11 10.5],"Renderer","opengl");
+        "Position",[1 1 7.0 6.8],"Renderer","opengl");
     layout = tiledlayout(fig,2,2,"TileSpacing","compact","Padding","compact");
     axesHandles = gobjects(numel(config.networkSizes),1);
 
@@ -85,7 +85,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     outputFile=fullfile(outputDirectory, ...
         sprintf("network_locations_vs_ns_%s.eps",objectiveMode));
-    exportManuscriptFigure(fig,string(outputFile),11,10.5);
+    exportManuscriptFigure(fig,string(outputFile),7.0,6.8);
     plotInfo.(fieldName)=struct("figure",fig,"outputFile",string(outputFile));
 end
 end
@@ -105,15 +105,7 @@ hold(ax,"on");
 surf(ax,b.x,b.y,zeros(size(b.x)),b.elevation, ...
     "EdgeColor","none","FaceColor","interp");
 view(ax,2); colormap(ax,turbo(256)); clim(ax,b.limits);
-for lat=[-75 -45]
-    r=b.moonRadiusKm*deg2rad(90+lat);
-    th=linspace(0,360,721);
-    plot(ax,r*sind(th),r*cosd(th),"--","Color",[.18 .18 .18],"LineWidth",0.8);
-end
-for lon=[0 90 180 270]
-    plot(ax,[0 b.radius]*sind(lon),[0 b.radius]*cosd(lon),"--", ...
-        "Color",[.18 .18 .18],"LineWidth",0.8);
-end
+% No grid/reference lines are drawn in manuscript figures.
 axis(ax,"equal"); axis(ax,"off");
 lim=b.radius+70; xlim(ax,[-lim lim]); ylim(ax,[-lim lim]);
 ax.FontName=style.fontName; ax.FontWeight="bold";

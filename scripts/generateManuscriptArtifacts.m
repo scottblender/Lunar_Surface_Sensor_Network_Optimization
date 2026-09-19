@@ -41,7 +41,8 @@ defaults.generateRobustnessValidation=true;
 defaults.generateDemValidation=true;
 defaults.validateArtifacts=true;
 defaults.strictArtifactValidation=false;
-defaults.restrictedCampaignDate="";
+defaults.productionCampaignDates=["20260918","20260919"];
+defaults.restrictedCampaignDate="20260915";
 defaults.restrictedCampaignAnchor="";
 defaults.restrictedResultsDirectory="";
 defaults.restrictedDatabaseFile="";
@@ -52,6 +53,7 @@ defaults.operationalTableObjective="information";
 defaults.operationalTableNetworkSize=10;
 config=mergeStruct(defaults,userConfig);
 config.outputDirectory=string(config.outputDirectory);
+config.productionCampaignDates=string(config.productionCampaignDates(:));
 config.restrictedCampaignDate=string(config.restrictedCampaignDate);
 config.restrictedCampaignAnchor=string(config.restrictedCampaignAnchor);
 config.restrictedResultsDirectory=string(config.restrictedResultsDirectory);
@@ -64,7 +66,7 @@ end
 if ~isfolder(config.outputDirectory), mkdir(config.outputDirectory); end
 
 products=struct();
-products.version="manuscript_artifact_driver_v2";
+products.version="manuscript_artifact_driver_v3";
 products.outputDirectory=config.outputDirectory;
 
 %% Study-definition figures and tables
@@ -88,8 +90,30 @@ products.optimizationWorkflow=runJob("optimization-workflow TikZ", ...
 
 campaignConfig=config;
 campaignConfig.outputDirectory=config.outputDirectory;
+campaignConfig.campaignDate="";
+campaignConfig.campaignDates=config.productionCampaignDates;
+campaignConfig.requireDatabaseMatch=true;
 campaign=loadProductionCampaign(campaignConfig);
 products.campaign=campaign;
+
+fprintf("\nFull-domain production campaign dates: %s\n", ...
+    strjoin(config.productionCampaignDates,", "));
+fprintf("Selected full-domain cases:\n");
+for objectiveIndex=1:numel(campaign.configuration.objectiveModes)
+    for networkIndex=1:numel(campaign.configuration.networkSizes)
+        fprintf("  %s, N_s=%d -> %s\n", ...
+            campaign.configuration.objectiveModes(objectiveIndex), ...
+            campaign.configuration.networkSizes(networkIndex), ...
+            campaign.studySummaryFiles(networkIndex,objectiveIndex));
+    end
+end
+
+restrictedCampaign=struct();
+if strlength(config.restrictedCampaignDate)>0 || ...
+        strlength(config.restrictedCampaignAnchor)>0
+    restrictedCampaign=loadRestrictedCampaign(campaign,config);
+    products.restrictedCampaign=restrictedCampaign;
+end
 
 %% Main production-result figures
 
@@ -102,7 +126,8 @@ if config.generateProductionResults
 
     if config.generateScreeningBreakdown
         products.screeningBreakdown=runJob("measurement-screening figures", ...
-            @()plotMeasurementScreeningBreakdown(campaign,config),true);
+            @()plotMeasurementScreeningBreakdown( ...
+                campaign,restrictedCampaign,config),true);
     end
 
     products.designTracking=runJob("design-RSO tracking figure", ...
@@ -116,30 +141,28 @@ products.tables=runJob("manuscript tables", ...
 
 if config.generateMonteCarlo
     mcConfig=config;
+    mcConfig.optimizationCampaignDates=config.productionCampaignDates;
     products.monteCarlo=runJob("Monte Carlo robustness figures", ...
         @()plotMonteCarloConferenceFigure(mcConfig),false);
 end
 
 %% Restricted-domain comparison
 
-if strlength(config.restrictedCampaignDate)>0 || ...
-        strlength(config.restrictedCampaignAnchor)>0 || ...
-        (strlength(config.restrictedResultsDirectory)>0 && ...
-         strlength(config.restrictedDatabaseFile)>0)
+if ~isempty(fieldnames(restrictedCampaign))
     products.domainComparison=runJob("restricted-domain comparison", ...
-        @()generateDomainComparisonProducts(campaign,config),false);
+        @()generateDomainComparisonProducts( ...
+            campaign,config,restrictedCampaign),false);
 else
-    fprintf(["SKIP restricted-domain comparison: set " ...
-        "restrictedCampaignDate (preferred), restrictedCampaignAnchor, " ...
-        "or the explicit restricted " ...
-        "results/database paths.\n"]);
+    fprintf("SKIP restricted-domain comparison: no restricted campaign loaded.\n");
 end
 
 %% Operational/legacy spacecraft evaluation
 
 if config.generateOperationalValidation
+    operationalConfig=config;
+    operationalConfig.campaignDates=config.productionCampaignDates;
     operational=runJob("operational-RSO validation", ...
-        @()evaluateOperationalRsoNetworks(config),false);
+        @()evaluateOperationalRsoNetworks(operationalConfig),false);
     products.operational=operational;
 
     if isstruct(operational) && isfield(operational,"spacecraftNames")
