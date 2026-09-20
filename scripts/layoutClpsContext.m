@@ -3,8 +3,8 @@ function layoutClpsContext(fig,ax,boxes,leaders,targets,heading,cb,lgd)
 % Measure text, then nest callouts in the four corners outside the polar disk.
 % Leaders meet the inner box corners at 45 degrees in physical coordinates.
 fontSize = boxes(1).FontSize;
-gap = fontSize;
-margin = fontSize;
+gap = fontSize/2;
+margin = fontSize/2;
 mapSide = 5.5*72;
 sizes = zeros(numel(boxes),2);
 for k = 1:numel(boxes)
@@ -13,7 +13,7 @@ for k = 1:numel(boxes)
         "FontWeight",boxes(k).FontWeight,"Interpreter",boxes(k).Interpreter, ...
         "Visible","off");
     drawnow;
-    sizes(k,:) = probe.Extent(3:4) + 2*boxes(k).Margin + gap/2;
+    sizes(k,:) = probe.Extent(3:4) + 2*boxes(k).Margin;
     delete(probe);
     boxes(k).Units = "points";
     boxes(k).FitBoxToText = "off";
@@ -83,4 +83,5 @@ for k = 1:numel(boxes)
     leaders(k).Y = [start(2) target(2)]/height;
 end
 drawnow;
+placeClpsMapLabels(ax,leaders);
 end

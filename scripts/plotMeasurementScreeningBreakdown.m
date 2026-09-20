@@ -77,7 +77,8 @@ for objectiveIndex = 1:numel(config.objectiveModes)
         "Color",style.backgroundColor,"Units","inches", ...
         "Position",[1 1 7.5 5.8],"Renderer","opengl");
     % Reserve enough left margin for the long y-axis label at paper font size.
-    ax = axes(fig,"Position",[0.18 0.16 0.77 0.62]);
+    layout = tiledlayout(fig,1,1,"Padding","loose");
+    ax = nexttile(layout);
     hold(ax,"on");
 
     x = 1:numel(config.networkSizes);
@@ -139,9 +140,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     lgd.FontSize = 13;
     lgd.FontWeight = "bold";
     lgd.AutoUpdate = "off";
-    drawnow;
-    lgd.Units = "normalized";
-    lgd.Position = [0.27 0.79 0.68 0.18];
+    lgd.Layout.Tile = "north";
 
     outputFile = fullfile(outputDirectory, ...
         sprintf("screening_breakdown_%s.eps",objectiveMode));

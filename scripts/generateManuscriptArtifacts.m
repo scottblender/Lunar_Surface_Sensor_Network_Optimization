@@ -34,11 +34,12 @@ defaults.clearOutputDirectory=false;
 defaults.generateStudyDefinition=true;
 defaults.generateDemFigures=true;
 defaults.generateProductionResults=true;
-defaults.generateScreeningBreakdown=true;
+defaults.generateScreeningBreakdown=false;
 defaults.generateMonteCarlo=true;
 defaults.generateOperationalValidation=true;
-defaults.generateRobustnessValidation=true;
-defaults.generateDemValidation=true;
+defaults.generateRobustnessValidation=false;
+defaults.generateDemValidation=false;
+defaults.exportDiagnosticTables=false;
 defaults.validateArtifacts=true;
 defaults.strictArtifactValidation=false;
 defaults.productionCampaignDates=["20260918","20260919"];
@@ -64,6 +65,11 @@ if config.clearOutputDirectory && isfolder(config.outputDirectory)
     deleteGenerated(config.outputDirectory);
 end
 if ~isfolder(config.outputDirectory), mkdir(config.outputDirectory); end
+
+if ~config.generateScreeningBreakdown && ~config.exportDiagnosticTables && ...
+        ~config.generateDemValidation
+    archiveNonManuscriptArtifacts(config.outputDirectory);
+end
 
 products=struct();
 products.version="manuscript_artifact_driver_v3";

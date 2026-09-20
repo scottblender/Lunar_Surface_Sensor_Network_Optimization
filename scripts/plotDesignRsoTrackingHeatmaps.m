@@ -11,7 +11,6 @@ end
 
 config = campaign.configuration;
 database = campaign.database;
-style = publicationPlotStyle();
 outputDirectory = string(campaign.outputDirectory);
 if isfield(userConfig,"outputDirectory"), outputDirectory=string(userConfig.outputDirectory); end
 if ~isfolder(outputDirectory), mkdir(outputDirectory); end
@@ -89,35 +88,17 @@ end
 
 detailTable=vertcat(rows{:});
 detailFile=fullfile(tableDirectory,"design_rso_tracking.csv");
-writetable(detailTable,detailFile);
-
-fig=figure("Name","Design RSO tracking performance", ...
-    "Color",style.backgroundColor,"Units","inches", ...
-    "Position",[1 1 9.5 7.4],"Renderer","opengl");
-layout=tiledlayout(fig,2,nO,"TileSpacing","compact","Padding","compact");
-
-for objectiveIndex=1:nO
-    ax=nexttile(layout,objectiveIndex);
-    imagesc(ax,1:nN,1:numberOfObjects,log10(max(rms(:,:,objectiveIndex),1e-12)));
-    styleHeatmapAxes(ax,style,config.networkSizes,numberOfObjects,objectiveIndex==1);
-    title(ax,objectiveTitle(config.objectiveModes(objectiveIndex)), ...
-        "FontWeight","bold","FontSize",style.labelFontSize);
-    xlabel(ax,"Number of sensors, N_s");
-    cb=colorbar(ax); cb.Label.String="RMS position error (km)";
-    styleColorbar(cb,style,true);
-
-    ax=nexttile(layout,nO+objectiveIndex);
-    imagesc(ax,1:nN,1:numberOfObjects,observable(:,:,objectiveIndex));
-    clim(ax,[0 100]);
-    styleHeatmapAxes(ax,style,config.networkSizes,numberOfObjects,objectiveIndex==1);
-    xlabel(ax,"Number of sensors, N_s");
-    cb=colorbar(ax); cb.Label.String="Observable epochs (%)";
-    styleColorbar(cb,style,false);
+if ~isfield(userConfig,"exportDiagnosticTables") || userConfig.exportDiagnosticTables
+    writetable(detailTable,detailFile);
+else
+    detailFile = "";
 end
-colormap(fig,turbo(256));
 
+fig = plotManuscriptTrackingHeatmaps(rms,observable, ...
+    compose("RSO %02d",1:numberOfObjects),config.networkSizes, ...
+    config.objectiveModes,"Design RSO tracking performance");
 outputFile=fullfile(outputDirectory,"design_rso_tracking_heatmaps.eps");
-exportManuscriptFigure(fig,string(outputFile),9.5,7.4);
+exportManuscriptFigure(fig,string(outputFile),fig.Position(3),fig.Position(4));
 
 plotInfo=struct("figure",fig,"outputFile",string(outputFile), ...
     "detailTable",detailTable,"detailFile",string(detailFile));
@@ -131,30 +112,4 @@ if isfield(database.visibility,"candidateChunks") && ...
 else
     availability=database.visibility.filteredAvailability(sensors,:,:);
 end
-end
-
-function styleHeatmapAxes(ax,style,networkSizes,nObjects,showY)
-set(ax,"YDir","normal");
-ax.FontName=style.fontName; ax.FontSize=style.axisFontSize; ax.FontWeight="bold";
-ax.XTick=1:numel(networkSizes); ax.XTickLabel=string(networkSizes);
-ax.YTick=1:nObjects;
-if showY
-    ax.YTickLabel=compose("%02d",1:nObjects);
-    ylabel(ax,"RSO index");
-else
-    ax.YTickLabel=strings(nObjects,1);
-end
-end
-
-function styleColorbar(cb,style,isLog)
-cb.FontName=style.fontName; cb.FontSize=style.axisFontSize; cb.FontWeight="bold";
-cb.Label.FontSize=style.labelFontSize; cb.Label.FontWeight="bold";
-if isLog
-    ticks=cb.Ticks;
-    cb.TickLabels=compose("%.3g",10.^ticks);
-end
-end
-
-function t=objectiveTitle(mode)
-if mode=="information", t="Information-optimized"; else, t="Coverage-optimized"; end
 end
