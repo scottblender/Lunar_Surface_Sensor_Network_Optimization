@@ -7,8 +7,12 @@ nModes = numel(modes);
 % figure need not become taller than a page. Small catalogs retain every name.
 labelStride = max(1,ceil(nObjects/10));
 labelRows = 1:labelStride:nObjects;
-height = max(7.5,2*numel(labelRows)*style.axisFontSize*1.15/72+2.2);
-width = max(10.5,4.5*nModes+1.5);
+% Respect the dedicated heatmap canvas minima. These larger source
+% dimensions preserve the left/top decoration room needed by the operational
+% spacecraft labels (especially the first LRO row) after EPS export.
+height = max(style.heatmapHeightInches, ...
+    2*numel(labelRows)*style.axisFontSize*1.15/72+2.2);
+width = max(style.heatmapWidthInches,4.5*nModes+1.5);
 fig = figure("Name",figureName,"Color",style.backgroundColor, ...
     "Units","inches","Position",[0.5 0.5 width height],"Renderer","opengl");
 outer = tiledlayout(fig,2,1,"TileSpacing","loose","Padding","loose");

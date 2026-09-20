@@ -9,14 +9,22 @@ addpath(fullfile(root,"scripts"));
 end
 
 function testTrackingHeatmapsFit(testCase)
+style = publicationPlotStyle();
 for nObjects = [4 20]
     rms = reshape(logspace(-3,1,nObjects*4*2),nObjects,4,2);
     observable = 50*ones(size(rms));
+    if nObjects == 4
+        names = ["LRO";"Chandrayaan-1";"Danuri";"Queqiao-2"];
+    else
+        names = compose("Spacecraft %02d",1:nObjects);
+    end
     fig = plotManuscriptTrackingHeatmaps(rms,observable, ...
-        compose("Spacecraft %02d",1:nObjects),[3 5 7 10], ...
-        ["information","coverage"],"Layout regression");
+        names,[3 5 7 10],["information","coverage"],"Layout regression");
     cleanup = onCleanup(@()close(fig));
     drawnow;
+    fig.Units = "inches";
+    verifyGreaterThanOrEqual(testCase,fig.Position(3),style.heatmapWidthInches);
+    verifyGreaterThanOrEqual(testCase,fig.Position(4),style.heatmapHeightInches);
     verifyNumElements(testCase,findall(fig,"Type","colorbar"),2);
     axesHandles = findall(fig,"Type","axes");
     verifyNumElements(testCase,axesHandles,4);
