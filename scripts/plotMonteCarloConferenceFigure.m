@@ -2,11 +2,11 @@ function plotInfo = plotMonteCarloConferenceFigure(userConfig)
 % PLOTMONTECARLOCONFERENCEFIGURE Create separate MC robustness figures.
 %
 % A completed Monte Carlo robustness study produces one standalone boxplot
-% for every objective/network-size combination. This mirrors the separate-
-% configuration presentation used in the space-based study and avoids placing
-% multiple boxplots on the same MATLAB figure. The plotted quantity is the
-% minimized objective J = -score, with the nominal optimized objective shown
-% as a horizontal reference line.
+% for every objective/network-size combination. Each sample is a discrete
+% candidate-grid network drawn from circular local neighborhoods around the
+% nominal optimized sensors. The plotted quantity is the minimized objective
+% J = -score, with the nominal optimized objective shown as a horizontal
+% reference line.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -25,6 +25,8 @@ config.monteCarloResultsFile = "";
 config.networkSizes = [3 5 7 10];
 config.objectiveModes = ["information","coverage"];
 config.optimizationCampaignDates = ["20260918","20260919"];
+config.neighborCount = 10;
+config.requiredSamplingMode = "discrete_candidate_neighborhood";
 config = mergeStruct(config,userConfig);
 config.resultsDirectory = string(config.resultsDirectory);
 config.outputDirectory = string(config.outputDirectory);
@@ -32,6 +34,8 @@ config.monteCarloResultsFile = string(config.monteCarloResultsFile);
 config.networkSizes = double(config.networkSizes(:).');
 config.objectiveModes = lower(string(config.objectiveModes(:).'));
 config.optimizationCampaignDates = string(config.optimizationCampaignDates(:));
+config.requiredSamplingMode = string(config.requiredSamplingMode);
+validateattributes(config.neighborCount,{'numeric'},{'scalar','integer','positive'});
 
 resultsFile = resolveMonteCarloResults(config);
 plotInfo = struct();
@@ -83,7 +87,7 @@ for objectiveMode = config.objectiveModes
             ax,values,nominal,networkSize,objectiveMode,style);
 
         lgd = legend(ax,[boxHandle nominalHandle], ...
-            ["MC perturbations","Nominal optimum"], ...
+            ["Local grid samples","Nominal optimum"], ...
             "Location","none","Orientation","horizontal", ...
             "NumColumns",2,"Box","off");
         lgd.FontName = style.fontName;
@@ -172,6 +176,11 @@ objectiveModes = studyState.config.nominalObjectiveModes;
 numberOfRows = numel(networkSizes)*numel(objectiveModes);
 objective = strings(numberOfRows,1);
 networkSize = zeros(numberOfRows,1);
+neighborCount = zeros(numberOfRows,1);
+meanEligibleNeighborCount = zeros(numberOfRows,1);
+maximumEligibleNeighborCount = zeros(numberOfRows,1);
+meanNeighborhoodRadiusKm = zeros(numberOfRows,1);
+maximumNeighborhoodRadiusKm = zeros(numberOfRows,1);
 nominalObjective = zeros(numberOfRows,1);
 meanObjective = zeros(numberOfRows,1);
 stdObjective = zeros(numberOfRows,1);
@@ -189,6 +198,11 @@ for modeIndex = 1:numel(objectiveModes)
         values = -double(caseState.rso.(metricField));
         objective(row) = objectiveMode;
         networkSize(row) = networkSizes(networkIndex);
+        neighborCount(row) = studyState.config.neighborCount;
+        meanEligibleNeighborCount(row) = mean(double(caseState.neighborCountActual));
+        maximumEligibleNeighborCount(row) = max(double(caseState.neighborCountActual));
+        meanNeighborhoodRadiusKm(row) = mean(double(caseState.neighborRadiusKm));
+        maximumNeighborhoodRadiusKm(row) = max(double(caseState.neighborRadiusKm));
         nominalObjective(row) = -double(caseState.nominal.rso.(metricField));
         meanObjective(row) = mean(values);
         stdObjective(row) = std(values);
@@ -198,11 +212,16 @@ for modeIndex = 1:numel(objectiveModes)
     end
 end
 
-summaryTable = table(objective,networkSize,nominalObjective,meanObjective, ...
-    stdObjective,medianObjective,minimumObjective,maximumObjective, ...
-    'VariableNames',{'Objective','NetworkSize','NominalObjective', ...
-    'MeanObjective','StdObjective','MedianObjective','MinimumObjective', ...
-    'MaximumObjective'});
+summaryTable = table(objective,networkSize,neighborCount, ...
+    meanEligibleNeighborCount,maximumEligibleNeighborCount, ...
+    meanNeighborhoodRadiusKm,maximumNeighborhoodRadiusKm, ...
+    nominalObjective,meanObjective,stdObjective,medianObjective, ...
+    minimumObjective,maximumObjective, ...
+    'VariableNames',{'Objective','NetworkSize','NeighborCount', ...
+    'MeanEligibleNeighborCount','MaximumEligibleNeighborCount', ...
+    'MeanNeighborhoodRadiusKm','MaximumNeighborhoodRadiusKm', ...
+    'NominalObjective','MeanObjective','StdObjective','MedianObjective', ...
+    'MinimumObjective','MaximumObjective'});
 end
 
 function resultsFile = resolveMonteCarloResults(config)
@@ -237,9 +256,15 @@ end
 
 function tf = isFullStudy(studyState,config)
 tf = isstruct(studyState) && isfield(studyState,"completed") && ...
-    studyState.completed && isfield(studyState,"config") && ...
+    studyState.completed && isfield(studyState,"version") && ...
+    string(studyState.version) == "lunar_surface_monte_carlo_robustness_v4" && ...
+    isfield(studyState,"config") && ...
     isfield(studyState.config,"networkSizes") && ...
-    isfield(studyState.config,"nominalObjectiveModes");
+    isfield(studyState.config,"nominalObjectiveModes") && ...
+    isfield(studyState.config,"samplingMode") && ...
+    string(studyState.config.samplingMode) == config.requiredSamplingMode && ...
+    isfield(studyState.config,"neighborCount") && ...
+    double(studyState.config.neighborCount) == double(config.neighborCount);
 if ~tf, return, end
 networkSizes = double(studyState.config.networkSizes(:).');
 objectiveModes = lower(string(studyState.config.nominalObjectiveModes(:).'));
