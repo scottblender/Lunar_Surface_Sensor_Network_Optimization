@@ -76,7 +76,8 @@ for objectiveMode = config.objectiveModes
             "Color",style.backgroundColor,"Units","inches", ...
             "Position",[0.5 0.5 7.0 4.8],"Renderer","opengl");
         fig.InvertHardcopy = "off";
-        ax = axes(fig,"Units","normalized","Position",[0.15 0.17 0.80 0.67]);
+        layout = tiledlayout(fig,1,1,"Padding","loose","TileSpacing","loose");
+        ax = nexttile(layout);
 
         [boxHandle,nominalHandle] = makeSingleBoxplot( ...
             ax,values,nominal,networkSize,objectiveMode,style);
@@ -88,15 +89,11 @@ for objectiveMode = config.objectiveModes
         lgd.FontName = style.fontName;
         lgd.FontSize = max(14,style.legendFontSize-2);
         lgd.FontWeight = "bold";
-        drawnow;
-        lgd.Units = "normalized";
-        % Outside the plot area, aligned to the upper-right, without
-        % sacrificing most of the horizontal canvas to the legend.
-        lgd.Position = [0.50 0.855 0.45 0.10];
+        lgd.Layout.Tile = "north";
 
         outputFile = fullfile(config.outputDirectory, ...
             sprintf("monte_carlo_%s_n%d.eps",objectiveMode,networkSize));
-        exportImageEps(fig,outputFile,style);
+        exportManuscriptFigure(fig,string(outputFile),7.0,4.8);
 
         networkField = sprintf("n%d",networkSize);
         plotInfo.(objectiveField).(networkField) = struct( ...
@@ -107,7 +104,11 @@ end
 
 summaryTable = buildSummaryTable(studyState);
 summaryFile = fullfile(tableDirectory,"monte_carlo_summary.csv");
-writetable(summaryTable,summaryFile);
+if ~isfield(config,"exportDiagnosticTables") || config.exportDiagnosticTables
+    writetable(summaryTable,summaryFile);
+else
+    summaryFile = "";
+end
 
 plotInfo.available = true;
 plotInfo.summaryFile = string(summaryFile);
@@ -253,18 +254,6 @@ if tf && ~isempty(config.optimizationCampaignDates)
     sourceDates = string(studyState.config.optimizationCampaignDates(:));
     tf = isequal(sort(sourceDates),sort(config.optimizationCampaignDates));
 end
-end
-
-function exportImageEps(fig,outputFile,style)
-fig.Color = style.backgroundColor;
-fig.InvertHardcopy = "off";
-fig.Renderer = "opengl";
-fig.PaperUnits = "inches";
-fig.PaperSize = [7.0 4.8];
-fig.PaperPosition = [0 0 7.0 4.8];
-fig.PaperPositionMode = "manual";
-drawnow;
-print(fig,char(outputFile),"-depsc","-opengl","-r600");
 end
 
 function output = mergeStruct(defaults,override)

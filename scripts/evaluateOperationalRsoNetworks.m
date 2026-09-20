@@ -264,8 +264,12 @@ observabilityPercent = operationalResults.observabilityPercent;
 
 summaryFile = fullfile(tableDirectory,"conference_operational_rso_summary.csv");
 detailedFile = fullfile(tableDirectory,"operational_rso_per_object.csv");
-writetable(summaryTable,summaryFile);
-writetable(detailedTable,detailedFile);
+if ~isfield(config,"exportDiagnosticTables") || config.exportDiagnosticTables
+    writetable(summaryTable,summaryFile);
+    writetable(detailedTable,detailedFile);
+else
+    summaryFile = ""; detailedFile = "";
+end
 
 fprintf("\n============================================================\n");
 fprintf("Operational-RSO summary table\n");

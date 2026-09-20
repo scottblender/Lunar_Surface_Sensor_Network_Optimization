@@ -1,0 +1,60 @@
+function tests = testManuscriptArtifactLayout
+% Data-free checks for figure decoration bounds and the manuscript inventory.
+tests = functiontests(localfunctions);
+end
+
+function setupOnce(~)
+root = fileparts(fileparts(mfilename("fullpath")));
+addpath(fullfile(root,"scripts"));
+end
+
+function testTrackingHeatmapsFit(testCase)
+for nObjects = [4 20]
+    rms = reshape(logspace(-3,1,nObjects*4*2),nObjects,4,2);
+    observable = 50*ones(size(rms));
+    fig = plotManuscriptTrackingHeatmaps(rms,observable, ...
+        compose("Spacecraft %02d",1:nObjects),[3 5 7 10], ...
+        ["information","coverage"],"Layout regression");
+    cleanup = onCleanup(@()close(fig));
+    drawnow;
+    verifyNumElements(testCase,findall(fig,"Type","colorbar"),2);
+    axesHandles = findall(fig,"Type","axes");
+    verifyNumElements(testCase,axesHandles,4);
+    fig.Units = "pixels"; canvas = fig.Position(3:4);
+    for ax = axesHandles.'
+        ax.Units = "pixels";
+        position = getpixelposition(ax,true);
+        inset = ax.TightInset;
+        low = position(1:2)-inset(1:2);
+        high = position(1:2)+position(3:4)+inset(3:4);
+        verifyGreaterThanOrEqual(testCase,low,[-2 -2]);
+        verifyLessThanOrEqual(testCase,high,canvas+2);
+    end
+    clear cleanup
+end
+end
+
+function testManuscriptInventoryExcludesDiagnostics(testCase)
+folder = string(tempname); mkdir(folder);
+cleanup = onCleanup(@()rmdir(folder,"s")); %#ok<NASGU>
+manifest = validateManuscriptArtifacts(folder);
+verifyFalse(testCase,any(contains(manifest.File,"screening")));
+verifyFalse(testCase,any(contains(manifest.File,"summary") & ...
+    manifest.File~="network_summary.csv"));
+% Eleven paper tables; P0 is a second CSV supplying the IOD table.
+verifyEqual(testCase,sum(manifest.Kind=="table"),12);
+verifyEqual(testCase,sum(startsWith(manifest.File,"monte_carlo_")),8);
+end
+
+function testArchivePreservesUnrelatedFiles(testCase)
+parent = string(tempname); mkdir(parent);
+cleanup = onCleanup(@()rmdir(parent,"s")); %#ok<NASGU>
+folder = fullfile(parent,"paper"); mkdir(folder);
+writelines("old figure",fullfile(folder,"screening_breakdown_information.eps"));
+writelines("keep",fullfile(folder,"unrelated.csv"));
+archiveNonManuscriptArtifacts(folder);
+verifyFalse(testCase,isfile(fullfile(folder,"screening_breakdown_information.eps")));
+verifyTrue(testCase,isfile(fullfile(parent,"paper_diagnostics_archive", ...
+    "screening_breakdown_information.eps")));
+verifyTrue(testCase,isfile(fullfile(folder,"unrelated.csv")));
+end

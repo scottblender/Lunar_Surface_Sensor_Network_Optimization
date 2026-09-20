@@ -120,3 +120,56 @@ legend and tighter title/colorbar bands reduce unused space. The map boundary
 label is now simply `75 degrees S`; the legend retains its full meaning.
 The graphics regression additionally checks disk clearance and leader angles.
 Static lint passes; MATLAB rendering remains unverified in this environment.
+
+## Matched to supplied manuscript, 2026-09-20
+
+The current source contains 13 figure labels and 11 table labels. MATLAB
+window numbers differ from manuscript figure numbers. The default driver now
+produces the following paper assets only (subject to data availability):
+
+| Manuscript figure | Export(s) |
+| --- | --- |
+| CLPS context | CLPS_Southern_Hemisphere_Design_Domain.eps |
+| Reference frames | reference_frame_moon_centered.eps; reference_frame_sensor_centered.eps |
+| Measurement angles | angles_only_right_ascension_geometry.eps; angles_only_declination_geometry.eps |
+| Original DEM | LOLA_Global_DEM.eps |
+| Synthetic DEM | Synthetic_Lunar_DEM.eps |
+| Exclusion geometry | Exclusion_Constraint_Schematic.eps |
+| Optimization workflow | optimization_workflow.tex |
+| Convergence | convergence_information.eps; convergence_coverage.eps |
+| Network locations | network_locations_vs_ns_information.eps; network_locations_vs_ns_coverage.eps |
+| Design tracking | design_rso_tracking_heatmaps.eps |
+| Robustness | eight monte_carlo_{objective}_n{size}.eps panels |
+| Domain comparison | domain_comparison_locations.eps; domain_comparison_metrics.eps |
+| Operational tracking | operational_rso_tracking_heatmaps.eps |
+
+The table manifest supplies completed/planned CLPS sites, RSO population,
+peaks, craters, exclusion parameters, IOD calibration (including its separate
+P0 matrix CSV), GA parameters, network summary, domain comparison, and
+spacecraft tracking. There are 12 CSV files for the 11 manuscript tables.
+
+Screening breakdown and separate DEM/discrete-neighbor validation jobs are
+now off by default because the source has no corresponding figure/table
+blocks. Diagnostic CSVs from tracking and Monte Carlo are suppressed by
+`exportDiagnosticTables=false`; standalone functions retain their diagnostic
+exports unless configured otherwise. Existing known extra exports are moved
+to a sibling `manuscript_artifacts_diagnostics_archive` folder, never deleted.
+The artifact manifest CSV is retained as driver bookkeeping, and numerical
+MAT caches remain available for reuse. Optional jobs can still be explicitly
+requested or run independently for further analysis.
+
+Later-figure layout changes: Monte Carlo, domain comparison, and standalone
+screening legends use dedicated tiled-layout rows; tracking figures use a
+shared layout with one colorbar per metric row and physical height based on
+visible label count. All 20 design-RSO data rows remain present; alternating
+index labels avoid an excessively tall paper figure. The smaller operational
+catalog retains every spacecraft name. Both tracking objectives share the
+same RMS color limits.
+CLPS box padding and outer gaps are reduced; geographic label extents are
+checked against leader segments and other labels before export.
+
+Run `runtests({'tests/testManuscriptContextLayout.m', ...
+ 'tests/testManuscriptArtifactLayout.m'})` in MATLAB. These rendering tests
+were added but could not be executed in the editing environment. Static lint
+checks were run; the evaluator retains a pre-existing name/value-style lint
+advisory in its operational-catalog construction.

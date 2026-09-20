@@ -25,6 +25,8 @@ cb = colorbar(ax,"southoutside"); cb.FontSize = 18;
 cb.Label.String = "DEM elevation (km)";
 lgd = legend(ax,h,"Restricted comparison region");
 targets = [-0.2 0.3; 0 0.1; 0.2 0.2; 0.3 -0.3];
+text(ax,-0.25,-0.25,"South Pole","Tag","clpsMovableLabel", ...
+    "FontSize",15,"BackgroundColor","white");
 layoutClpsContext(fig,ax,boxes,leaders,targets,heading,cb,lgd);
 fig.Units = "points";
 canvas = fig.Position(3:4);
