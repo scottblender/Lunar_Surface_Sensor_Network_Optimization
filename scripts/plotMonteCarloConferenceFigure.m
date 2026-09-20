@@ -1,12 +1,11 @@
 function plotInfo = plotMonteCarloConferenceFigure(userConfig)
-% PLOTMONTECARLOCONFERENCEFIGURE Create separate MC robustness figures.
+% PLOTMONTECARLOCONFERENCEFIGURE Plot exhaustive discrete local robustness.
 %
-% A completed Monte Carlo robustness study produces one standalone boxplot
-% for every objective/network-size combination. Each sample is a discrete
-% candidate-grid network drawn from circular local neighborhoods around the
-% nominal optimized sensors. The plotted quantity is the minimized objective
-% J = -score, with the nominal optimized objective shown as a horizontal
-% reference line.
+% The legacy function name is retained for compatibility. Each boxplot contains
+% every feasible one-sensor substitution within the K-neighbor circular
+% candidate-grid neighborhoods around the nominal optimized network. The
+% plotted quantity is the minimized objective J = -score, with the nominal
+% optimized objective shown as a horizontal reference line.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -26,7 +25,7 @@ config.networkSizes = [3 5 7 10];
 config.objectiveModes = ["information","coverage"];
 config.optimizationCampaignDates = ["20260918","20260919"];
 config.neighborCount = 10;
-config.requiredSamplingMode = "discrete_candidate_neighborhood";
+config.requiredSamplingMode = "exhaustive_single_sensor_neighbors";
 config = mergeStruct(config,userConfig);
 config.resultsDirectory = string(config.resultsDirectory);
 config.outputDirectory = string(config.outputDirectory);
@@ -46,7 +45,7 @@ plotInfo.coverage = struct();
 plotInfo.summaryFile = "";
 
 if strlength(resultsFile) == 0
-    fprintf("\nNo completed full Monte Carlo robustness study found; MC figures skipped.\n");
+    fprintf("\nNo completed exhaustive discrete local-neighborhood study found; figures skipped.\n");
     return
 end
 
@@ -75,7 +74,7 @@ for objectiveMode = config.objectiveModes
         values = values(:);
         nominal = -double(caseState.nominal.rso.(metricField));
 
-        fig = figure("Name",sprintf("Monte Carlo robustness: %s, N_s=%d", ...
+        fig = figure("Name",sprintf("Discrete local robustness: %s, N_s=%d", ...
             objectiveMode,networkSize), ...
             "Color",style.backgroundColor,"Units","inches", ...
             "Position",[0.5 0.5 7.0 4.8],"Renderer","opengl");
@@ -87,7 +86,7 @@ for objectiveMode = config.objectiveModes
             ax,values,nominal,networkSize,objectiveMode,style);
 
         lgd = legend(ax,[boxHandle nominalHandle], ...
-            ["Local grid samples","Nominal optimum"], ...
+            ["Local neighbor networks","Nominal optimum"], ...
             "Location","none","Orientation","horizontal", ...
             "NumColumns",2,"Box","off");
         lgd.FontName = style.fontName;
@@ -119,7 +118,7 @@ plotInfo.summaryFile = string(summaryFile);
 plotInfo.summaryTable = summaryTable;
 plotInfo.resultsFile = resultsFile;
 
-fprintf("Monte Carlo robustness figures:\n");
+fprintf("Discrete local-neighborhood robustness figures:\n");
 for objectiveMode = config.objectiveModes
     objectiveField = char(objectiveMode);
     fields = fieldnames(plotInfo.(objectiveField));
@@ -181,6 +180,11 @@ meanEligibleNeighborCount = zeros(numberOfRows,1);
 maximumEligibleNeighborCount = zeros(numberOfRows,1);
 meanNeighborhoodRadiusKm = zeros(numberOfRows,1);
 maximumNeighborhoodRadiusKm = zeros(numberOfRows,1);
+testedNeighborNetworks = zeros(numberOfRows,1);
+betterNeighborCount = zeros(numberOfRows,1);
+betterNeighborFraction = zeros(numberOfRows,1);
+maximumImprovement = zeros(numberOfRows,1);
+locallyOptimal = false(numberOfRows,1);
 nominalObjective = zeros(numberOfRows,1);
 meanObjective = zeros(numberOfRows,1);
 stdObjective = zeros(numberOfRows,1);
@@ -203,6 +207,11 @@ for modeIndex = 1:numel(objectiveModes)
         maximumEligibleNeighborCount(row) = max(double(caseState.neighborCountActual));
         meanNeighborhoodRadiusKm(row) = mean(double(caseState.neighborRadiusKm));
         maximumNeighborhoodRadiusKm(row) = max(double(caseState.neighborRadiusKm));
+        testedNeighborNetworks(row) = caseState.localOptimality.numberTested;
+        betterNeighborCount(row) = caseState.localOptimality.numberBetter;
+        betterNeighborFraction(row) = caseState.localOptimality.fractionBetter;
+        maximumImprovement(row) = caseState.localOptimality.maximumImprovement;
+        locallyOptimal(row) = caseState.localOptimality.locallyOptimal;
         nominalObjective(row) = -double(caseState.nominal.rso.(metricField));
         meanObjective(row) = mean(values);
         stdObjective(row) = std(values);
@@ -215,11 +224,15 @@ end
 summaryTable = table(objective,networkSize,neighborCount, ...
     meanEligibleNeighborCount,maximumEligibleNeighborCount, ...
     meanNeighborhoodRadiusKm,maximumNeighborhoodRadiusKm, ...
+    testedNeighborNetworks,betterNeighborCount,betterNeighborFraction, ...
+    maximumImprovement,locallyOptimal, ...
     nominalObjective,meanObjective,stdObjective,medianObjective, ...
     minimumObjective,maximumObjective, ...
     'VariableNames',{'Objective','NetworkSize','NeighborCount', ...
     'MeanEligibleNeighborCount','MaximumEligibleNeighborCount', ...
     'MeanNeighborhoodRadiusKm','MaximumNeighborhoodRadiusKm', ...
+    'TestedNeighborNetworks','BetterNeighborCount','BetterNeighborFraction', ...
+    'MaximumImprovement','LocallyOptimal', ...
     'NominalObjective','MeanObjective','StdObjective','MedianObjective', ...
     'MinimumObjective','MaximumObjective'});
 end
@@ -257,7 +270,7 @@ end
 function tf = isFullStudy(studyState,config)
 tf = isstruct(studyState) && isfield(studyState,"completed") && ...
     studyState.completed && isfield(studyState,"version") && ...
-    string(studyState.version) == "lunar_surface_monte_carlo_robustness_v4" && ...
+    string(studyState.version) == "lunar_surface_monte_carlo_robustness_v5" && ...
     isfield(studyState,"config") && ...
     isfield(studyState.config,"networkSizes") && ...
     isfield(studyState.config,"nominalObjectiveModes") && ...
