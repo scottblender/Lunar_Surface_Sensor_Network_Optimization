@@ -45,7 +45,7 @@ for k = 1:numel(boxes)
     target = physicalTargets(k,:);
     % Intersect a 45-degree ray with a clearance circle around the disk.
     projection = dot(target,direction);
-    clearanceRadius = mapRadius-0.02*mapSide;
+    clearanceRadius = mapRadius-0.04*mapSide;
     distance = (-projection + sqrt(projection^2 + ...
         2*(clearanceRadius^2-dot(target,target))))/2;
     distance = max([distance,-target.*direction]);
@@ -73,7 +73,7 @@ cb.Position = [mapPosition(1) contentBottom-gap-cb.FontSize mapSide cb.FontSize]
 ax.Position = mapPosition;
 heading.Position = [(width-headingSize(1))/2 ...
     contentBottom+contentSize(2)+gap headingSize];
-lgd.Position = [(width-legendSize(1))/2 margin legendSize];
+lgd.Position = [(width-legendSize(1))/2 0.35*margin legendSize];
 for k = 1:numel(boxes)
     boxes(k).Position = [rectangles(k,1:2)+translation sizes(k,:)];
     target = physicalTargets(k,:)+translation;
