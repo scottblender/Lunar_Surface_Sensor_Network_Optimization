@@ -1,7 +1,7 @@
 function layoutClpsContext(fig,ax,boxes,leaders,targets,heading,cb,lgd)
 % LAYOUTCLPSCONTEXT Lay out a polar context map in physical points.
-% Measure text before allocating the canvas. Keep both callout rails outside
-% a square plot box so axis equal cannot invalidate the leader transform.
+% Measure text, then nest callouts in the four corners outside the polar disk.
+% Leaders meet the inner box corners at 45 degrees in physical coordinates.
 fontSize = boxes(1).FontSize;
 gap = fontSize;
 margin = fontSize;
@@ -29,55 +29,58 @@ drawnow;
 headingSize = probe.Extent(3:4) + 2*heading.Margin + gap/2;
 delete(probe);
 heading.FitBoxToText = "off";
+% Two legend columns avoid forcing a wide canvas after the map is compacted.
+lgd.NumColumns = 2;
+drawnow;
 legendSize = lgd.Position(3:4);
-leftWidth = max(sizes(1:2,1));
-rightWidth = max(sizes(3:4,1));
-% The map edge labels need breathing room beyond the actual axes square.
-mapGap = 3*fontSize;
-mapSide = max([mapSide,sum(sizes(1:2,2))+gap, ...
-    sum(sizes(3:4,2))+gap]);
-contentWidth = leftWidth + rightWidth + mapSide + 2*mapGap;
-width = max([contentWidth,legendSize(1),headingSize(1)]) + 2*margin;
-% Colorbar tick labels and its axis label occupy separate text lines.
-colorbarBand = 4*cb.FontSize + gap;
-mapBottom = margin + legendSize(2) + gap + colorbarBand + mapGap;
-height = mapBottom + mapSide + mapGap + headingSize(2) + margin;
+mapRadius = mapSide/2;
+% Work relative to the map center until the complete content bounds are known.
+physicalTargets = mapSide .* ((targets-[ax.XLim(1) ax.YLim(1)]) ./ ...
+    [diff(ax.XLim) diff(ax.YLim)] - 0.5);
+directions = [-1 1; -1 -1; 1 1; 1 -1];
+rectangles = zeros(numel(boxes),4);
+starts = zeros(numel(boxes),2);
+for k = 1:numel(boxes)
+    direction = directions(k,:);
+    target = physicalTargets(k,:);
+    % Intersect a 45-degree ray with a clearance circle around the disk.
+    projection = dot(target,direction);
+    clearanceRadius = mapRadius+gap;
+    distance = (-projection + sqrt(projection^2 + ...
+        2*(clearanceRadius^2-dot(target,target))))/2;
+    distance = max([distance,-target.*direction]);
+    corner = target + distance*direction;
+    starts(k,:) = corner;
+    bottomLeft = corner - sizes(k,:).*(direction<0);
+    rectangles(k,:) = [bottomLeft sizes(k,:)];
+end
+% Include map-coordinate labels, not just the colored disk, in the bounds.
+low = min([rectangles(:,1:2); -[mapRadius mapRadius]-gap],[],1);
+high = max([rectangles(:,1:2)+sizes; [mapRadius mapRadius]+gap],[],1);
+contentSize = high-low;
+width = max([contentSize(1),legendSize(1),headingSize(1)])+2*margin;
+colorbarBand = 3*cb.FontSize+gap;
+contentBottom = margin+legendSize(2)+gap+colorbarBand;
+height = contentBottom+contentSize(2)+gap+headingSize(2)+margin;
+translation = [(width-contentSize(1))/2 contentBottom]-low;
 fig.Units = "points";
 fig.Position(3:4) = [width height];
-contentLeft = (width-contentWidth)/2;
-mapLeft = contentLeft + leftWidth + mapGap;
+mapPosition = [translation-mapRadius mapSide mapSide];
 ax.Units = "points";
-ax.Position = [mapLeft mapBottom mapSide mapSide];
+ax.Position = mapPosition;
 cb.Units = "points";
-cb.Position = [mapLeft mapBottom-mapGap-cb.FontSize mapSide cb.FontSize];
-% Colorbar placement must precede the final axes placement.
-ax.Position = [mapLeft mapBottom mapSide mapSide];
+cb.Position = [mapPosition(1) contentBottom-gap-cb.FontSize mapSide cb.FontSize];
+ax.Position = mapPosition;
 heading.Position = [(width-headingSize(1))/2 ...
-    mapBottom+mapSide+mapGap headingSize];
+    contentBottom+contentSize(2)+gap headingSize];
 lgd.Position = [(width-legendSize(1))/2 margin legendSize];
-for rail = 1:2
-    indices = (1:2) + 2*(rail-1);
-    totalHeight = sum(sizes(indices,2)) + gap;
-    top = mapBottom + (mapSide+totalHeight)/2;
-    for k = indices
-        if rail == 1
-            left = mapLeft-mapGap-sizes(k,1);
-            startX = left+sizes(k,1);
-        else
-            left = mapLeft+mapSide+mapGap;
-            startX = left;
-        end
-        bottom = top-sizes(k,2);
-        boxes(k).Position = [left bottom sizes(k,:)];
-        target = [mapLeft mapBottom] + mapSide .* ...
-            ((targets(k,:)-[ax.XLim(1) ax.YLim(1)]) ./ ...
-             [diff(ax.XLim) diff(ax.YLim)]);
-        startY = min(max(target(2),bottom+gap/2),top-gap/2);
-        leaders(k).Units = "normalized";
-        leaders(k).X = [startX target(1)]/width;
-        leaders(k).Y = [startY target(2)]/height;
-        top = bottom-gap;
-    end
+for k = 1:numel(boxes)
+    boxes(k).Position = [rectangles(k,1:2)+translation sizes(k,:)];
+    target = physicalTargets(k,:)+translation;
+    start = starts(k,:)+translation;
+    leaders(k).Units = "normalized";
+    leaders(k).X = [start(1) target(1)]/width;
+    leaders(k).Y = [start(2) target(2)]/height;
 end
 drawnow;
 end

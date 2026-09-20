@@ -33,11 +33,13 @@ for k = 1:4
     p = boxes(k).Position;
     verifyGreaterThanOrEqual(testCase,p(1:2),[0 0]);
     verifyLessThanOrEqual(testCase,p(1:2)+p(3:4),canvas);
-    if k <= 2
-        verifyLessThan(testCase,p(1)+p(3),ax.Position(1));
-    else
-        verifyGreaterThan(testCase,p(1),sum(ax.Position([1 3])));
-    end
+    % Nearest box point stays outside the map disk, even though its bounding
+    % rectangle overlaps a corner of the square axes.
+    center = ax.Position(1:2)+ax.Position(3:4)/2;
+    nearest = max(p(1:2),min(center,p(1:2)+p(3:4)));
+    verifyGreaterThan(testCase,norm(nearest-center),ax.Position(3)/2);
+    delta = [diff(leaders(k).X) diff(leaders(k).Y)].*canvas;
+    verifyEqual(testCase,abs(delta(1)),abs(delta(2)),"AbsTol",1e-6);
     expected = ax.Position(1:2) + ax.Position(3:4).*(targets(k,:)+1)/2;
     actual = [leaders(k).X(2) leaders(k).Y(2)].*canvas;
     verifyEqual(testCase,actual,expected,"AbsTol",1e-6);

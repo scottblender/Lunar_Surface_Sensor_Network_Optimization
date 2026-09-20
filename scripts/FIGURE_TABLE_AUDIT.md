@@ -109,3 +109,14 @@ generateManuscriptArtifacts;
 
 The graphics regression checks callout containment, rail separation, a square
 map, and leader endpoints using deliberately long labels and 18-point text.
+
+### Compact corner layout
+
+The CLPS callouts now occupy the four exterior corners of the polar disk.
+Each leader follows a 45-degree ray from its geographic target to the inner
+corner of its text box. Ray/circle intersections keep boxes outside the disk;
+the union of measured box and map bounds determines the canvas. A two-column
+legend and tighter title/colorbar bands reduce unused space. The map boundary
+label is now simply `75 degrees S`; the legend retains its full meaning.
+The graphics regression additionally checks disk clearance and leader angles.
+Static lint passes; MATLAB rendering remains unverified in this environment.
