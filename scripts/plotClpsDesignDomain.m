@@ -134,7 +134,7 @@ end
 % Geographic reference labels without grid rings.
 for latitudeValue = -45
     radiusKm = config.moonRadiusKm*deg2rad(90 + latitudeValue);
-    labelLongitudeDeg = 225;
+    labelLongitudeDeg = 200;
     labelText = sprintf("%d^{\\circ}S",abs(latitudeValue));
     text(ax,radiusKm*sind(labelLongitudeDeg)-20, ...
         radiusKm*cosd(labelLongitudeDeg)+18, ...

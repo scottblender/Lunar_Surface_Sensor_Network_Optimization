@@ -13,7 +13,7 @@ for k = 1:numel(boxes)
         "FontWeight",boxes(k).FontWeight,"Interpreter",boxes(k).Interpreter, ...
         "Visible","off");
     drawnow;
-    sizes(k,:) = probe.Extent(3:4) + 2*boxes(k).Margin;
+    sizes(k,:) = probe.Extent(3:4) + 2*boxes(k).Margin + [8 4];
     delete(probe);
     boxes(k).Units = "points";
     boxes(k).FitBoxToText = "off";
@@ -45,7 +45,7 @@ for k = 1:numel(boxes)
     target = physicalTargets(k,:);
     % Intersect a 45-degree ray with a clearance circle around the disk.
     projection = dot(target,direction);
-    clearanceRadius = mapRadius+gap;
+    clearanceRadius = mapRadius-0.02*mapSide;
     distance = (-projection + sqrt(projection^2 + ...
         2*(clearanceRadius^2-dot(target,target))))/2;
     distance = max([distance,-target.*direction]);
