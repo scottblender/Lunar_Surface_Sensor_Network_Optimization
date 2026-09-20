@@ -45,7 +45,7 @@ for k = 1:numel(boxes)
     target = physicalTargets(k,:);
     % Intersect a 45-degree ray with a clearance circle around the disk.
     projection = dot(target,direction);
-    clearanceRadius = mapRadius-0.04*mapSide;
+    clearanceRadius = mapRadius-0.20*mapSide;
     distance = (-projection + sqrt(projection^2 + ...
         2*(clearanceRadius^2-dot(target,target))))/2;
     distance = max([distance,-target.*direction]);
