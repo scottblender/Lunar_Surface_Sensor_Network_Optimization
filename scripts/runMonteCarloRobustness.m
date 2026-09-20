@@ -405,7 +405,7 @@ assert(all(arrayfun(@(k) numel(unique(sampledIndices(:,k))) == ...
 end
 
 %% ------------------------------------------------------------------------
-function results = evaluateDiscreteDesignNetworkfunction results = evaluateDiscreteDesignNetwork(sensorIndices,database)
+function results = evaluateDiscreteDesignNetwork(sensorIndices,database)
 sensorIndices = double(sensorIndices(:));
 [~,details] = optimization.networkObjective(sensorIndices,database,"information");
 assert(details.feasible,"Discrete candidate network is infeasible.");
@@ -661,7 +661,7 @@ end
 end
 
 %% ------------------------------------------------------------------------
-function demFile = resolveDemFilefunction demFile = resolveDemFile(database,dataDirectory)
+function demFile = resolveDemFile(database,dataDirectory)
 if isfield(database,"meta") && isfield(database.meta,"demSource")
     candidate = string(database.meta.demSource);
     if strlength(candidate) > 0 && isfile(candidate)
