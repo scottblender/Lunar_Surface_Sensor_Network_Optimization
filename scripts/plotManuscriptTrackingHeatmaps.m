@@ -21,7 +21,9 @@ assert(~isempty(positive),"No positive tracking errors are available.");
 limits = [floor(log10(min(positive))) ceil(log10(max(positive)))];
 if limits(2)<=limits(1), limits(2)=limits(1)+1; end
 for row = 1:2
-    inner = tiledlayout(outer,1,nModes,"TileSpacing","compact","Padding","compact");
+    % Loose row padding prevents the uppermost design-RSO tick label from
+    % being clipped by the EPS renderer while retaining compact panel spacing.
+    inner = tiledlayout(outer,1,nModes,"TileSpacing","compact","Padding","loose");
     inner.Layout.Tile = row;
     for column = 1:nModes
         ax = nexttile(inner,column);
@@ -61,5 +63,15 @@ for row = 1:2
 end
 xlabel(outer,"Number of sensors, N_s","FontName",style.fontName, ...
     "FontSize",style.labelFontSize,"FontWeight","bold");
+
+% Render once so MATLAB has the final tick-label extents, then preserve at
+% least those insets (plus a small export cushion) before the EPS print pass.
+drawnow;
+axesHandles = findall(fig,"Type","axes");
+for ax = axesHandles.'
+    ax.Units = "normalized";
+    tight = ax.TightInset;
+    ax.LooseInset = max(ax.LooseInset,tight + [0.005 0.005 0.005 0.005]);
+end
 drawnow;
 end
