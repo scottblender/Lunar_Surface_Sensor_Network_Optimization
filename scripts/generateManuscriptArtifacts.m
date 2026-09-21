@@ -34,7 +34,8 @@ defaults.clearOutputDirectory=false;
 defaults.generateStudyDefinition=true;
 defaults.generateDemFigures=true;
 defaults.generateProductionResults=true;
-defaults.generateScreeningBreakdown=false;
+defaults.generateRsoFamilyFigure=true;
+defaults.generateScreeningBreakdown=true;
 defaults.generateMonteCarlo=true;
 defaults.generateOperationalValidation=true;
 defaults.generateRobustnessValidation=false;
@@ -52,6 +53,7 @@ defaults.comparisonNetworkSize=10;
 defaults.comparisonObjective="information";
 defaults.operationalTableObjective="information";
 defaults.operationalTableNetworkSize=10;
+defaults.constraintExampleRsoIndex=1;
 config=mergeStruct(defaults,userConfig);
 config.outputDirectory=string(config.outputDirectory);
 config.productionCampaignDates=string(config.productionCampaignDates(:));
@@ -66,13 +68,12 @@ if config.clearOutputDirectory && isfolder(config.outputDirectory)
 end
 if ~isfolder(config.outputDirectory), mkdir(config.outputDirectory); end
 
-if ~config.generateScreeningBreakdown && ~config.exportDiagnosticTables && ...
-        ~config.generateDemValidation
+if ~config.exportDiagnosticTables && ~config.generateDemValidation
     archiveNonManuscriptArtifacts(config.outputDirectory);
 end
 
 products=struct();
-products.version="manuscript_artifact_driver_v3";
+products.version="manuscript_artifact_driver_v4";
 products.outputDirectory=config.outputDirectory;
 
 %% Study-definition figures and tables
@@ -121,6 +122,13 @@ if strlength(config.restrictedCampaignDate)>0 || ...
     products.restrictedCampaign=restrictedCampaign;
 end
 
+%% Representative design-RSO geometry
+
+if config.generateRsoFamilyFigure
+    products.rsoFamily=runJob("design-RSO MCRF family figure", ...
+        @()plotDesignRsoFamilyMcrf(campaign,config),true);
+end
+
 %% Main production-result figures
 
 if config.generateProductionResults
@@ -131,7 +139,7 @@ if config.generateProductionResults
         @()plotProductionNetworkLocations(campaign,config),true);
 
     if config.generateScreeningBreakdown
-        products.screeningBreakdown=runJob("measurement-screening figures", ...
+        products.screeningBreakdown=runJob("RSO-specific constraint-screening figure", ...
             @()plotMeasurementScreeningBreakdown( ...
                 campaign,restrictedCampaign,config),true);
     end
