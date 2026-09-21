@@ -34,16 +34,16 @@ for objectiveIndex = 1:numel(config.objectiveModes)
         xlim(ax,[0 360]); ylim(ax,[-90 0]);
         xticks(ax,0:90:360); yticks(ax,-90:30:0);
         clim(ax,[0 100]); colormap(ax,[1 1 1;turbo(255)]);
-        ax.FontName = style.fontName; ax.FontSize = 12; ax.FontWeight = "bold";
+        ax.FontName = style.fontName; ax.FontSize = max(16,style.axisFontSize-2); ax.FontWeight = "bold";
         ax.TickDir = "out";
     end
     cb = colorbar(ax); cb.Layout.Tile = "east";
     cb.Label.String = "Runs selecting bin (%)";
-    cb.FontSize = 12; cb.FontWeight = "bold";
-    cb.Label.FontSize = 14; cb.Label.FontWeight = "bold";
+    cb.FontSize = max(16,style.axisFontSize-2); cb.FontWeight = "bold";
+    cb.Label.FontSize = max(18,style.labelFontSize-2); cb.Label.FontWeight = "bold";
     xlabel(layout,"East longitude (deg)", ...
-        "FontSize",14,"FontWeight","bold");
-    ylabel(layout,"Latitude (deg)","FontSize",14,"FontWeight","bold");
+        "FontSize",style.labelFontSize,"FontWeight","bold");
+    ylabel(layout,"Latitude (deg)","FontSize",style.labelFontSize,"FontWeight","bold");
     outputFile = fullfile(outputDirectory,sprintf("network_locations_vs_ns_%s.eps",mode));
     exportManuscriptFigure(fig,string(outputFile),width,height);
     plotInfo.(char(mode)) = struct("figure",fig,"outputFile",string(outputFile), ...
