@@ -171,7 +171,7 @@ lgd = legend(axCoverage,coverageHandles, ...
     "Location","none","Orientation","horizontal", ...
     "NumColumns",2,"Box","off");
 lgd.FontName = style.fontName;
-lgd.FontSize = 13;
+lgd.FontSize = max(16,style.legendFontSize-2);
 lgd.FontWeight = "bold";
 lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
