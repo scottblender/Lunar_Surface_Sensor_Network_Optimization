@@ -10,10 +10,10 @@ function style = publicationPlotStyle()
 style = struct();
 
 style.fontName = "Arial";
-style.axisFontSize = 18;
-style.labelFontSize = 20;
-style.annotationFontSize = 18;
-style.legendFontSize = 18;
+style.axisFontSize = 20;
+style.labelFontSize = 22;
+style.annotationFontSize = 19;
+style.legendFontSize = 20;
 
 style.backgroundColor = [1.00 1.00 1.00];
 style.textColor = [0.12 0.12 0.12];
@@ -52,8 +52,8 @@ style.gridFigureWidthInches = 11.0;
 style.gridFigureHeightInches = 10.5;
 % Extra heatmap width prevents long operational-spacecraft labels from being
 % clipped while retaining the large manuscript font size.
-style.heatmapWidthInches = 13.5;
-style.heatmapHeightInches = 10.5;
+style.heatmapWidthInches = 14.5;
+style.heatmapHeightInches = 11.0;
 style.exportPaddingInches = 0.30;
 
 end
