@@ -123,6 +123,13 @@ yticks(ax,-90:15:0);
 xlabel(ax,"East longitude (deg)");
 ylabel(ax,"Latitude (deg)");
 styleAxes(ax,style);
+% Figure 24 is placed relatively small in the manuscript, so give the map
+% typography a modest local increase without changing the global style.
+ax.FontSize = style.axisFontSize + 3;
+ax.XLabel.FontSize = style.labelFontSize + 3;
+ax.YLabel.FontSize = style.labelFontSize + 3;
+cb.FontSize = style.axisFontSize + 1;
+cb.Label.FontSize = style.labelFontSize + 1;
 
 lgd = legend(ax,[h1 h2 h3 h4], ...
     ["Southern: information","Southern: coverage", ...
@@ -130,7 +137,7 @@ lgd = legend(ax,[h1 h2 h3 h4], ...
     "Location","none","Orientation","horizontal", ...
     "NumColumns",2,"Box","off");
 lgd.FontName = style.fontName;
-lgd.FontSize = max(16,style.legendFontSize-2);
+lgd.FontSize = style.legendFontSize;
 lgd.FontWeight = "bold";
 lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
@@ -160,12 +167,13 @@ metricsFig = figure("Name","Domain comparison performance", ...
     "Color",style.backgroundColor,"Units","inches", ...
     "Position",[1 1 7.0 8.6],"Renderer","opengl");
 layout = tiledlayout(metricsFig,5,1, ...
-    "TileSpacing","loose","Padding","loose");
+    "TileSpacing","compact","Padding","compact");
 
 axCoverage = nexttile(layout,1,[2 1]);
 coverageHandles = plotComparisonBars(axCoverage,networkSizes, ...
     fullCoverageScore,restrictedCoverageScore, ...
     "Coverage score, C",style);
+densifyYAxis(axCoverage);
 
 lgd = legend(axCoverage,coverageHandles, ...
     ["Southern hemisphere","Restricted south-polar"], ...
@@ -181,15 +189,18 @@ axInformation = nexttile(layout,4,[2 1]);
 plotComparisonBars(axInformation,networkSizes, ...
     fullInformationScore,restrictedInformationScore, ...
     "Information score, I",style);
+densifyYAxis(axInformation);
 
 metricsFile = fullfile(outputDirectory,"domain_comparison_metrics.eps");
 % One shared x label and an unused middle tile separate the two panels.
 xlabel(axCoverage,""); xlabel(axInformation,"");
 xlabel(layout,"Number of sensors, N_s");
+layout.XLabel.FontWeight = "bold";
 applyManuscriptTypography(metricsFig,string(metricsFile),7.0);
 layout.XLabel.FontSize = 12*7.0/style.manuscriptHalfWidthInches;
+layout.XLabel.FontWeight = "bold";
 layout.Units = "normalized";
-layout.OuterPosition = [0.055 0.04 0.89 0.92];
+layout.OuterPosition = [0.035 0.025 0.93 0.955];
 setappdata(metricsFig,"ManuscriptTypographyFinalized",true);
 exportManuscriptFigure(metricsFig,string(metricsFile),7.0,8.6);
 
@@ -286,6 +297,16 @@ xticks(ax,1:numel(networkSizes));
 xticklabels(ax,string(networkSizes));
 xlim(ax,[0.5 numel(networkSizes)+0.5]);
 styleAxes(ax,style);
+end
+
+function densifyYAxis(ax)
+% Preserve MATLAB's readable automatic ticks and add midpoints when the
+% automatic axis is sparse.
+ticks = yticks(ax);
+if numel(ticks) >= 2 && numel(ticks) <= 5
+    midpoints = 0.5*(ticks(1:end-1)+ticks(2:end));
+    yticks(ax,sort([ticks midpoints]));
+end
 end
 
 function styleAxes(ax,style)
