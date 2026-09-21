@@ -69,6 +69,9 @@ layout = tiledlayout(fig,numberOfRows,numberOfColumns, ...
 
 [sx,sy,sz] = sphere(36);
 
+% Use the bottom-left tile as the single labeled coordinate reference.
+representativeObjectIndex = (numberOfRows-1)*numberOfColumns+1;
+
 for objectIndex = 1:numberOfObjects
     ax = nexttile(layout,objectIndex);
     hold(ax,"on");
@@ -104,22 +107,36 @@ for objectIndex = 1:numberOfObjects
     ax.LineWidth = 0.75;
     ax.TickDir = "out";
 
-    % Keep the 20-panel orbit-family figure visually clean. Per-panel axis
-    % labels and numeric tick labels crowd the small 3D tiles and obscure the
-    % trajectory geometry, so the coordinate units are stated once below.
-    xlabel(ax,"");
-    ylabel(ax,"");
-    zlabel(ax,"");
-    ax.XTick = [];
-    ax.YTick = [];
-    ax.ZTick = [];
-    ax.LooseInset = max(ax.LooseInset,[0.01 0.01 0.01 0.01]);
-end
+    % Retain a sparse numeric scale on every orbit while labeling the
+    % coordinate axes only once on the bottom-left representative panel.
+    xticks(ax,[-localLimit 0 localLimit]);
+    yticks(ax,[-localLimit 0 localLimit]);
+    zticks(ax,[-localLimit 0 localLimit]);
+    xtickformat(ax,"%.1f");
+    ytickformat(ax,"%.1f");
+    ztickformat(ax,"%.1f");
+    ax.XAxis.Exponent = 0;
+    ax.YAxis.Exponent = 0;
+    ax.ZAxis.Exponent = 0;
 
-annotation(fig,"textbox",[0.39 0.01 0.22 0.03], ...
-    "String","Coordinates in 10^3 km", ...
-    "EdgeColor","none","HorizontalAlignment","center", ...
-    "FontName",style.fontName,"FontSize",11,"FontWeight","bold");
+    if objectIndex == representativeObjectIndex
+        xlabel(ax,"x_R (10^3 km)");
+        ylabel(ax,"y_R (10^3 km)");
+        zlabel(ax,"z_R (10^3 km)");
+        ax.XLabel.FontSize = 11;
+        ax.YLabel.FontSize = 11;
+        ax.ZLabel.FontSize = 11;
+        ax.XLabel.FontWeight = "bold";
+        ax.YLabel.FontWeight = "bold";
+        ax.ZLabel.FontWeight = "bold";
+    else
+        xlabel(ax,"");
+        ylabel(ax,"");
+        zlabel(ax,"");
+    end
+
+    ax.LooseInset = max(ax.LooseInset,[0.015 0.015 0.015 0.015]);
+end
 
 outputFile = fullfile(outputDirectory,"design_rso_family_mcrf_3d.eps");
 exportManuscriptFigure(fig,string(outputFile),figureWidth,figureHeight);
