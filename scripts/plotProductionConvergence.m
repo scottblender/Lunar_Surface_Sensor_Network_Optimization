@@ -27,7 +27,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     fig = figure("Name",objectiveMode + " convergence", ...
         "Color",style.backgroundColor,"Units","inches", ...
         "Position",[1 1 7.0 5.8],"Renderer","opengl");
-    layout = tiledlayout(fig,1,1,"Padding","loose","TileSpacing","loose");
+    layout = tiledlayout(fig,1,1,"Padding","compact","TileSpacing","compact");
     ax = nexttile(layout);
     hold(ax,"on");
 
@@ -67,7 +67,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
         sprintf("convergence_%s.eps",objectiveMode));
     applyManuscriptTypography(fig,string(outputFile),7.0);
     layout.Units = "normalized";
-    layout.OuterPosition = [0.055 0.04 0.89 0.92];
+    layout.OuterPosition = [0.015 0.025 0.97 0.955];
     setappdata(fig,"ManuscriptTypographyFinalized",true);
     exportManuscriptFigure(fig,string(outputFile),7.0,5.8);
 

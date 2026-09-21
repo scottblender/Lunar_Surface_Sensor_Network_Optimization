@@ -12,6 +12,9 @@ if isappdata(fig,"ManuscriptPlacementWidthInches")
     placementWidth = getappdata(fig,"ManuscriptPlacementWidthInches");
 end
 scale = widthInches/placementWidth;
+if isappdata(fig,"ManuscriptTypographyScale")
+    scale = scale*getappdata(fig,"ManuscriptTypographyScale");
+end
 objects = findall(fig,"-property","FontSize");
 for k = 1:numel(objects)
     h = objects(k);

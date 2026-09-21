@@ -26,7 +26,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     width = 10; height = 4.3*rows+1.5;
     fig = figure("Name",mode+" sensor selection by latitude/longitude", ...
         "Color","white","Units","inches","Position",[1 1 width height]);
-    layout = tiledlayout(fig,rows,columns,"TileSpacing","loose","Padding","loose");
+    layout = tiledlayout(fig,rows,columns,"TileSpacing","compact","Padding","loose");
     frequency = zeros(numel(latitudeCenters),numel(longitudeCenters),numel(config.networkSizes));
     for networkIndex = 1:numel(config.networkSizes)
         study = campaign.studies{networkIndex,objectiveIndex};
@@ -46,17 +46,17 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     % A separate true elevation scale is required because DEM pixels use
     % truecolor while the panel colormap encodes selection frequency.
     terrainAxes = axes(fig,"Visible","off","Units","normalized", ...
-        "Position",[0.22 0.09 0.50 0.01]);
+        "Position",[0.22 0.065 0.50 0.01]);
     colormap(terrainAxes,repmat(linspace(0.30,0.96,256).',1,3));
     clim(terrainAxes,terrainLimits);
     elevationBar = colorbar(terrainAxes,"southoutside");
     elevationBar.Label.String = "Elevation (km)";
     elevationBar.Units = "normalized";
-    elevationBar.Position = [0.22 0.09 0.50 0.025];
+    elevationBar.Position = [0.22 0.065 0.50 0.025];
     terrainAxes.Visible = "off";
     applyManuscriptTypography(fig,string(outputFile),width);
     layout.Units = "normalized";
-    layout.OuterPosition = [0.035 0.20 0.90 0.77];
+    layout.OuterPosition = [0.01 0.15 0.98 0.84];
     setappdata(fig,"ManuscriptTypographyFinalized",true);
     exportManuscriptFigure(fig,string(outputFile),width,height);
     plotInfo.(char(mode)) = struct("figure",fig,"outputFile",string(outputFile), ...

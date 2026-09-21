@@ -62,11 +62,11 @@ theme = struct( ...
     "markerEdgeColor",[1 1 1]);
 
 fontName = style.fontName;
-calloutFontSize = 19;
-coordinateFontSize = 17;
-boundaryFontSize = 17;
-legendFontSize = 17;
-colorbarFontSize = 17;
+calloutFontSize = 22;
+coordinateFontSize = 20;
+boundaryFontSize = 20;
+legendFontSize = 20;
+colorbarFontSize = 20;
 
 % This is a full-width conference-paper figure. The source canvas is large
 % enough for the original callout density without making the map itself small.

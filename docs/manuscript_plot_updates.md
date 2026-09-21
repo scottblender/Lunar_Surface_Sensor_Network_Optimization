@@ -83,3 +83,11 @@ its gray ramp matches the truecolor DEM exactly. The frequency scale remains
 independent. Terrain contrast is increased so elevation structure is visible.
 Static lint passed; MATLAB rendering and graphics regression tests remain
 unexecuted because MATLAB is unavailable here.
+
+## Larger type and fuller plot areas
+
+The CLPS context figure now measures callouts at 22 pt and map/legend/colorbar
+text at 20 pt before export. The domain location comparison uses a 1.22 type
+scale multiplier. Convergence and polar layouts occupy more of their canvas
+with reduced outer margins and compact tile spacing. Polar figures retain
+their independent frequency and elevation bars.
