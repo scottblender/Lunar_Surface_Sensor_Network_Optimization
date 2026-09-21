@@ -57,6 +57,8 @@ fig = plotManuscriptTrackingHeatmaps(rmsPositionErrorKm, ...
 increaseFigureTypography(fig,1.18);
 
 outputFile = fullfile(config.outputDirectory,"operational_rso_tracking_heatmaps.eps");
+% Preserve the operational figure's local typography increase during export.
+setappdata(fig,"ManuscriptTypographyFinalized",true);
 exportManuscriptFigure(fig,string(outputFile),fig.Position(3),fig.Position(4));
 
 plotInfo = struct();
