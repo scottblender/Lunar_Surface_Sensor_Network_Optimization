@@ -55,6 +55,9 @@ end
 scaleKm = 1e3;
 positions = positionsMcrfKm/scaleKm;
 moonRadius = moonRadiusKm/scaleKm;
+% One shared cube contains every orbit and the Moon, with a 5% margin.
+plotLimit = 1.05*max(moonRadius,max(abs(positions),[],"all"));
+sharedLimits = [-plotLimit plotLimit];
 
 numberOfColumns = min(5,numberOfObjects);
 numberOfRows = ceil(numberOfObjects/numberOfColumns);
@@ -84,14 +87,13 @@ for objectIndex = 1:numberOfObjects
         style.redColor,"filled","MarkerEdgeColor",[1 1 1], ...
         "LineWidth",0.45);
 
-    % Reuse the earlier orbit-family presentation: tight equal-scaled axes,
-    % a light reference grid, and no enclosing 3D cube.
-    axis(ax,"tight");
-    axis(ax,"equal");
+    % Identical limits, aspect ratios and view give every tile the same area.
+    xlim(ax,sharedLimits); ylim(ax,sharedLimits); zlim(ax,sharedLimits);
+    daspect(ax,[1 1 1]);
+    pbaspect(ax,[1 1 1]);
     ax.CameraViewAngleMode = "auto";
     ax.Projection = "orthographic";
-    grid(ax,"on");
-    ax.GridAlpha = 0.12;
+    grid(ax,"off");
     box(ax,"off");
     view(ax,35,25);
 

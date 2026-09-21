@@ -9,8 +9,8 @@ config = campaign.configuration;
 outputDirectory = string(campaign.outputDirectory);
 if isfield(userConfig,"outputDirectory"), outputDirectory=string(userConfig.outputDirectory); end
 if ~isfolder(outputDirectory), mkdir(outputDirectory); end
-latitudeEdges = -90:5:0;
-longitudeEdges = 0:15:360;
+latitudeEdges = -90:10:0;
+longitudeEdges = 0:30:360;
 latitudeCenters = (latitudeEdges(1:end-1)+latitudeEdges(2:end))/2;
 longitudeCenters = (longitudeEdges(1:end-1)+longitudeEdges(2:end))/2;
 plotInfo = struct();
@@ -43,7 +43,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     cb.Label.String = "Runs selecting bin (%)";
     cb.FontSize = 12; cb.FontWeight = "bold";
     cb.Label.FontSize = 14; cb.Label.FontWeight = "bold";
-    xlabel(layout,{"East longitude (deg)","Bins: 5 deg latitude x 15 deg longitude"}, ...
+    xlabel(layout,{"East longitude (deg)","Bins: 10 deg latitude x 30 deg longitude"}, ...
         "FontSize",14,"FontWeight","bold");
     ylabel(layout,"Latitude (deg)","FontSize",14,"FontWeight","bold");
     outputFile = fullfile(outputDirectory,sprintf("network_locations_vs_ns_%s.eps",mode));
