@@ -39,7 +39,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     fig = figure("Name",objectiveMode+" network locations", ...
         "Color",style.backgroundColor,"Units","inches", ...
-        "Position",[1 1 7.0 6.8],"Renderer","opengl");
+        "Position",[1 1 8.5 8.0],"Renderer","opengl");
     numberOfColumns = min(2,numel(config.networkSizes));
     numberOfRows = ceil(numel(config.networkSizes)/numberOfColumns);
     layout = tiledlayout(fig,numberOfRows,numberOfColumns, ...
@@ -87,7 +87,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     outputFile=fullfile(outputDirectory, ...
         sprintf("network_locations_vs_ns_%s.eps",objectiveMode));
-    exportManuscriptFigure(fig,string(outputFile),7.0,6.8);
+    exportManuscriptFigure(fig,string(outputFile),8.5,8.0);
     plotInfo.(fieldName)=struct("figure",fig,"outputFile",string(outputFile));
 end
 end
