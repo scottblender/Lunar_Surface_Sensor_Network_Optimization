@@ -99,54 +99,27 @@ for objectIndex = 1:numberOfObjects
 
 
     ax.FontName = style.fontName;
-    ax.FontSize = 9;
-
-    % Keep numeric scale information on every orbit, but avoid repeating
-    % coordinate labels on all 20 tiles. Representative labels are placed on
-    % three boundary panels so neighboring axes do not collide.
-    rowIndex = ceil(objectIndex/numberOfColumns);
-    columnIndex = mod(objectIndex-1,numberOfColumns)+1;
-    representativeRow = ceil(numberOfRows/2);
-    representativeColumn = ceil(numberOfColumns/2);
-
-    if rowIndex == numberOfRows && columnIndex == representativeColumn
-        xlabel(ax,"x_R (10^3 km)");
-    else
-        xlabel(ax,"");
-    end
-    if rowIndex == representativeRow && columnIndex == 1
-        ylabel(ax,"y_R (10^3 km)");
-    else
-        ylabel(ax,"");
-    end
-    if rowIndex == representativeRow && columnIndex == numberOfColumns
-        zlabel(ax,"z_R (10^3 km)");
-    else
-        zlabel(ax,"");
-    end
-
-    ax.XLabel.FontSize = 11;
-    ax.YLabel.FontSize = 11;
-    ax.ZLabel.FontSize = 11;
-    ax.XLabel.FontWeight = "bold";
-    ax.YLabel.FontWeight = "bold";
-    ax.ZLabel.FontWeight = "bold";
-
-    % Three ticks per axis retain each orbit's independent scale without
-    % filling the tile with dense numeric labels.
-    xticks(ax,[-localLimit 0 localLimit]);
-    yticks(ax,[-localLimit 0 localLimit]);
-    zticks(ax,[-localLimit 0 localLimit]);
-    xtickformat(ax,"%.1f");
-    ytickformat(ax,"%.1f");
-    ztickformat(ax,"%.1f");
-    ax.XAxis.Exponent = 0; ax.YAxis.Exponent = 0; ax.ZAxis.Exponent = 0;
+    ax.FontSize = 8;
     ax.FontWeight = "bold";
     ax.LineWidth = 0.75;
     ax.TickDir = "out";
-    ax.LooseInset = max(ax.LooseInset,[0.015 0.015 0.015 0.015]);
+
+    % Keep the 20-panel orbit-family figure visually clean. Per-panel axis
+    % labels and numeric tick labels crowd the small 3D tiles and obscure the
+    % trajectory geometry, so the coordinate units are stated once below.
+    xlabel(ax,"");
+    ylabel(ax,"");
+    zlabel(ax,"");
+    ax.XTick = [];
+    ax.YTick = [];
+    ax.ZTick = [];
+    ax.LooseInset = max(ax.LooseInset,[0.01 0.01 0.01 0.01]);
 end
 
+annotation(fig,"textbox",[0.39 0.01 0.22 0.03], ...
+    "String","Coordinates in 10^3 km", ...
+    "EdgeColor","none","HorizontalAlignment","center", ...
+    "FontName",style.fontName,"FontSize",11,"FontWeight","bold");
 
 outputFile = fullfile(outputDirectory,"design_rso_family_mcrf_3d.eps");
 exportManuscriptFigure(fig,string(outputFile),figureWidth,figureHeight);
