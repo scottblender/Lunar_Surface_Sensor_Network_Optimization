@@ -18,8 +18,9 @@ end
 function testPolarMapKeepsDemAndFrequencyIndependent(testCase)
 fig = figure("Visible","off"); cleanup = onCleanup(@()close(fig)); %#ok<NASGU>
 ax = axes(fig); frequency = zeros(9,12); frequency(1,1)=50;
-plotPolarSelectionMap(ax,frequency,-90:10:0,0:30:360, ...
+terrainLimits = plotPolarSelectionMap(ax,frequency,-90:10:0,0:30:360, ...
     @(lat,lon) sin(lat)+cos(lon),publicationPlotStyle());
+verifyEqual(testCase,terrainLimits,[-2 1],"AbsTol",1e-12);
 terrain = findall(ax,"Type","surface");
 verifyEqual(testCase,size(terrain.CData,3),3); % DEM is truecolor.
 verifyEqual(testCase,terrain.CData(:,:,1),terrain.CData(:,:,2));

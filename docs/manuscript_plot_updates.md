@@ -70,3 +70,16 @@ grayscale DEM, light-to-dark blue sectors, thin pale bin boundaries, and
 dotted interior latitude circles. The shared frequency scale is fixed at
 0--100 percent across panels and objectives; gray terrain denotes unselected
 bins. The maps retain a pole-centered top-down view.
+
+## Additional spacing and elevation scale
+
+Convergence figures now use a taller canvas, a two-line objective label, and
+three FE ticks. The two comparison bar panels have a dedicated empty middle
+row and one shared sensor-count label. Their layout and final fonts are set
+before export. RSO panels retain all 20 trajectories with larger exterior and
+inter-row margins and one positive numeric tick per symmetric coordinate axis.
+Polar maps now reserve a bottom band for a separate elevation colorbar in km;
+its gray ramp matches the truecolor DEM exactly. The frequency scale remains
+independent. Terrain contrast is increased so elevation structure is visible.
+Static lint passed; MATLAB rendering and graphics regression tests remain
+unexecuted because MATLAB is unavailable here.

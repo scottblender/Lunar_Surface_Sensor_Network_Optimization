@@ -59,16 +59,17 @@ moonRadius = moonRadiusKm/scaleKm;
 numberOfColumns = min(5,numberOfObjects);
 numberOfRows = ceil(numberOfObjects/numberOfColumns);
 
-figureWidth = 2.9*numberOfColumns;
-figureHeight = 2.9*numberOfRows;
+outerMargin = 0.6;
+figureWidth = 2.9*numberOfColumns+2*outerMargin;
+figureHeight = 3.2*numberOfRows+2*outerMargin;
 fig = figure("Name","Design RSO family in MCRF", ...
     "Color",style.backgroundColor,"Units","inches", ...
     "Position",[1 1 figureWidth figureHeight],"Renderer","opengl");
 % Fixed inner boxes preserve the trajectory area independently of tick extents.
 % The physical cell geometry is identical for every object.
-cellWidth = figureWidth/numberOfColumns;
-cellHeight = figureHeight/numberOfRows;
-plotSide = 0.70*min(cellWidth,cellHeight);
+cellWidth = (figureWidth-2*outerMargin)/numberOfColumns;
+cellHeight = (figureHeight-2*outerMargin)/numberOfRows;
+plotSide = 0.65*min(cellWidth,cellHeight);
 
 [sx,sy,sz] = sphere(36);
 
@@ -78,8 +79,8 @@ representativeObjectIndex = (numberOfRows-1)*numberOfColumns+1;
 for objectIndex = 1:numberOfObjects
     column = mod(objectIndex-1,numberOfColumns);
     row = floor((objectIndex-1)/numberOfColumns);
-    left = column*cellWidth + (cellWidth-plotSide)/2;
-    bottom = (numberOfRows-row-1)*cellHeight + 0.22*cellHeight;
+    left = outerMargin + column*cellWidth + (cellWidth-plotSide)/2;
+    bottom = outerMargin + (numberOfRows-row-1)*cellHeight + 0.22*cellHeight;
     ax = axes(fig,"Units","inches", ...
         "Position",[left bottom plotSide plotSide], ...
         "PositionConstraint","innerposition");
@@ -117,12 +118,15 @@ for objectIndex = 1:numberOfObjects
     ax.LineWidth = 0.75;
     ax.TickDir = "out";
 
-    % Retain a sparse numeric scale on every orbit while labeling the
-    % coordinate axes only once on the bottom-left representative panel.
+    % A positive scale tick on each axis is sufficient for the symmetric
+    % cube; avoid six repeated, rotated numbers surrounding every orbit.
     tickLimit = 0.80*localLimit;
-    xticks(ax,[-tickLimit tickLimit]);
-    yticks(ax,[-tickLimit tickLimit]);
-    zticks(ax,[-tickLimit tickLimit]);
+    xticks(ax,tickLimit);
+    yticks(ax,tickLimit);
+    zticks(ax,tickLimit);
+    ax.XTickLabelRotation = 0;
+    ax.YTickLabelRotation = 0;
+    ax.ZTickLabelRotation = 0;
     xtickformat(ax,"%.1f");
     ytickformat(ax,"%.1f");
     ztickformat(ax,"%.1f");

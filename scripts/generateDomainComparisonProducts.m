@@ -157,11 +157,11 @@ end
 
 metricsFig = figure("Name","Domain comparison performance", ...
     "Color",style.backgroundColor,"Units","inches", ...
-    "Position",[1 1 7.0 7.0],"Renderer","opengl");
-layout = tiledlayout(metricsFig,2,1, ...
+    "Position",[1 1 7.0 8.6],"Renderer","opengl");
+layout = tiledlayout(metricsFig,5,1, ...
     "TileSpacing","loose","Padding","loose");
 
-axCoverage = nexttile(layout,1);
+axCoverage = nexttile(layout,1,[2 1]);
 coverageHandles = plotComparisonBars(axCoverage,networkSizes, ...
     fullCoverageScore,restrictedCoverageScore, ...
     "Coverage score, C",style);
@@ -176,13 +176,20 @@ lgd.FontWeight = "bold";
 lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
 
-axInformation = nexttile(layout,2);
+axInformation = nexttile(layout,4,[2 1]);
 plotComparisonBars(axInformation,networkSizes, ...
     fullInformationScore,restrictedInformationScore, ...
     "Information score, I",style);
 
 metricsFile = fullfile(outputDirectory,"domain_comparison_metrics.eps");
-exportManuscriptFigure(metricsFig,string(metricsFile),7.0,7.0);
+% One shared x label and an unused middle tile separate the two panels.
+xlabel(axCoverage,""); xlabel(axInformation,"");
+xlabel(layout,"Number of sensors, N_s");
+applyManuscriptTypography(metricsFig,string(metricsFile),7.0);
+layout.Units = "normalized";
+layout.OuterPosition = [0.055 0.04 0.89 0.92];
+setappdata(metricsFig,"ManuscriptTypographyFinalized",true);
+exportManuscriptFigure(metricsFig,string(metricsFile),7.0,8.6);
 
 %% Common-budget manuscript table
 

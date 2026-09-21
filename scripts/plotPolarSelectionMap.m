@@ -1,4 +1,4 @@
-function plotPolarSelectionMap(ax,frequency,latitudeEdges,longitudeEdges,dem,style)
+function terrainLimits = plotPolarSelectionMap(ax,frequency,latitudeEdges,longitudeEdges,dem,style)
 % South-pole azimuthal map: radius = colatitude, east longitude clockwise.
 % Truecolor DEM and truecolor frequency sectors keep their scales independent.
 hold(ax,"on");
@@ -7,10 +7,12 @@ r = (lat+90)/90;
 x = r.*sind(lon); y = r.*cosd(lon);
 z = double(dem(deg2rad(lat),deg2rad(lon)));
 limits = [min(z,[],"all") max(z,[],"all")];
+if limits(2)<=limits(1), limits=limits+[-0.5 0.5]; end
+terrainLimits = limits;
 % Neutral terrain is contextual only: blue is reserved for selection frequency.
-% Keep terrain contrast low and independent of the frequency colorbar.
+% Keep terrain contrast visible and independent of the frequency colorbar.
 normalizedElevation = (z-limits(1))/max(eps,diff(limits));
-shade = 0.78+0.18*normalizedElevation;
+shade = 0.30+0.66*normalizedElevation;
 rgb = repmat(shade,1,1,3);
 surface(ax,x,y,zeros(size(x)),rgb,"FaceColor","texturemap", ...
     "EdgeColor","none","HandleVisibility","off");

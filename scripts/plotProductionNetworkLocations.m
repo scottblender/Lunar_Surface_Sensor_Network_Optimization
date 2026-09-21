@@ -23,10 +23,10 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     mode = config.objectiveModes(objectiveIndex);
     columns = min(2,numel(config.networkSizes));
     rows = ceil(numel(config.networkSizes)/columns);
-    width = 10; height = 4.0*rows+0.5;
+    width = 10; height = 4.3*rows+1.5;
     fig = figure("Name",mode+" sensor selection by latitude/longitude", ...
         "Color","white","Units","inches","Position",[1 1 width height]);
-    layout = tiledlayout(fig,rows,columns,"TileSpacing","compact","Padding","compact");
+    layout = tiledlayout(fig,rows,columns,"TileSpacing","loose","Padding","loose");
     frequency = zeros(numel(latitudeCenters),numel(longitudeCenters),numel(config.networkSizes));
     for networkIndex = 1:numel(config.networkSizes)
         study = campaign.studies{networkIndex,objectiveIndex};
@@ -34,7 +34,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
         frequency(:,:,networkIndex) = binNetworkSelectionFrequency( ...
             runs,campaign.database,latitudeEdges,longitudeEdges);
         ax = nexttile(layout,networkIndex);
-        plotPolarSelectionMap(ax,frequency(:,:,networkIndex), ...
+        terrainLimits = plotPolarSelectionMap(ax,frequency(:,:,networkIndex), ...
             latitudeEdges,longitudeEdges,dem,style);
     end
     cb = colorbar(ax); cb.Layout.Tile = "east";
@@ -43,6 +43,21 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     cb.FontSize = max(16,style.axisFontSize-2); cb.FontWeight = "bold";
     cb.Label.FontSize = max(18,style.labelFontSize-2); cb.Label.FontWeight = "bold";
     outputFile = fullfile(outputDirectory,sprintf("network_locations_vs_ns_%s.eps",mode));
+    % A separate true elevation scale is required because DEM pixels use
+    % truecolor while the panel colormap encodes selection frequency.
+    terrainAxes = axes(fig,"Visible","off","Units","normalized", ...
+        "Position",[0.22 0.09 0.50 0.01]);
+    colormap(terrainAxes,repmat(linspace(0.30,0.96,256).',1,3));
+    clim(terrainAxes,terrainLimits);
+    elevationBar = colorbar(terrainAxes,"southoutside");
+    elevationBar.Label.String = "Elevation (km)";
+    elevationBar.Units = "normalized";
+    elevationBar.Position = [0.22 0.09 0.50 0.025];
+    terrainAxes.Visible = "off";
+    applyManuscriptTypography(fig,string(outputFile),width);
+    layout.Units = "normalized";
+    layout.OuterPosition = [0.035 0.20 0.90 0.77];
+    setappdata(fig,"ManuscriptTypographyFinalized",true);
     exportManuscriptFigure(fig,string(outputFile),width,height);
     plotInfo.(char(mode)) = struct("figure",fig,"outputFile",string(outputFile), ...
         "selectionPercent",frequency,"latitudeEdges",latitudeEdges,"longitudeEdges",longitudeEdges);

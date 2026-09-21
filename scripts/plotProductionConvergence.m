@@ -26,7 +26,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     fig = figure("Name",objectiveMode + " convergence", ...
         "Color",style.backgroundColor,"Units","inches", ...
-        "Position",[1 1 7.0 4.8],"Renderer","opengl");
+        "Position",[1 1 7.0 5.8],"Renderer","opengl");
     layout = tiledlayout(fig,1,1,"Padding","loose","TileSpacing","loose");
     ax = nexttile(layout);
     hold(ax,"on");
@@ -49,9 +49,12 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     end
 
     xlabel(ax,"Function evaluations");
-    ylabel(ax,"Mean best-so-far objective, J");
+    ylabel(ax,{'Mean best-so-far','objective, J'});
     xlim(ax,[config.populationSize config.functionEvaluationBudget]);
     applyAxesStyle(ax,style);
+    % Sparse FE ticks remain legible at the half-page manuscript width.
+    xticks(ax,config.functionEvaluationBudget*(1:3)/3);
+    xtickformat(ax,"%.0f");
     lgd = legend(ax,handles,labels, ...
         "Location","none","Orientation","horizontal", ...
         "NumColumns",2,"Interpreter","tex","Box","off");
@@ -62,7 +65,11 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     outputFile = fullfile(outputDirectory, ...
         sprintf("convergence_%s.eps",objectiveMode));
-    exportManuscriptFigure(fig,string(outputFile),7.0,4.8);
+    applyManuscriptTypography(fig,string(outputFile),7.0);
+    layout.Units = "normalized";
+    layout.OuterPosition = [0.055 0.04 0.89 0.92];
+    setappdata(fig,"ManuscriptTypographyFinalized",true);
+    exportManuscriptFigure(fig,string(outputFile),7.0,5.8);
 
     plotInfo.(objectiveField) = struct( ...
         "figure",fig,"outputFile",string(outputFile));
