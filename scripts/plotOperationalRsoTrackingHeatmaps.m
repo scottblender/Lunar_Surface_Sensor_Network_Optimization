@@ -50,6 +50,12 @@ if ~isfolder(config.outputDirectory), mkdir(config.outputDirectory); end
 fig = plotManuscriptTrackingHeatmaps(rmsPositionErrorKm, ...
     observableEpochPercent,spacecraftNames,config.networkSizes, ...
     config.objectiveModes,"Operational RSO tracking performance");
+
+% Figure 26 is reduced substantially in the manuscript. Increase only this
+% operational/legacy figure's typography so the shared design-RSO heatmap
+% styling remains unchanged.
+increaseFigureTypography(fig,1.18);
+
 outputFile = fullfile(config.outputDirectory,"operational_rso_tracking_heatmaps.eps");
 exportManuscriptFigure(fig,string(outputFile),fig.Position(3),fig.Position(4));
 
@@ -61,6 +67,26 @@ plotInfo.observableEpochPercent = observableEpochPercent;
 plotInfo.spacecraftNames = spacecraftNames;
 
 fprintf("Operational-RSO combined tracking figure:\n  %s\n",outputFile);
+end
+
+function increaseFigureTypography(fig,scaleFactor)
+objects = findall(fig,"-property","FontSize");
+for objectIndex = 1:numel(objects)
+    objects(objectIndex).FontSize = objects(objectIndex).FontSize*scaleFactor;
+    if isprop(objects(objectIndex),"FontWeight")
+        objects(objectIndex).FontWeight = "bold";
+    end
+end
+
+% Re-evaluate text extents after the local size increase so EPS export keeps
+% the spacecraft names and colorbar labels inside each axes decoration box.
+drawnow;
+axesHandles = findall(fig,"Type","axes");
+for ax = axesHandles.'
+    ax.Units = "normalized";
+    ax.LooseInset = max(ax.LooseInset,ax.TightInset + [0.015 0.015 0.015 0.015]);
+end
+drawnow;
 end
 
 function output = mergeStruct(defaults,override)
