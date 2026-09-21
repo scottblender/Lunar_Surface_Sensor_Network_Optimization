@@ -226,3 +226,24 @@ Other figures and the manuscript output inventory are unchanged. MATLAB was
 not available for rendered verification. Static MATLAB lint and whitespace
 checks were run; the data-free `testRsoScreeningPanels` regression can be run
 in MATLAB to verify that both panels retain all twenty RSO distributions.
+
+### Follow-up presentation corrections
+
+Figure 14 no longer has an overall title. The domain-comparison DEM again
+uses `turbo`, matching the earlier DEM products. Figures 12 and 13 now show
+latitude/longitude heatmaps for each network size, using 5-degree latitude
+and 15-degree longitude bins. Color is the percentage of runs selecting at
+least one sensor in a bin, not terrain elevation or raw sensor count. All
+panels use 0--100 percent, and multiple sensors in the same bin within one run
+count once. Stored optimized coordinates take precedence over candidate
+indices; longitude wraps into [0,360). Existing EPS filenames are retained.
+
+The earlier trajectory reference was found in `tests/testRsoGeneration.m`.
+Its one-period-per-object presentation, light grid and unenclosed equal-scale
+axes replace the repeated three-day revolutions and forced cube bounds.
+The manuscript version remains MCRF, sampled at 501 points per orbital
+period, and identifies that interval explicitly. This changes visualization
+only; optimization and evaluation propagation are unchanged.
+
+Static checks pass. MATLAB rendering and the new `testNetworkSelectionBins`
+regression still require execution in MATLAB.

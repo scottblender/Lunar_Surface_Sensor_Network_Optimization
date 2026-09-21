@@ -1,7 +1,7 @@
 function plotInfo = plotDesignRsoFamilyMcrf(campaign,userConfig)
 % PLOTDESIGNRSOFAMILYMCRF Plot separated design RSO trajectories in MCRF.
 %
-% The complete propagated design population is transformed from MCI into the
+% One period of each design orbit is transformed from MCI into the
 % Moon-centered rotating frame (MCRF). Each RSO is shown in its own 3D tile
 % so individual trajectory geometry remains visible instead of being obscured
 % by an overlaid 20-trajectory plot.
@@ -29,19 +29,26 @@ moonRadiusKm = double(database.config.moon.radiusKm);
 theta0Rad = double(database.config.moon.theta0Rad);
 angularRateRadS = 2*pi/double(database.config.moon.siderealPeriodSeconds);
 
-% Preserve every propagated epoch, especially for low-altitude orbits.
-sampleIndices = 1:numel(times);
-sampleTimes = times(sampleIndices);
-numberOfSamples = numel(sampleIndices);
-
+% Follow tests/testRsoGeneration.m: one smoothly sampled orbital period
+% per object, rather than overlapping revolutions across the full campaign.
+moonMu = double(database.config.moon.muKm3S2);
+numberOfSamples = 501;
 positionsMcrfKm = zeros(3,numberOfSamples,numberOfObjects);
+periods = zeros(numberOfObjects,1);
 for objectIndex = 1:numberOfObjects
+    initialState = statesMci(:,1,objectIndex);
+    radius = norm(initialState(1:3));
+    energy = dot(initialState(4:6),initialState(4:6))/2-moonMu/radius;
+    assert(energy<0,"The orbit-family display requires bound lunar orbits.");
+    semiMajorAxis = -moonMu/(2*energy);
+    periods(objectIndex) = 2*pi*sqrt(semiMajorAxis^3/moonMu);
+    elapsedTimes = linspace(0,periods(objectIndex),numberOfSamples).';
+    [~,states] = orbitDynamics.propagateLunarOrbit( ...
+        initialState,elapsedTimes,"moonMu",moonMu);
     for sampleIndex = 1:numberOfSamples
-        stateMcrf = referenceFrames.moonRotating( ...
-            statesMci(:,sampleIndices(sampleIndex),objectIndex), ...
-            sampleTimes(sampleIndex),theta0Rad,angularRateRadS, ...
-            "fromInertial");
-        positionsMcrfKm(:,sampleIndex,objectIndex) = stateMcrf(1:3);
+        rotatingState = referenceFrames.moonRotating(states(sampleIndex,:).', ...
+            times(1)+elapsedTimes(sampleIndex),theta0Rad,angularRateRadS,"fromInertial");
+        positionsMcrfKm(:,sampleIndex,objectIndex) = rotatingState(1:3);
     end
 end
 
@@ -77,23 +84,16 @@ for objectIndex = 1:numberOfObjects
         style.redColor,"filled","MarkerEdgeColor",[1 1 1], ...
         "LineWidth",0.45);
 
-    localExtent = max(abs(trajectory),[],"all");
-    plotLimit = 1.07*max(localExtent,1.25*moonRadius);
-    xlim(ax,[-plotLimit plotLimit]);
-    ylim(ax,[-plotLimit plotLimit]);
-    zlim(ax,[-plotLimit plotLimit]);
-
-    % Let MATLAB recompute the camera for each tile at its final size.
-    % vis3d freezes the camera angle before layout and can overfill the tile.
-    daspect(ax,[1 1 1]);
-    pbaspect(ax,[1 1 1]);
+    % Reuse the earlier orbit-family presentation: tight equal-scaled axes,
+    % a light reference grid, and no enclosing 3D cube.
+    axis(ax,"tight");
+    axis(ax,"equal");
     ax.CameraViewAngleMode = "auto";
     ax.Projection = "orthographic";
-    ax.Clipping = "on";
-    ax.ClippingStyle = "rectangle";
-    grid(ax,"off");
-    box(ax,"on");
-    view(ax,38,24);
+    grid(ax,"on");
+    ax.GridAlpha = 0.12;
+    box(ax,"off");
+    view(ax,35,25);
 
     title(ax,sprintf("RSO %02d",objectIndex), ...
         "FontName",style.fontName,"FontSize",12, ...
@@ -102,19 +102,15 @@ for objectIndex = 1:numberOfObjects
     ax.FontName = style.fontName;
     ax.FontSize = 9;
     xlabel(ax,"x_R"); ylabel(ax,"y_R"); zlabel(ax,"z_R");
-    ax.XTick = [-plotLimit 0 plotLimit];
-    ax.YTick = [-plotLimit 0 plotLimit];
-    ax.ZTick = [-plotLimit 0 plotLimit];
-    xtickformat(ax,"%.1f"); ytickformat(ax,"%.1f"); ztickformat(ax,"%.1f");
+    ax.XAxis.Exponent = 0; ax.YAxis.Exponent = 0; ax.ZAxis.Exponent = 0;
     ax.FontWeight = "bold";
     ax.LineWidth = 0.75;
     ax.TickDir = "out";
 end
 
 title(layout,{"Design RSO trajectories in MCRF", ...
-    "Coordinates in 10^3 km; red marker: initial position"}, ...
-    "FontName",style.fontName,"FontSize",16, ...
-    "FontWeight","bold");
+    "One orbital period per RSO; coordinates in 10^3 km"}, ...
+    "FontName",style.fontName,"FontSize",14,"FontWeight","bold");
 
 outputFile = fullfile(outputDirectory,"design_rso_family_mcrf_3d.eps");
 exportManuscriptFigure(fig,string(outputFile),figureWidth,figureHeight);
@@ -124,7 +120,8 @@ plotInfo.figure = fig;
 plotInfo.outputFile = string(outputFile);
 plotInfo.numberOfObjects = numberOfObjects;
 plotInfo.frame = "MCRF";
-plotInfo.timeSpanHours = (times(end)-times(1))/3600;
+plotInfo.periodHours = periods/3600;
+plotInfo.displayInterval = "one orbital period per RSO";
 plotInfo.layout = [numberOfRows numberOfColumns];
 
 fprintf("Design-RSO MCRF family subplot figure:\n  %s\n",outputFile);

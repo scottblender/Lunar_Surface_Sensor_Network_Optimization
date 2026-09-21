@@ -91,7 +91,7 @@ latitudeDeg = linspace(-90,0,181);
 elevationKm = double(dem(deg2rad(latitudeMesh),deg2rad(longitudeMesh)));
 imagesc(ax,longitudeDeg,latitudeDeg,elevationKm,"HandleVisibility","off");
 ax.YDir = "normal";
-colormap(ax,gray(256));
+colormap(ax,turbo(256));
 cb = colorbar(ax); cb.Layout.Tile = "east";
 cb.Label.String = "Synthetic DEM elevation (km)";
 cb.FontName = style.fontName; cb.FontSize = 13; cb.FontWeight = "bold";

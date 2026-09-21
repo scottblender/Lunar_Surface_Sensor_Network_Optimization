@@ -36,8 +36,5 @@ for domain = 1:2
     end
 end
 xlabel(layout,"Measurement opportunities (%)","FontSize",16,"FontWeight","bold");
-title(layout,{"Constraint screening by design RSO", ...
-    sprintf("N_s = %d; %s-driven networks",networkSize,objectiveMode)}, ...
-    "FontSize",16,"FontWeight","bold");
 drawnow;
 end

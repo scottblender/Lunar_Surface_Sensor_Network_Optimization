@@ -1,122 +1,54 @@
 function plotInfo = plotProductionNetworkLocations(campaign,userConfig)
-% PLOTPRODUCTIONNETWORKLOCATIONS Plot sensor-selection frequency by N_s.
-
+% PLOTPRODUCTIONNETWORKLOCATIONS Geographic selection-frequency heatmaps.
 arguments
     campaign (1,1) struct
     userConfig (1,1) struct = struct()
 end
-
 style = publicationPlotStyle();
 config = campaign.configuration;
-database = campaign.database;
-projectRoot = string(campaign.projectRoot);
 outputDirectory = string(campaign.outputDirectory);
-if isfield(userConfig,"outputDirectory"), outputDirectory = string(userConfig.outputDirectory); end
+if isfield(userConfig,"outputDirectory"), outputDirectory=string(userConfig.outputDirectory); end
 if ~isfolder(outputDirectory), mkdir(outputDirectory); end
-
-demFile = "";
-if isfield(userConfig,"demFile"), demFile = string(userConfig.demFile); end
-if strlength(demFile)==0
-    candidates = [ ...
-        fullfile(projectRoot,"data","Synthetic_Lunar_DEM.mat"); ...
-        fullfile(projectRoot,"data","Full_Resolution_DEM.mat")];
-    for k=1:numel(candidates)
-        if isfile(candidates(k)), demFile=candidates(k); break, end
-    end
-end
-assert(strlength(demFile)>0 && isfile(demFile),"No manuscript DEM could be resolved.");
-
-moonRadiusKm = database.config.moon.radiusKm;
-[dem,~] = digitalElevationModel.loadTriaxialLunarDem(demFile,moonRadiusKm,24,48);
-background = buildSouthernHemisphereBackground(dem,moonRadiusKm);
-
+latitudeEdges = -90:5:0;
+longitudeEdges = 0:15:360;
+latitudeCenters = (latitudeEdges(1:end-1)+latitudeEdges(2:end))/2;
+longitudeCenters = (longitudeEdges(1:end-1)+longitudeEdges(2:end))/2;
 plotInfo = struct();
 for objectiveIndex = 1:numel(config.objectiveModes)
-    objectiveMode = config.objectiveModes(objectiveIndex);
-    fieldName = char(objectiveMode);
-    objectiveColor = style.blueColor;
-    if objectiveMode=="coverage", objectiveColor=style.redColor; end
-
-    fig = figure("Name",objectiveMode+" network locations", ...
-        "Color",style.backgroundColor,"Units","inches", ...
-        "Position",[1 1 8.5 8.0],"Renderer","opengl");
-    numberOfColumns = min(2,numel(config.networkSizes));
-    numberOfRows = ceil(numel(config.networkSizes)/numberOfColumns);
-    layout = tiledlayout(fig,numberOfRows,numberOfColumns, ...
-        "TileSpacing","compact","Padding","loose");
-    axesHandles = gobjects(numel(config.networkSizes),1);
-
+    mode = config.objectiveModes(objectiveIndex);
+    columns = min(2,numel(config.networkSizes));
+    rows = ceil(numel(config.networkSizes)/columns);
+    width = 10; height = 3.1*rows+1.2;
+    fig = figure("Name",mode+" sensor selection by latitude/longitude", ...
+        "Color","white","Units","inches","Position",[1 1 width height]);
+    layout = tiledlayout(fig,rows,columns,"TileSpacing","loose","Padding","loose");
+    frequency = zeros(numel(latitudeCenters),numel(longitudeCenters),numel(config.networkSizes));
     for networkIndex = 1:numel(config.networkSizes)
+        study = campaign.studies{networkIndex,objectiveIndex};
+        runs = study.runStates(1:config.numberOfRuns);
+        frequency(:,:,networkIndex) = binNetworkSelectionFrequency( ...
+            runs,campaign.database,latitudeEdges,longitudeEdges);
         ax = nexttile(layout,networkIndex);
-        axesHandles(networkIndex)=ax;
-        drawBackground(ax,background,style);
-
-        studyState = campaign.studies{networkIndex,objectiveIndex};
-        counts = zeros(database.meta.numberOfCandidates,1);
-        for runIndex=1:config.numberOfRuns
-            indices=double(studyState.runStates{runIndex}.bestSensorIndices(:));
-            counts(indices)=counts(indices)+1;
-        end
-        selected=find(counts>0);
-        [xKm,yKm]=candidateXY(selected,database,moonRadiusKm);
-        markerArea=18+145*(counts(selected)/config.numberOfRuns);
-        scatter(ax,xKm,yKm,markerArea,"o", ...
-            "MarkerFaceColor",objectiveColor, ...
-            "MarkerEdgeColor",[1 1 1],"LineWidth",0.8);
-
+        imagesc(ax,longitudeCenters,latitudeCenters,frequency(:,:,networkIndex));
+        ax.YDir = "normal";
+        xlim(ax,[0 360]); ylim(ax,[-90 0]);
+        xticks(ax,0:90:360); yticks(ax,-90:30:0);
+        clim(ax,[0 100]); colormap(ax,[1 1 1;turbo(255)]);
+        ax.FontName = style.fontName; ax.FontSize = 12; ax.FontWeight = "bold";
+        ax.TickDir = "out";
         title(ax,sprintf("N_s = %d",config.networkSizes(networkIndex)), ...
-            "FontName",style.fontName,"FontSize",style.labelFontSize, ...
-            "FontWeight","bold");
+            "FontSize",16,"FontWeight","bold");
     end
-
-    cb=colorbar(axesHandles(end));
-    cb.Layout.Tile="east";
-    cb.Label.String="Elevation (km)";
-    cb.Label.FontWeight="bold";
-    cb.Label.FontSize=style.labelFontSize;
-    cb.FontName=style.fontName;
-    cb.FontSize=style.axisFontSize;
-    cb.FontWeight="bold";
-
-    % A shared layout label reserves its own space below every map. Unlike a
-    % figure annotation, it participates in layout at the final export size.
-    xlabel(layout,{"Marker area scales with selection frequency", ...
-        sprintf("across %d optimization runs",config.numberOfRuns)}, ...
-        "FontName",style.fontName,"FontSize",style.annotationFontSize, ...
-        "FontWeight","bold","Interpreter","none");
-
-    outputFile=fullfile(outputDirectory, ...
-        sprintf("network_locations_vs_ns_%s.eps",objectiveMode));
-    exportManuscriptFigure(fig,string(outputFile),8.5,8.0);
-    plotInfo.(fieldName)=struct("figure",fig,"outputFile",string(outputFile));
+    cb = colorbar(ax); cb.Layout.Tile = "east";
+    cb.Label.String = "Runs selecting bin (%)";
+    cb.FontSize = 12; cb.FontWeight = "bold";
+    cb.Label.FontSize = 14; cb.Label.FontWeight = "bold";
+    xlabel(layout,{"East longitude (deg)","Bins: 5 deg latitude x 15 deg longitude"}, ...
+        "FontSize",14,"FontWeight","bold");
+    ylabel(layout,"Latitude (deg)","FontSize",14,"FontWeight","bold");
+    outputFile = fullfile(outputDirectory,sprintf("network_locations_vs_ns_%s.eps",mode));
+    exportManuscriptFigure(fig,string(outputFile),width,height);
+    plotInfo.(char(mode)) = struct("figure",fig,"outputFile",string(outputFile), ...
+        "selectionPercent",frequency,"latitudeEdges",latitudeEdges,"longitudeEdges",longitudeEdges);
 end
-end
-
-function b=buildSouthernHemisphereBackground(dem,moonRadiusKm)
-lon=linspace(0,360,721); lat=linspace(-90,0,361);
-[lonM,latM]=meshgrid(lon,lat);
-elev=double(dem(deg2rad(latM),deg2rad(lonM)));
-r=moonRadiusKm.*deg2rad(90+latM);
-b=struct("x",r.*sind(lonM),"y",r.*cosd(lonM),"elevation",elev, ...
-    "limits",[min(elev,[],"all") max(elev,[],"all")], ...
-    "radius",moonRadiusKm*pi/2,"moonRadiusKm",moonRadiusKm);
-end
-
-function drawBackground(ax,b,style)
-hold(ax,"on");
-surf(ax,b.x,b.y,zeros(size(b.x)),b.elevation, ...
-    "EdgeColor","none","FaceColor","interp");
-view(ax,2); colormap(ax,turbo(256)); clim(ax,b.limits);
-% No grid/reference lines are drawn in manuscript figures.
-axis(ax,"equal"); axis(ax,"off");
-lim=b.radius+70; xlim(ax,[-lim lim]); ylim(ax,[-lim lim]);
-ax.FontName=style.fontName; ax.FontWeight="bold";
-end
-
-function [x,y]=candidateXY(indices,database,moonRadiusKm)
-lat=rad2deg(database.candidates.latitudesRad(indices));
-lon=rad2deg(database.candidates.longitudesRad(indices));
-r=moonRadiusKm.*deg2rad(90+lat);
-x=r.*sind(lon); y=r.*cosd(lon);
-x=x(:); y=y(:);
 end
