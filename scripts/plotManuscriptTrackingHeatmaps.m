@@ -10,8 +10,12 @@ labelRows = 1:labelStride:nObjects;
 % Respect the dedicated heatmap canvas minima. These larger source
 % dimensions preserve the left/top decoration room needed by the operational
 % spacecraft labels (especially the first LRO row) after EPS export.
-height = max(style.heatmapHeightInches, ...
-    2*numel(labelRows)*style.axisFontSize*1.15/72+2.2);
+% Add vertical source-canvas room specifically for the two-row tracking
+% heatmaps. The extra inch prevents the bottom design-RSO tick in the upper
+% panel (RSO 19 for the 20-object design catalog) from being clipped during
+% EPS rendering without changing the horizontal scale.
+height = max(style.heatmapHeightInches + 1.0, ...
+    2*numel(labelRows)*style.axisFontSize*1.15/72+3.0);
 width = max(style.heatmapWidthInches,4.8*nModes+1.8);
 fig = figure("Name",figureName,"Color",style.backgroundColor, ...
     "Units","inches","Position",[0.5 0.5 width height],"Renderer","opengl");
@@ -79,7 +83,7 @@ for ax = axesHandles.'
             ax.UserData.manuscriptTrackingRow == 1
         % Give the upper heatmap row extra bottom decoration room so the
         % lowest visible RSO tick label is not clipped by the lower tile.
-        extraInset(2) = 0.035;
+        extraInset(2) = 0.055;
     end
     ax.LooseInset = max(ax.LooseInset,tight + extraInset);
 end
