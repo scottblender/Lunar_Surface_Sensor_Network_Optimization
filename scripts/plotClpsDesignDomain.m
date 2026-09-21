@@ -62,16 +62,16 @@ theme = struct( ...
     "markerEdgeColor",[1 1 1]);
 
 fontName = style.fontName;
-calloutFontSize = 15;
-coordinateFontSize = 15;
-boundaryFontSize = 15;
-legendFontSize = 15;
-colorbarFontSize = 15;
+calloutFontSize = 17;
+coordinateFontSize = 17;
+boundaryFontSize = 17;
+legendFontSize = 17;
+colorbarFontSize = 17;
 
 % This is a full-width conference-paper figure. The source canvas is large
 % enough for the original callout density without making the map itself small.
-figureWidth = 11.5;
-figureHeight = 7.3;
+figureWidth = 12.0;
+figureHeight = 7.6;
 
 fig = figure("Name","CLPS deployment context and southern design domain", ...
     "Color",theme.backgroundColor,"Units","inches", ...
