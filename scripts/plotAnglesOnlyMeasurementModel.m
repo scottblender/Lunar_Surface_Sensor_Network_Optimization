@@ -43,14 +43,14 @@ delta = deg2rad(32);
 figRa = figure("Name","Angles-only: right ascension", ...
     "Color",backgroundColor,"Units","inches", ...
     "Position",[1 1 exportWidthInches exportHeightInches],"Renderer","opengl");
-axRa = axes(figRa,"Position",[0.055 0.055 0.89 0.89]);
+axRa = axes(figRa,"Position",[0.015 0.015 0.97 0.97]);
 hold(axRa,"on");
 axis(axRa,"equal");
 axis(axRa,"off");
 axRa.Color = backgroundColor;
 axRa.FontName = fontName;
-xlim(axRa,[-2.35 2.35]);
-ylim(axRa,[-2.35 2.35]);
+xlim(axRa,[-1.25 1.55]);
+ylim(axRa,[-1.10 1.55]);
 
 sensor = [-0.58;-0.48];
 axisLength = 1.35;
@@ -110,14 +110,14 @@ text(axRa,angleLabel(1),angleLabel(2),"\alpha_k", ...
 figDec = figure("Name","Angles-only: declination", ...
     "Color",backgroundColor,"Units","inches", ...
     "Position",[8 1 exportWidthInches exportHeightInches],"Renderer","opengl");
-axDec = axes(figDec,"Position",[0.055 0.055 0.89 0.89]);
+axDec = axes(figDec,"Position",[0.015 0.015 0.97 0.97]);
 hold(axDec,"on");
 axis(axDec,"equal");
 axis(axDec,"off");
 axDec.Color = backgroundColor;
 axDec.FontName = fontName;
-xlim(axDec,[-2.60 2.60]);
-ylim(axDec,[-2.60 2.60]);
+xlim(axDec,[-1.90 1.90]);
+ylim(axDec,[-1.82 1.98]);
 
 moonRadius = 1.03;
 moonCenter = [-0.72;-0.66];
@@ -186,25 +186,17 @@ text(axDec,angleLabel(1),angleLabel(2),"\delta_k", ...
 
 %% Export
 
-exportImageEps(figRa,rightAscensionFile,backgroundColor, ...
-    exportWidthInches,exportHeightInches);
-exportImageEps(figDec,declinationFile,backgroundColor, ...
-    exportWidthInches,exportHeightInches);
+exportImageEps(axRa,rightAscensionFile,backgroundColor);
+exportImageEps(axDec,declinationFile,backgroundColor);
 
 fprintf("Saved angles-only geometry figures.\n");
 
 %% Local helpers
 
-function exportImageEps(fig,outputFile,backgroundColor,widthInches,heightInches)
-fig.Color = backgroundColor;
-fig.InvertHardcopy = "off";
-fig.Renderer = "opengl";
-fig.PaperUnits = "inches";
-fig.PaperSize = [widthInches heightInches];
-fig.PaperPosition = [0 0 widthInches heightInches];
-fig.PaperPositionMode = "manual";
+function exportImageEps(ax,outputFile,backgroundColor)
 drawnow;
-print(fig,char(outputFile),"-depsc","-opengl","-r600");
+exportgraphics(ax,outputFile,"ContentType","vector", ...
+    "BackgroundColor",backgroundColor,"Colorspace","rgb");
 end
 
 function drawArrow2D(ax,startPoint,endPoint,color,lineWidth,headLength,headWidth,lineStyle)
