@@ -99,22 +99,52 @@ for objectIndex = 1:numberOfObjects
 
 
     ax.FontName = style.fontName;
-    ax.FontSize = 10;
-    xlabel(ax,"x_R (10^3 km)");
-    ylabel(ax,"y_R (10^3 km)");
-    zlabel(ax,"z_R (10^3 km)");
+    ax.FontSize = 9;
+
+    % Keep numeric scale information on every orbit, but avoid repeating
+    % coordinate labels on all 20 tiles. Representative labels are placed on
+    % three boundary panels so neighboring axes do not collide.
+    rowIndex = ceil(objectIndex/numberOfColumns);
+    columnIndex = mod(objectIndex-1,numberOfColumns)+1;
+    representativeRow = ceil(numberOfRows/2);
+    representativeColumn = ceil(numberOfColumns/2);
+
+    if rowIndex == numberOfRows && columnIndex == representativeColumn
+        xlabel(ax,"x_R (10^3 km)");
+    else
+        xlabel(ax,"");
+    end
+    if rowIndex == representativeRow && columnIndex == 1
+        ylabel(ax,"y_R (10^3 km)");
+    else
+        ylabel(ax,"");
+    end
+    if rowIndex == representativeRow && columnIndex == numberOfColumns
+        zlabel(ax,"z_R (10^3 km)");
+    else
+        zlabel(ax,"");
+    end
+
     ax.XLabel.FontSize = 11;
     ax.YLabel.FontSize = 11;
     ax.ZLabel.FontSize = 11;
     ax.XLabel.FontWeight = "bold";
     ax.YLabel.FontWeight = "bold";
     ax.ZLabel.FontWeight = "bold";
+
+    % Three ticks per axis retain each orbit's independent scale without
+    % filling the tile with dense numeric labels.
+    xticks(ax,[-localLimit 0 localLimit]);
+    yticks(ax,[-localLimit 0 localLimit]);
+    zticks(ax,[-localLimit 0 localLimit]);
+    xtickformat(ax,"%.1f");
+    ytickformat(ax,"%.1f");
+    ztickformat(ax,"%.1f");
     ax.XAxis.Exponent = 0; ax.YAxis.Exponent = 0; ax.ZAxis.Exponent = 0;
     ax.FontWeight = "bold";
     ax.LineWidth = 0.75;
     ax.TickDir = "out";
-    % Keep panel text compact so all 20 orbit tiles remain legible.
-    ax.LooseInset = max(ax.LooseInset,[0.02 0.02 0.02 0.02]);
+    ax.LooseInset = max(ax.LooseInset,[0.015 0.015 0.015 0.015]);
 end
 
 
