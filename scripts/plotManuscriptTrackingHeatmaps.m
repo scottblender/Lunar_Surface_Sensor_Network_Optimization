@@ -27,6 +27,7 @@ for row = 1:2
     inner.Layout.Tile = row;
     for column = 1:nModes
         ax = nexttile(inner,column);
+        ax.UserData.manuscriptTrackingRow = row;
         if row==1
             values = log10(max(rms(:,:,column),10^limits(1)));
             colorLimits = limits;
@@ -73,6 +74,12 @@ for ax = axesHandles.'
     if any(strlength(string(ax.YTickLabel)) > 0,"all")
         % Preserve extra space for the left-column RSO/spacecraft labels.
         extraInset(1) = 0.040;
+    end
+    if isstruct(ax.UserData) && isfield(ax.UserData,"manuscriptTrackingRow") && ...
+            ax.UserData.manuscriptTrackingRow == 1
+        % Give the upper heatmap row extra bottom decoration room so the
+        % lowest visible RSO tick label is not clipped by the lower tile.
+        extraInset(2) = 0.035;
     end
     ax.LooseInset = max(ax.LooseInset,tight + extraInset);
 end
