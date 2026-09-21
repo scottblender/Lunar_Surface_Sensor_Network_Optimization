@@ -19,16 +19,22 @@ height = max(style.heatmapHeightInches + 1.0, ...
 width = max(style.heatmapWidthInches,4.8*nModes+1.8);
 fig = figure("Name",figureName,"Color",style.backgroundColor, ...
     "Units","inches","Position",[0.5 0.5 width height],"Renderer","opengl");
-outer = tiledlayout(fig,2,1,"TileSpacing","loose","Padding","loose");
+% Use a dedicated spacer row between the two nested heatmap layouts. EPS
+% rendering can otherwise let the lower layout paint over the lowest tick
+% label of the upper layout (for example, Queqiao-2 or RSO 19).
+outer = tiledlayout(fig,9,1,"TileSpacing","compact","Padding","loose");
 positive = rms(isfinite(rms) & rms>0);
 assert(~isempty(positive),"No positive tracking errors are available.");
 limits = [floor(log10(min(positive))) ceil(log10(max(positive)))];
 if limits(2)<=limits(1), limits(2)=limits(1)+1; end
 for row = 1:2
-    % Loose row padding prevents the uppermost design-RSO tick label from
-    % being clipped by the EPS renderer while retaining compact panel spacing.
     inner = tiledlayout(outer,1,nModes,"TileSpacing","compact","Padding","loose");
-    inner.Layout.Tile = row;
+    if row == 1
+        inner.Layout.Tile = 1;
+    else
+        inner.Layout.Tile = 6;
+    end
+    inner.Layout.TileSpan = [4 1];
     for column = 1:nModes
         ax = nexttile(inner,column);
         ax.UserData.manuscriptTrackingRow = row;
@@ -83,7 +89,7 @@ for ax = axesHandles.'
             ax.UserData.manuscriptTrackingRow == 1
         % Give the upper heatmap row extra bottom decoration room so the
         % lowest visible RSO tick label is not clipped by the lower tile.
-        extraInset(2) = 0.055;
+        extraInset(2) = 0.020;
     end
     ax.LooseInset = max(ax.LooseInset,tight + extraInset);
 end
