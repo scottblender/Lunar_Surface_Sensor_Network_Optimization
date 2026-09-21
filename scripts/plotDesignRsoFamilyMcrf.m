@@ -109,9 +109,10 @@ for objectIndex = 1:numberOfObjects
 
     % Retain a sparse numeric scale on every orbit while labeling the
     % coordinate axes only once on the bottom-left representative panel.
-    xticks(ax,[-localLimit localLimit]);
-    yticks(ax,[-localLimit localLimit]);
-    zticks(ax,[-localLimit localLimit]);
+    tickLimit = 0.80*localLimit;
+    xticks(ax,[-tickLimit tickLimit]);
+    yticks(ax,[-tickLimit tickLimit]);
+    zticks(ax,[-tickLimit tickLimit]);
     xtickformat(ax,"%.1f");
     ytickformat(ax,"%.1f");
     ztickformat(ax,"%.1f");
