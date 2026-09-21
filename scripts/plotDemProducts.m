@@ -65,7 +65,9 @@ for k = 1:2
     outputFile = fullfile(config.outputDirectory,stems(k)+".eps");
     applyManuscriptTypography(fig,string(outputFile),9.0);
     layout.Units = "normalized";
-    layout.OuterPosition = [0.02 0.035 0.90 0.93];
+    % Preserve the same top edge while reserving more room beneath the x-axis
+% label in the EPS export.
+layout.OuterPosition = [0.02 0.075 0.90 0.89];
     setappdata(fig,"ManuscriptTypographyFinalized",true);
     exportManuscriptFigure(fig,string(outputFile),9.0,4.6);
     plotInfo.(char(stems(k))) = struct( ...
