@@ -125,11 +125,11 @@ ylabel(ax,"Latitude (deg)");
 styleAxes(ax,style);
 % Figure 24 is placed relatively small in the manuscript, so give the map
 % typography a modest local increase without changing the global style.
-ax.FontSize = style.axisFontSize + 3;
-ax.XLabel.FontSize = style.labelFontSize + 3;
-ax.YLabel.FontSize = style.labelFontSize + 3;
-cb.FontSize = style.axisFontSize + 1;
-cb.Label.FontSize = style.labelFontSize + 1;
+ax.FontSize = style.axisFontSize + 5;
+ax.XLabel.FontSize = style.labelFontSize + 5;
+ax.YLabel.FontSize = style.labelFontSize + 5;
+cb.FontSize = style.axisFontSize + 3;
+cb.Label.FontSize = style.labelFontSize + 3;
 
 lgd = legend(ax,[h1 h2 h3 h4], ...
     ["Southern: information","Southern: coverage", ...
@@ -137,7 +137,7 @@ lgd = legend(ax,[h1 h2 h3 h4], ...
     "Location","none","Orientation","horizontal", ...
     "NumColumns",2,"Box","off");
 lgd.FontName = style.fontName;
-lgd.FontSize = style.legendFontSize;
+lgd.FontSize = style.legendFontSize + 2;
 lgd.FontWeight = "bold";
 lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
@@ -173,7 +173,6 @@ axCoverage = nexttile(layout,1,[2 1]);
 coverageHandles = plotComparisonBars(axCoverage,networkSizes, ...
     fullCoverageScore,restrictedCoverageScore, ...
     "Coverage score, C",style);
-densifyYAxis(axCoverage);
 
 lgd = legend(axCoverage,coverageHandles, ...
     ["Southern hemisphere","Restricted south-polar"], ...
@@ -189,7 +188,6 @@ axInformation = nexttile(layout,4,[2 1]);
 plotComparisonBars(axInformation,networkSizes, ...
     fullInformationScore,restrictedInformationScore, ...
     "Information score, I",style);
-densifyYAxis(axInformation);
 
 metricsFile = fullfile(outputDirectory,"domain_comparison_metrics.eps");
 % One shared x label and an unused middle tile separate the two panels.
@@ -297,16 +295,6 @@ xticks(ax,1:numel(networkSizes));
 xticklabels(ax,string(networkSizes));
 xlim(ax,[0.5 numel(networkSizes)+0.5]);
 styleAxes(ax,style);
-end
-
-function densifyYAxis(ax)
-% Preserve MATLAB's readable automatic ticks and add midpoints when the
-% automatic axis is sparse.
-ticks = yticks(ax);
-if numel(ticks) >= 2 && numel(ticks) <= 5
-    midpoints = 0.5*(ticks(1:end-1)+ticks(2:end));
-    yticks(ax,sort([ticks midpoints]));
-end
 end
 
 function styleAxes(ax,style)
