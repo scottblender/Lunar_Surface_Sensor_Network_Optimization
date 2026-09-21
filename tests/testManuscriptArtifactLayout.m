@@ -46,7 +46,7 @@ function testManuscriptInventoryExcludesDiagnostics(testCase)
 folder = string(tempname); mkdir(folder);
 cleanup = onCleanup(@()rmdir(folder,"s")); %#ok<NASGU>
 manifest = validateManuscriptArtifacts(folder);
-verifyTrue(testCase,any(manifest.File=="constraint_screening_rso01.eps"));
+verifyTrue(testCase,any(manifest.File=="constraint_screening_all_rsos.eps"));
 verifyFalse(testCase,any(startsWith(manifest.File,"screening_breakdown_")));
 verifyTrue(testCase,any(manifest.File=="design_rso_family_mcrf_3d.eps"));
 verifyFalse(testCase,any(manifest.File=="optimization_rso_population.csv"));
