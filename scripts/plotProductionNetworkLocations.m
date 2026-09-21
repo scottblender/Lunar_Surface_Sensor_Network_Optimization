@@ -31,7 +31,9 @@ for objectiveIndex = 1:numel(config.objectiveModes)
         ax = nexttile(layout,networkIndex);
         imagesc(ax,longitudeCenters,latitudeCenters,frequency(:,:,networkIndex));
         ax.YDir = "normal";
-        xlim(ax,[0 360]); ylim(ax,[-90 0]);
+        % Keep endpoint ticks slightly inside the axes box so their labels
+        % cannot be clipped by the EPS page boundary.
+        xlim(ax,[-5 365]); ylim(ax,[-92 2]);
         xticks(ax,0:90:360); yticks(ax,-90:30:0);
         clim(ax,[0 100]); colormap(ax,[1 1 1;turbo(255)]);
         ax.FontName = style.fontName; ax.FontSize = max(16,style.axisFontSize-2); ax.FontWeight = "bold";
