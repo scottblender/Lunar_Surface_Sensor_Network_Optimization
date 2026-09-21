@@ -1,11 +1,10 @@
 function plotInfo = plotDesignRsoFamilyMcrf(campaign,userConfig)
-% PLOTDESIGNRSOFAMILYMCRF Plot the complete design RSO population in MCRF.
+% PLOTDESIGNRSOFAMILYMCRF Plot separated design RSO trajectories in MCRF.
 %
-% The full three-day propagated design population is transformed from the
-% Moon-centered inertial frame to the Moon-centered rotating frame (MCRF).
-% This figure is the manuscript-facing geometric summary of the 20-object
-% optimization population; the exact orbital elements remain available in
-% campaign.database.rso.catalog.
+% The complete propagated design population is transformed from MCI into the
+% Moon-centered rotating frame (MCRF). Each RSO is shown in its own 3D tile
+% so individual trajectory geometry remains visible instead of being obscured
+% by an overlaid 20-trajectory plot.
 
 arguments
     campaign (1,1) struct
@@ -50,66 +49,62 @@ end
 scaleKm = 1e3;
 positions = positionsMcrfKm/scaleKm;
 moonRadius = moonRadiusKm/scaleKm;
-orbitColors = turbo(numberOfObjects);
+
+numberOfColumns = 4;
+numberOfRows = ceil(numberOfObjects/numberOfColumns);
 
 fig = figure("Name","Design RSO family in MCRF", ...
     "Color",style.backgroundColor,"Units","inches", ...
-    "Position",[1 1 8.5 7.2],"Renderer","opengl");
-ax = axes(fig,"Units","normalized","Position",[0.11 0.12 0.73 0.82]);
-hold(ax,"on");
+    "Position",[1 1 10.0 9.4],"Renderer","opengl");
+layout = tiledlayout(fig,numberOfRows,numberOfColumns, ...
+    "Padding","compact","TileSpacing","compact");
 
-[sx,sy,sz] = sphere(64);
-surf(ax,moonRadius*sx,moonRadius*sy,moonRadius*sz, ...
-    "FaceColor",style.moonColor,"EdgeColor","none","FaceAlpha",0.80);
+[sx,sy,sz] = sphere(36);
 
 for objectIndex = 1:numberOfObjects
+    ax = nexttile(layout,objectIndex);
+    hold(ax,"on");
+
+    surf(ax,moonRadius*sx,moonRadius*sy,moonRadius*sz, ...
+        "FaceColor",style.moonColor,"EdgeColor","none", ...
+        "FaceAlpha",0.82);
+
     trajectory = positions(:,:,objectIndex);
     plot3(ax,trajectory(1,:),trajectory(2,:),trajectory(3,:), ...
-        "-","Color",orbitColors(objectIndex,:),"LineWidth",1.35);
-    scatter3(ax,trajectory(1,1),trajectory(2,1),trajectory(3,1),22, ...
-        orbitColors(objectIndex,:),"filled","MarkerEdgeColor",[1 1 1], ...
+        "-","Color",style.blueColor,"LineWidth",1.35);
+    scatter3(ax,trajectory(1,1),trajectory(2,1),trajectory(3,1),24, ...
+        style.redColor,"filled","MarkerEdgeColor",[1 1 1], ...
         "LineWidth",0.45);
+
+    localExtent = max(abs(trajectory),[],"all");
+    plotLimit = 1.07*max(localExtent,1.25*moonRadius);
+    xlim(ax,[-plotLimit plotLimit]);
+    ylim(ax,[-plotLimit plotLimit]);
+    zlim(ax,[-plotLimit plotLimit]);
+
+    axis(ax,"equal");
+    axis(ax,"vis3d");
+    grid(ax,"off");
+    box(ax,"on");
+    view(ax,38,24);
+
+    title(ax,sprintf("RSO %02d",objectIndex), ...
+        "FontName",style.fontName,"FontSize",10, ...
+        "FontWeight","bold");
+
+    ax.FontName = style.fontName;
+    ax.FontSize = 7;
+    ax.FontWeight = "bold";
+    ax.LineWidth = 0.75;
+    ax.TickDir = "out";
 end
 
-axis(ax,"equal");
-axis(ax,"vis3d");
-grid(ax,"off");
-box(ax,"on");
-view(ax,38,24);
-xlabel(ax,"x_{MCRF} (10^3 km)","Interpreter","tex");
-ylabel(ax,"y_{MCRF} (10^3 km)","Interpreter","tex");
-zlabel(ax,"z_{MCRF} (10^3 km)","Interpreter","tex");
-ax.FontName = style.fontName;
-ax.FontSize = style.axisFontSize;
-ax.FontWeight = "bold";
-ax.LineWidth = 1.0;
-ax.TickDir = "out";
-ax.XLabel.FontSize = style.labelFontSize;
-ax.YLabel.FontSize = style.labelFontSize;
-ax.ZLabel.FontSize = style.labelFontSize;
-ax.XLabel.FontWeight = "bold";
-ax.YLabel.FontWeight = "bold";
-ax.ZLabel.FontWeight = "bold";
-
-maximumExtent = max(abs(positions),[],"all");
-plotLimit = 1.05*maximumExtent;
-xlim(ax,[-plotLimit plotLimit]);
-ylim(ax,[-plotLimit plotLimit]);
-zlim(ax,[-plotLimit plotLimit]);
-
-colormap(ax,orbitColors);
-clim(ax,[0.5 numberOfObjects+0.5]);
-cb = colorbar(ax);
-cb.FontName = style.fontName;
-cb.FontSize = style.axisFontSize;
-cb.FontWeight = "bold";
-cb.Label.String = "RSO index";
-cb.Label.FontSize = style.labelFontSize;
-cb.Label.FontWeight = "bold";
-cb.Ticks = unique([1,5:5:numberOfObjects,numberOfObjects]);
+title(layout,"Design RSO trajectories in MCRF (coordinates in 10^3 km)", ...
+    "FontName",style.fontName,"FontSize",style.labelFontSize, ...
+    "FontWeight","bold");
 
 outputFile = fullfile(outputDirectory,"design_rso_family_mcrf_3d.eps");
-exportManuscriptFigure(fig,string(outputFile),8.5,7.2);
+exportManuscriptFigure(fig,string(outputFile),10.0,9.4);
 
 plotInfo = struct();
 plotInfo.figure = fig;
@@ -117,6 +112,7 @@ plotInfo.outputFile = string(outputFile);
 plotInfo.numberOfObjects = numberOfObjects;
 plotInfo.frame = "MCRF";
 plotInfo.timeSpanHours = (times(end)-times(1))/3600;
+plotInfo.layout = [numberOfRows numberOfColumns];
 
-fprintf("Design-RSO MCRF family figure:\n  %s\n",outputFile);
+fprintf("Design-RSO MCRF family subplot figure:\n  %s\n",outputFile);
 end
