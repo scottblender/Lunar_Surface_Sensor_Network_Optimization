@@ -59,8 +59,8 @@ moonRadius = moonRadiusKm/scaleKm;
 numberOfColumns = min(5,numberOfObjects);
 numberOfRows = ceil(numberOfObjects/numberOfColumns);
 
-figureWidth = 2.6*numberOfColumns;
-figureHeight = 2.6*numberOfRows;
+figureWidth = 2.9*numberOfColumns;
+figureHeight = 2.9*numberOfRows;
 fig = figure("Name","Design RSO family in MCRF", ...
     "Color",style.backgroundColor,"Units","inches", ...
     "Position",[1 1 figureWidth figureHeight],"Renderer","opengl");
@@ -99,13 +99,13 @@ for objectIndex = 1:numberOfObjects
 
 
     ax.FontName = style.fontName;
-    ax.FontSize = 13;
+    ax.FontSize = 15;
     xlabel(ax,"x_R (10^3 km)");
     ylabel(ax,"y_R (10^3 km)");
     zlabel(ax,"z_R (10^3 km)");
-    ax.XLabel.FontSize = 14;
-    ax.YLabel.FontSize = 14;
-    ax.ZLabel.FontSize = 14;
+    ax.XLabel.FontSize = 16;
+    ax.YLabel.FontSize = 16;
+    ax.ZLabel.FontSize = 16;
     ax.XLabel.FontWeight = "bold";
     ax.YLabel.FontWeight = "bold";
     ax.ZLabel.FontWeight = "bold";
@@ -113,6 +113,8 @@ for objectIndex = 1:numberOfObjects
     ax.FontWeight = "bold";
     ax.LineWidth = 0.75;
     ax.TickDir = "out";
+    % Keep the larger tick/axis labels inside each exported tile.
+    ax.LooseInset = max(ax.LooseInset,[0.03 0.03 0.03 0.03]);
 end
 
 
