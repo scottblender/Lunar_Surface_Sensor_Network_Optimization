@@ -99,8 +99,16 @@ for objectIndex = 1:numberOfObjects
 
 
     ax.FontName = style.fontName;
-    ax.FontSize = 9;
-    xlabel(ax,"x_R"); ylabel(ax,"y_R"); zlabel(ax,"z_R");
+    ax.FontSize = 13;
+    xlabel(ax,"x_R (10^3 km)");
+    ylabel(ax,"y_R (10^3 km)");
+    zlabel(ax,"z_R (10^3 km)");
+    ax.XLabel.FontSize = 14;
+    ax.YLabel.FontSize = 14;
+    ax.ZLabel.FontSize = 14;
+    ax.XLabel.FontWeight = "bold";
+    ax.YLabel.FontWeight = "bold";
+    ax.ZLabel.FontWeight = "bold";
     ax.XAxis.Exponent = 0; ax.YAxis.Exponent = 0; ax.ZAxis.Exponent = 0;
     ax.FontWeight = "bold";
     ax.LineWidth = 0.75;
