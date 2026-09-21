@@ -45,8 +45,6 @@ for row = 1:2
         else
             ax.YTickLabel = strings(numel(labelRows),1);
         end
-        title(ax,upper(extractBefore(modes(column),2))+extractAfter(modes(column),1), ...
-            "FontSize",style.labelFontSize,"FontWeight","bold");
     end
     cb = colorbar(ax); cb.Layout.Tile = "east";
     cb.FontName = style.fontName; cb.FontSize = style.axisFontSize;

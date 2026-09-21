@@ -28,6 +28,9 @@ probe = text(ax,0,0,heading.String,"Units","points", ...
 drawnow;
 headingSize = probe.Extent(3:4) + 2*heading.Margin + gap/2;
 delete(probe);
+if strlength(string(heading.String))==0
+    headingSize = [0 0];
+end
 heading.FitBoxToText = "off";
 % Two legend columns avoid forcing a wide canvas after the map is compacted.
 lgd.NumColumns = 2;

@@ -36,14 +36,12 @@ for objectiveIndex = 1:numel(config.objectiveModes)
         clim(ax,[0 100]); colormap(ax,[1 1 1;turbo(255)]);
         ax.FontName = style.fontName; ax.FontSize = 12; ax.FontWeight = "bold";
         ax.TickDir = "out";
-        title(ax,sprintf("N_s = %d",config.networkSizes(networkIndex)), ...
-            "FontSize",16,"FontWeight","bold");
     end
     cb = colorbar(ax); cb.Layout.Tile = "east";
     cb.Label.String = "Runs selecting bin (%)";
     cb.FontSize = 12; cb.FontWeight = "bold";
     cb.Label.FontSize = 14; cb.Label.FontWeight = "bold";
-    xlabel(layout,{"East longitude (deg)","Bins: 10 deg latitude x 30 deg longitude"}, ...
+    xlabel(layout,"East longitude (deg)", ...
         "FontSize",14,"FontWeight","bold");
     ylabel(layout,"Latitude (deg)","FontSize",14,"FontWeight","bold");
     outputFile = fullfile(outputDirectory,sprintf("network_locations_vs_ns_%s.eps",mode));

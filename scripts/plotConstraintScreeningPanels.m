@@ -26,7 +26,6 @@ for domain = 1:2
     ax.FontName = style.fontName; ax.FontSize = 12; ax.FontWeight = "bold";
     ax.TickDir = "out"; ax.Box = "on";
     xlim(ax,[0 100]); ylim(ax,[0.4 n+0.6]); xticks(ax,0:25:100);
-    title(ax,domains(domain),"FontSize",16,"FontWeight","bold");
     if domain==1
         lgd = legend(ax,bars,categoryNames,"NumColumns",3, ...
             "Orientation","horizontal","Box","off");

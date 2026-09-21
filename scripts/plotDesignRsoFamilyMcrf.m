@@ -55,15 +55,12 @@ end
 scaleKm = 1e3;
 positions = positionsMcrfKm/scaleKm;
 moonRadius = moonRadiusKm/scaleKm;
-% One shared cube contains every orbit and the Moon, with a 5% margin.
-plotLimit = 1.05*max(moonRadius,max(abs(positions),[],"all"));
-sharedLimits = [-plotLimit plotLimit];
 
 numberOfColumns = min(5,numberOfObjects);
 numberOfRows = ceil(numberOfObjects/numberOfColumns);
 
 figureWidth = 2.6*numberOfColumns;
-figureHeight = 2.6*numberOfRows+0.5;
+figureHeight = 2.6*numberOfRows;
 fig = figure("Name","Design RSO family in MCRF", ...
     "Color",style.backgroundColor,"Units","inches", ...
     "Position",[1 1 figureWidth figureHeight],"Renderer","opengl");
@@ -87,8 +84,11 @@ for objectIndex = 1:numberOfObjects
         style.redColor,"filled","MarkerEdgeColor",[1 1 1], ...
         "LineWidth",0.45);
 
-    % Identical limits, aspect ratios and view give every tile the same area.
-    xlim(ax,sharedLimits); ylim(ax,sharedLimits); zlim(ax,sharedLimits);
+    % Equal-sized plot boxes, with independent limits to reveal each orbit.
+    localLimit = 1.08*max(moonRadius,max(abs(trajectory),[],"all"));
+    xlim(ax,[-localLimit localLimit]);
+    ylim(ax,[-localLimit localLimit]);
+    zlim(ax,[-localLimit localLimit]);
     daspect(ax,[1 1 1]);
     pbaspect(ax,[1 1 1]);
     ax.CameraViewAngleMode = "auto";
@@ -97,9 +97,6 @@ for objectIndex = 1:numberOfObjects
     box(ax,"off");
     view(ax,35,25);
 
-    title(ax,sprintf("RSO %02d",objectIndex), ...
-        "FontName",style.fontName,"FontSize",12, ...
-        "FontWeight","bold");
 
     ax.FontName = style.fontName;
     ax.FontSize = 9;
@@ -110,9 +107,6 @@ for objectIndex = 1:numberOfObjects
     ax.TickDir = "out";
 end
 
-title(layout,{"Design RSO trajectories in MCRF", ...
-    "One orbital period per RSO; coordinates in 10^3 km"}, ...
-    "FontName",style.fontName,"FontSize",14,"FontWeight","bold");
 
 outputFile = fullfile(outputDirectory,"design_rso_family_mcrf_3d.eps");
 exportManuscriptFigure(fig,string(outputFile),figureWidth,figureHeight);
