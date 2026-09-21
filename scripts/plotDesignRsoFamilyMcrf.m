@@ -99,13 +99,13 @@ for objectIndex = 1:numberOfObjects
 
 
     ax.FontName = style.fontName;
-    ax.FontSize = 15;
+    ax.FontSize = 10;
     xlabel(ax,"x_R (10^3 km)");
     ylabel(ax,"y_R (10^3 km)");
     zlabel(ax,"z_R (10^3 km)");
-    ax.XLabel.FontSize = 16;
-    ax.YLabel.FontSize = 16;
-    ax.ZLabel.FontSize = 16;
+    ax.XLabel.FontSize = 11;
+    ax.YLabel.FontSize = 11;
+    ax.ZLabel.FontSize = 11;
     ax.XLabel.FontWeight = "bold";
     ax.YLabel.FontWeight = "bold";
     ax.ZLabel.FontWeight = "bold";
@@ -113,8 +113,8 @@ for objectIndex = 1:numberOfObjects
     ax.FontWeight = "bold";
     ax.LineWidth = 0.75;
     ax.TickDir = "out";
-    % Keep the larger tick/axis labels inside each exported tile.
-    ax.LooseInset = max(ax.LooseInset,[0.03 0.03 0.03 0.03]);
+    % Keep panel text compact so all 20 orbit tiles remain legible.
+    ax.LooseInset = max(ax.LooseInset,[0.02 0.02 0.02 0.02]);
 end
 
 
