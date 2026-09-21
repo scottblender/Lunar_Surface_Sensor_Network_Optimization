@@ -77,7 +77,7 @@ for objectiveMode = config.objectiveModes
         fig = figure("Name",sprintf("Grid-scale Monte Carlo robustness: %s, N_s=%d", ...
             objectiveMode,networkSize), ...
             "Color",style.backgroundColor,"Units","inches", ...
-            "Position",[0.5 0.5 7.0 4.8],"Renderer","opengl");
+            "Position",[0.5 0.5 9.0 5.2],"Renderer","opengl");
         fig.InvertHardcopy = "off";
         layout = tiledlayout(fig,1,1,"Padding","loose","TileSpacing","loose");
         ax = nexttile(layout);
@@ -96,7 +96,7 @@ for objectiveMode = config.objectiveModes
 
         outputFile = fullfile(config.outputDirectory, ...
             sprintf("monte_carlo_%s_n%d.eps",objectiveMode,networkSize));
-        exportManuscriptFigure(fig,string(outputFile),7.0,4.8);
+        exportManuscriptFigure(fig,string(outputFile),9.0,5.2);
 
         networkField = sprintf("n%d",networkSize);
         plotInfo.(objectiveField).(networkField) = struct( ...
