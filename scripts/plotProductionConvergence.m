@@ -28,7 +28,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
         "Color",style.backgroundColor,"Units","inches", ...
         "Position",[1 1 7.0 4.8],"Renderer","opengl");
     % Extra left margin prevents the manuscript-size y label from clipping.
-    ax = axes(fig,"Position",[0.20 0.18 0.75 0.62]);
+    ax = axes(fig,"Position",[0.20 0.18 0.70 0.62]);
     hold(ax,"on");
 
     handles = gobjects(numel(config.networkSizes),1);
