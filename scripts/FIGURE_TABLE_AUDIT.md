@@ -32,8 +32,10 @@ Outputs are written to `results/manuscript_artifacts/`.
 
 ## Screening and domain comparison
 
-`plotMeasurementScreeningBreakdown.m` shows adjacent stacked bars for BOTH
-optimization domains at every network size for each objective.
+`plotMeasurementScreeningBreakdown.m` now produces one manuscript constraint
+example for a single design RSO. The Southern Hemisphere and South Pole
+networks are adjacent stacked bars with the domain names written directly
+under the bars; no solid/dashed domain coding is used.
 
 `generateDomainComparisonProducts.m` explicitly compares the southern-
 hemisphere and restricted south-polar studies using grouped bars and a
@@ -64,7 +66,6 @@ The CSVs mirror the corresponding TeX table column structures:
 
 - `completed_clps_landing_sites.csv`
 - `planned_clps_landing_regions.csv`
-- `optimization_rso_population.csv`
 - `lunar_peaks_dem.csv`
 - `dominant_craters.csv`
 - `celestial_exclusion_parameters.csv`
@@ -132,6 +133,7 @@ produces the following paper assets only (subject to data availability):
 | CLPS context | CLPS_Southern_Hemisphere_Design_Domain.eps |
 | Reference frames | reference_frame_moon_centered.eps; reference_frame_sensor_centered.eps |
 | Measurement angles | angles_only_right_ascension_geometry.eps; angles_only_declination_geometry.eps |
+| Design RSO family | design_rso_family_mcrf_3d.eps |
 | Original DEM | LOLA_Global_DEM.eps |
 | Synthetic DEM | Synthetic_Lunar_DEM.eps |
 | Exclusion geometry | Exclusion_Constraint_Schematic.eps |
@@ -139,18 +141,21 @@ produces the following paper assets only (subject to data availability):
 | Convergence | convergence_information.eps; convergence_coverage.eps |
 | Network locations | network_locations_vs_ns_information.eps; network_locations_vs_ns_coverage.eps |
 | Design tracking | design_rso_tracking_heatmaps.eps |
+| RSO constraint example | constraint_screening_rso01.eps |
 | Robustness | eight monte_carlo_{objective}_n{size}.eps panels |
 | Domain comparison | domain_comparison_locations.eps; domain_comparison_metrics.eps |
 | Operational tracking | operational_rso_tracking_heatmaps.eps |
 
-The table manifest supplies completed/planned CLPS sites, RSO population,
-peaks, craters, exclusion parameters, IOD calibration (including its separate
-P0 matrix CSV), GA parameters, network summary, domain comparison, and
-spacecraft tracking. There are 12 CSV files for the 11 manuscript tables.
+The long RSO-population table has been replaced by the MCRF family figure.
+The table manifest now supplies completed/planned CLPS sites, peaks, craters,
+exclusion parameters, IOD calibration (including its separate P0 matrix CSV),
+GA parameters, network summary, domain comparison, and spacecraft tracking.
+There are 11 CSV files because the IOD table still uses the separate P0 matrix
+CSV.
 
-Screening breakdown and separate DEM/discrete-neighbor validation jobs are
-now off by default because the source has no corresponding figure/table
-blocks. Diagnostic CSVs from tracking and Monte Carlo are suppressed by
+The single RSO-specific screening figure is on by default. Separate
+DEM/discrete-neighbor validation jobs remain off by default because they are
+supporting analyses rather than manuscript figures. Diagnostic CSVs from tracking and Monte Carlo are suppressed by
 `exportDiagnosticTables=false`; standalone functions retain their diagnostic
 exports unless configured otherwise. Existing known extra exports are moved
 to a sibling `manuscript_artifacts_diagnostics_archive` folder, never deleted.
@@ -173,3 +178,25 @@ Run `runtests({'tests/testManuscriptContextLayout.m', ...
 were added but could not be executed in the editing environment. Static lint
 checks were run; the evaluator retains a pre-existing name/value-style lint
 advisory in its operational-catalog construction.
+
+
+## 2026-09-20 visual-overhaul additions
+
+- The 20 design RSOs are now plotted together in a three-dimensional
+  Moon-centered rotating frame (MCRF) figure,
+  `design_rso_family_mcrf_3d.eps`. This replaces the long orbital-element
+  population table as the manuscript-facing representation; the complete
+  catalog remains stored in the optimization database.
+- The sensor-selection result remains a geographic frequency map instead of a
+  raster heat map. The candidate grid is approximately uniform in physical
+  spacing but longitude sampling changes with latitude, so interpolating it to
+  a rectangular heat map would imply spatial resolution that was not part of
+  the optimization. Information and coverage are already separate exports and
+  are now enlarged for use as separate manuscript figures.
+- The constraint-screening result is one RSO-specific example at the configured
+  comparison network size/objective. Southern Hemisphere and South Pole are
+  identified beneath the two stacked bars; line-style coding is removed.
+- Reference-frame and angles-only schematics are exported directly from their
+  axes as vector EPS files, giving them tight bounding boxes instead of the
+  previous source-canvas margins.
+- The Monte Carlo legend font is increased for Figure 11.
