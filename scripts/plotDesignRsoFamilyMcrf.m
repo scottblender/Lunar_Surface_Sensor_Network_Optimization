@@ -154,6 +154,8 @@ for objectIndex = 1:numberOfObjects
 end
 
 outputFile = fullfile(outputDirectory,"design_rso_family_mcrf_3d.eps");
+% Preserve the explicitly tuned RSO-family typography during EPS export.
+setappdata(fig,"ManuscriptTypographyFinalized",true);
 exportManuscriptFigure(fig,string(outputFile),figureWidth,figureHeight);
 
 plotInfo = struct();
