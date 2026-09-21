@@ -13,8 +13,8 @@ addpath(scriptDirectory);
 style = publicationPlotStyle();
 
 fontName = style.fontName;
-axisLabelFontSize = 16;
-annotationFontSize = 13;
+axisLabelFontSize = style.labelFontSize;
+annotationFontSize = style.annotationFontSize;
 rsoMarkerArea = 360;
 backgroundColor = style.backgroundColor;
 textColor = style.textColor;
@@ -30,8 +30,8 @@ upColor = style.orangeColor;
 relativePositionColor = style.magentaColor;
 sensorColor = style.redColor;
 
-exportWidthInches = 6.50;
-exportHeightInches = 6.50;
+exportWidthInches = 6.80;
+exportHeightInches = 6.80;
 
 moonCenteredFile = fullfile(scriptDirectory,"reference_frame_moon_centered.eps");
 sensorCenteredFile = fullfile(scriptDirectory,"reference_frame_sensor_centered.eps");
