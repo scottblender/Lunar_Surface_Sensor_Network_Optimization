@@ -1,36 +1,9 @@
 function studyState = runMonteCarloRobustness(userConfig)
-% RUNMONTECARLOROBUSTNESS Discrete-grid Monte Carlo robustness study.
-%
-% Each nominal optimized sensor is perturbed only to neighboring candidate
-% sites from the exact discrete grid used by the production optimization.
-% For every nominal sensor, its K nearest eligible candidate indices are
-% found using lunar surface distance. The other nominal network sites are
-% excluded from the eligible set so every stored choice is a valid replacement.
-%
-% Each Monte Carlo realization independently draws one of those K neighboring
-% candidate indices for every sensor. Realizations that place two sensors at
-% the same candidate site are rejected and regenerated. Sampling is with
-% replacement across realizations, so the requested Monte Carlo population
-% can be much larger than the finite set of local candidate choices.
-%
-% The design-RSO metrics are evaluated directly from the frozen optimization
-% database at the sampled candidate indices. Operational spacecraft, when
-% enabled, are evaluated at those same exact candidate coordinates with the
-% terrain-aware evaluator.
-%
-% Default study:
-%   network sizes:             [3 5 7 10]
-%   nominal objectives:        information, coverage
-%   Monte Carlo realizations:  1000 per case
-%   neighboring candidates:    10 per nominal sensor
-%   perturbation scale:        production candidate-grid spacing
-%
-% Example:
-%   cfg = struct('numberOfMonteCarloRuns',1000, ...
-%                'neighborCount',10, ...
-%                'useParallel',true, ...
-%                'runPlotsAfterStudy',true);
-%   studyState = runMonteCarloRobustness(cfg);
+% RUNMONTECARLOROBUSTNESS Global random-network benchmark on the production grid.
+% Draw 1000 networks per objective/network-size case, uniformly over all
+% database candidate sites without replacement within each network. Repeated
+% networks across realizations are allowed. This compares the nominal GA
+% solution with a global random baseline; it does not prove local optimality.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -58,11 +31,9 @@ config.optimizationNumberOfRuns = 20;
 config.optimizationPopulationSize = 60;
 config.optimizationBaseSeed = 1000;
 config.numberOfMonteCarloRuns = 1000;
-config.neighborCount = 10;
-config.maximumRegenerationAttempts = 1000;
 config.baseSeed = 7000;
-config.samplingMode = "random_joint_discrete_neighbors";
-config.includeOperationalSpacecraft = true;
+config.samplingMode = "global_uniform_database";
+config.includeOperationalSpacecraft = false;
 config.useParallel = true;
 config.runPlotsAfterStudy = true;
 config.studyName = "lunar_surface_monte_carlo_robustness";
@@ -77,15 +48,11 @@ config.optimizationStudyName = string(config.optimizationStudyName);
 
 validateattributes(config.numberOfMonteCarloRuns,{'numeric'}, ...
     {'scalar','integer','positive'});
-validateattributes(config.neighborCount,{'numeric'}, ...
-    {'scalar','integer','positive'});
-validateattributes(config.maximumRegenerationAttempts,{'numeric'}, ...
-    {'scalar','integer','positive'});
 validateattributes(config.baseSeed,{'numeric'}, ...
     {'scalar','integer','nonnegative'});
 config.samplingMode = string(config.samplingMode);
-assert(config.samplingMode == "random_joint_discrete_neighbors", ...
-    "samplingMode must be random_joint_discrete_neighbors.");
+assert(config.samplingMode == "global_uniform_database", ...
+    "samplingMode must be global_uniform_database.");
 assert(all(ismember(config.nominalObjectiveModes,["information","coverage"])), ...
     "nominalObjectiveModes may contain only information and coverage.");
 
@@ -104,7 +71,7 @@ assert(isfile(config.demFile),"Production DEM not found: %s",config.demFile);
     config.demFile,rsoDatabase.config.moon.radiusKm,24,48);
 
 fprintf("\n============================================================\n");
-fprintf("Lunar surface discrete-grid Monte Carlo robustness study\n");
+fprintf("Lunar surface global database Monte Carlo benchmark study\n");
 fprintf("============================================================\n");
 fprintf("Network sizes:             %s\n",mat2str(config.networkSizes));
 fprintf("Nominal objectives:        %s\n",strjoin(config.nominalObjectiveModes,", "));
@@ -112,7 +79,7 @@ fprintf("Optimization dates:        %s\n", ...
     strjoin(config.optimizationCampaignDates,", "));
 fprintf("Realizations / case:       %d\n",config.numberOfMonteCarloRuns);
 fprintf("Sampling mode:             %s\n",config.samplingMode);
-fprintf("Neighbor count / sensor:   %d\n",config.neighborCount);
+
 fprintf("Parallel evaluation:       %d\n",config.useParallel);
 fprintf("Operational spacecraft:    %d\n",config.includeOperationalSpacecraft);
 
@@ -180,7 +147,7 @@ resultsFile = fullfile(studyDirectory,"monte_carlo_results.mat");
 checkpointFile = fullfile(studyDirectory,"checkpoint.mat");
 
 studyState = struct();
-studyState.version = "lunar_surface_monte_carlo_robustness_v6";
+studyState.version = "lunar_surface_monte_carlo_global_v7";
 studyState.created = string(datetime("now"));
 studyState.studyDirectory = string(studyDirectory);
 studyState.resultsFile = string(resultsFile);
@@ -203,8 +170,13 @@ for modeIndex = 1:numberOfModes
         fprintf("Case: %s, N_s = %d\n",objectiveMode,networkSize);
         fprintf("------------------------------------------------------------\n");
 
-        nominalRso = evaluateDiscreteDesignNetwork( ...
-            nominalNetwork.sensorIndices,rsoDatabase);
+        if nominalNetwork.isOffGrid
+            nominalRso = optimization.evaluatePerturbedNetwork( ...
+                nominalLatitudes,nominalLongitudes,rsoDatabase,dem);
+        else
+            nominalRso = evaluateDiscreteDesignNetwork( ...
+                nominalNetwork.sensorIndices,rsoDatabase);
+        end
         if config.includeOperationalSpacecraft
             nominalOperational = optimization.evaluatePerturbedNetwork( ...
                 nominalLatitudes,nominalLongitudes,operationalDatabase,dem);
@@ -212,15 +184,8 @@ for modeIndex = 1:numberOfModes
             nominalOperational = struct();
         end
 
-        % Use exactly K neighboring indices for every nominal sensor. These
-        % are measured on the production candidate grid, so the robustness
-        % perturbation scale is the same discretization used by optimization.
-        [neighborIndices,neighborDistancesKm,neighborRadiusKm] = ...
-            buildCandidateNeighborhoods( ...
-                nominalNetwork.sensorIndices,rsoDatabase,config.neighborCount);
-
-        fprintf("  Local grid radii: %.3f--%.3f km (mean %.3f km)\n", ...
-            min(neighborRadiusKm),max(neighborRadiusKm),mean(neighborRadiusKm));
+        numberOfCandidates = numel(rsoDatabase.candidates.latitudesRad);
+        assert(networkSize <= numberOfCandidates,"Network exceeds candidate count.");
 
         caseSeed = config.baseSeed + 1000*(modeIndex-1) + networkIndex;
         rng(caseSeed,"twister");
@@ -230,13 +195,10 @@ for modeIndex = 1:numberOfModes
         sampledCandidateIndices = nan(networkSize,config.numberOfMonteCarloRuns);
         sampledLatitudes = nan(networkSize,config.numberOfMonteCarloRuns);
         sampledLongitudes = nan(networkSize,config.numberOfMonteCarloRuns);
-        displacementKm = nan(networkSize,config.numberOfMonteCarloRuns);
 
         for sampleIndex = 1:config.numberOfMonteCarloRuns
-            [sampledCandidateIndices(:,sampleIndex), ...
-             displacementKm(:,sampleIndex)] = sampleDiscreteNeighborNetwork( ...
-                neighborIndices,neighborDistancesKm, ...
-                config.maximumRegenerationAttempts);
+            sampledCandidateIndices(:,sampleIndex) = ...
+                sampleGlobalCandidateNetwork(numberOfCandidates,networkSize);
 
             sampledLatitudes(:,sampleIndex) = ...
                 rsoDatabase.candidates.latitudesRad( ...
@@ -288,8 +250,7 @@ for modeIndex = 1:numberOfModes
         caseState = packCaseState( ...
             networkSize,objectiveMode,caseSeed,nominalNetwork, ...
             nominalRso,nominalOperational,sampledCandidateIndices, ...
-            sampledLatitudes,sampledLongitudes,displacementKm, ...
-            neighborIndices,neighborDistancesKm,neighborRadiusKm, ...
+            sampledLatitudes,sampledLongitudes, ...
             rsoResults,operationalResults, ...
             rsoDatabase.meta.numberOfObjects,operationalDatabase, ...
             config.includeOperationalSpacecraft);
@@ -298,115 +259,24 @@ for modeIndex = 1:numberOfModes
         studyState.cases{modeIndex,networkIndex} = caseState;
         save(checkpointFile,"studyState","-v7.3");
 
-        fprintf("  Case complete. Mean sensor displacement = %.3f km\n", ...
-            mean(caseState.meanDisplacementKm));
+        fprintf("  Case complete: %d global random networks.\n",caseState.completedRuns);
     end
 end
 
 studyState.completed = true;
 studyState.completedTime = string(datetime("now"));
 save(resultsFile,"studyState","-v7.3");
-fprintf("\nDiscrete-grid Monte Carlo robustness study complete.\n");
+fprintf("\nGlobal database Monte Carlo benchmark study complete.\n");
 fprintf("Results: %s\n",resultsFile);
 
 if config.runPlotsAfterStudy
     plotConfig = struct();
     plotConfig.monteCarloResultsFile = string(resultsFile);
     plotConfig.optimizationCampaignDates = config.optimizationCampaignDates;
-    plotConfig.neighborCount = config.neighborCount;
     plotConfig.outputDirectory = fullfile(resultsDirectory,"manuscript_artifacts");
     plotMonteCarloConferenceFigure(plotConfig);
 end
 
-end
-
-%% ------------------------------------------------------------------------
-function [neighborIndices,neighborDistancesKm,neighborRadiusKm] = ...
-    buildCandidateNeighborhoods(nominalIndices,database,neighborCount)
-
-candidateLatitudes = double(database.candidates.latitudesRad(:));
-candidateLongitudes = double(database.candidates.longitudesRad(:));
-moonRadiusKm = double(database.config.moon.radiusKm);
-numberOfCandidates = numel(candidateLatitudes);
-assert(neighborCount < numberOfCandidates, ...
-    "neighborCount must be smaller than the candidate count.");
-
-nominalIndices = double(nominalIndices(:));
-numberOfSensors = numel(nominalIndices);
-neighborIndices = cell(numberOfSensors,1);
-neighborDistancesKm = cell(numberOfSensors,1);
-neighborRadiusKm = zeros(numberOfSensors,1);
-
-for sensorIndex = 1:numberOfSensors
-    centerIndex = nominalIndices(sensorIndex);
-    centerLatitude = candidateLatitudes(centerIndex);
-    centerLongitude = candidateLongitudes(centerIndex);
-
-    longitudeDifference = atan2( ...
-        sin(candidateLongitudes-centerLongitude), ...
-        cos(candidateLongitudes-centerLongitude));
-    cosineCentralAngle = ...
-        sin(centerLatitude).*sin(candidateLatitudes) + ...
-        cos(centerLatitude).*cos(candidateLatitudes).*cos(longitudeDifference);
-    cosineCentralAngle = min(1,max(-1,cosineCentralAngle));
-    distancesKm = moonRadiusKm*acos(cosineCentralAngle);
-
-    % None of the already selected nominal network sites are valid
-    % perturbation choices. This leaves K genuine neighboring alternatives.
-    distancesKm(nominalIndices) = Inf;
-
-    [sortedDistances,sortedIndices] = sort(distancesKm,"ascend");
-    assert(numel(sortedIndices) >= neighborCount && ...
-        all(isfinite(sortedDistances(1:neighborCount))), ...
-        "Not enough eligible neighboring candidates for candidate %d.", ...
-        centerIndex);
-
-    neighborIndices{sensorIndex} = ...
-        sortedIndices(1:neighborCount).';
-    neighborDistancesKm{sensorIndex} = ...
-        sortedDistances(1:neighborCount).';
-    neighborRadiusKm(sensorIndex) = ...
-        sortedDistances(neighborCount);
-
-    assert(numel(neighborIndices{sensorIndex}) == neighborCount, ...
-        "Each sensor must have exactly neighborCount grid neighbors.");
-end
-end
-
-%% ------------------------------------------------------------------------
-function [sampledIndices,displacementKm] = sampleDiscreteNeighborNetwork( ...
-    neighborIndices,neighborDistancesKm,maximumAttempts)
-
-numberOfSensors = numel(neighborIndices);
-sampledIndices = zeros(numberOfSensors,1);
-displacementKm = zeros(numberOfSensors,1);
-
-accepted = false;
-for attempt = 1:maximumAttempts
-    proposal = zeros(numberOfSensors,1);
-    proposalDistances = zeros(numberOfSensors,1);
-
-    for sensorIndex = 1:numberOfSensors
-        choices = neighborIndices{sensorIndex};
-        choiceIndex = randi(numel(choices));
-        proposal(sensorIndex) = choices(choiceIndex);
-        proposalDistances(sensorIndex) = ...
-            neighborDistancesKm{sensorIndex}(choiceIndex);
-    end
-
-    if numel(unique(proposal)) ~= numberOfSensors
-        continue
-    end
-
-    sampledIndices = proposal;
-    displacementKm = proposalDistances;
-    accepted = true;
-    break
-end
-
-assert(accepted, ...
-    "Unable to generate a duplicate-free local-grid realization after %d attempts.", ...
-    maximumAttempts);
 end
 
 %% ------------------------------------------------------------------------
@@ -444,6 +314,19 @@ nominalNetwork.objectiveMode = string(studyState.config.objectiveMode);
 nominalNetwork.sensorIndices = sensorIndices;
 nominalNetwork.latitudesRad = database.candidates.latitudesRad(sensorIndices);
 nominalNetwork.longitudesRad = database.candidates.longitudesRad(sensorIndices);
+% Preserve the actual nominal GA coordinates, including off-grid solutions.
+bestRun = studyState.runStates{studyState.overallBestRunIndex};
+nominalNetwork.isOffGrid = false;
+if isfield(bestRun,"bestSensorLatitudesRad") && isfield(bestRun,"bestSensorLongitudesRad")
+    lat = double(bestRun.bestSensorLatitudesRad(:));
+    lon = double(bestRun.bestSensorLongitudesRad(:));
+    deltaLon = atan2(sin(lon-nominalNetwork.longitudesRad(:)), ...
+        cos(lon-nominalNetwork.longitudesRad(:)));
+    nominalNetwork.isOffGrid = any(abs(lat-nominalNetwork.latitudesRad(:))>1e-10) || ...
+        any(abs(deltaLon)>1e-10);
+    nominalNetwork.latitudesRad = lat;
+    nominalNetwork.longitudesRad = lon;
+end
 nominalNetwork.optimizationObjective = studyState.overallBestObjective;
 nominalNetwork.summaryFile = string(summaryFile);
 nominalNetwork.bestRunIndex = studyState.overallBestRunIndex;
@@ -505,8 +388,7 @@ end
 %% ------------------------------------------------------------------------
 function caseState = packCaseState( ...
     networkSize,objectiveMode,seed,nominalNetwork,nominalRso,nominalOperational, ...
-    sampledCandidateIndices,sampledLatitudes,sampledLongitudes,displacementKm, ...
-    neighborIndices,neighborDistancesKm,neighborRadiusKm,rsoResults, ...
+    sampledCandidateIndices,sampledLatitudes,sampledLongitudes,rsoResults, ...
     operationalResults,numberOfRsoObjects,operationalDatabase,includeOperational)
 
 numberOfRuns = size(sampledLatitudes,2);
@@ -521,13 +403,7 @@ caseState.nominal.operational = nominalOperational;
 caseState.sampledCandidateIndices = sampledCandidateIndices;
 caseState.sensorLatitudesRad = sampledLatitudes;
 caseState.sensorLongitudesRad = sampledLongitudes;
-caseState.displacementKm = displacementKm;
-caseState.neighborIndices = neighborIndices;
-caseState.neighborDistancesKm = neighborDistancesKm;
-caseState.neighborRadiusKm = neighborRadiusKm;
-caseState.neighborCountActual = cellfun(@numel,neighborIndices);
-caseState.meanDisplacementKm = mean(displacementKm,1).';
-caseState.maximumDisplacementKm = max(displacementKm,[],1).';
+caseState.samplingMode = "global_uniform_database";
 
 caseState.rso.informationObjective = nan(numberOfRuns,1);
 caseState.rso.informationScore = nan(numberOfRuns,1);
@@ -582,8 +458,6 @@ end
 function validateCompletedCase(caseState,config,database)
 assert(caseState.completedRuns == config.numberOfMonteCarloRuns, ...
     "Monte Carlo case did not complete all requested realizations.");
-assert(all(caseState.neighborCountActual == config.neighborCount), ...
-    "Every sensor must have exactly the requested number of grid neighbors.");
 assert(all(isfinite(caseState.rso.informationScore)), ...
     "RSO information results contain nonfinite values.");
 assert(all(isfinite(caseState.rso.coverageScore)), ...
@@ -591,19 +465,13 @@ assert(all(isfinite(caseState.rso.coverageScore)), ...
 
 candidateLatitudes = double(database.candidates.latitudesRad(:));
 candidateLongitudes = double(database.candidates.longitudesRad(:));
-nominalIndices = double(caseState.nominalNetwork.sensorIndices(:));
 
 for sampleIndex = 1:caseState.completedRuns
     sampled = double(caseState.sampledCandidateIndices(:,sampleIndex));
     assert(numel(unique(sampled)) == caseState.networkSize, ...
         "Stored Monte Carlo realization contains duplicate candidate indices.");
-    assert(~any(ismember(sampled,nominalIndices)), ...
-        "A Monte Carlo replacement reused a nominal network site.");
-
-    for sensorIndex = 1:caseState.networkSize
-        assert(ismember(sampled(sensorIndex),caseState.neighborIndices{sensorIndex}), ...
-            "Sampled candidate lies outside its local grid-neighbor set.");
-    end
+    assert(all(sampled>=1 & sampled<=numel(candidateLatitudes)), ...
+        "Sample lies outside the global candidate database.");
 
     assert(max(abs(caseState.sensorLatitudesRad(:,sampleIndex) - ...
         candidateLatitudes(sampled))) <= 1e-12, ...

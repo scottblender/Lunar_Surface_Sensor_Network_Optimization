@@ -18,6 +18,22 @@ fig.InvertHardcopy = "off";
 fig.Renderer = "opengl";
 fig.Units = "inches";
 fig.Position(3:4) = [widthInches heightInches];
+applyManuscriptTypography(fig,outputFile,widthInches);
+% Reserve an actual canvas margin; a loose EPS box alone cannot rescue
+% labels which were already outside the on-screen figure.
+layouts = findall(fig,"Type","tiledlayout");
+for k = 1:numel(layouts)
+    if isequal(layouts(k).Parent,fig)
+        layouts(k).Units = "normalized";
+        layouts(k).OuterPosition = [0.025 0.03 0.95 0.94];
+        layouts(k).Padding = "loose";
+    end
+end
+drawnow;
+for ax = findall(fig,"Type","axes").'
+    ax.Units = "normalized";
+    ax.LooseInset = max(ax.LooseInset,ax.TightInset+[0.01 0.01 0.01 0.01]);
+end
 fig.PaperUnits = "inches";
 fig.PaperSize = [widthInches heightInches];
 fig.PaperPosition = [0 0 widthInches heightInches];

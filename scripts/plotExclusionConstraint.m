@@ -144,7 +144,7 @@ fig.PaperSize = [5.8 4.4];
 fig.PaperPosition = [0 0 5.8 4.4];
 fig.PaperPositionMode = "manual";
 drawnow;
-print(fig,char(outputFile),"-depsc","-opengl","-r600");
+exportManuscriptFigure(fig,string(outputFile),5.8,4.4);
 
 fprintf("Saved exclusion-constraint schematic:\n  %s\n",outputFile);
 

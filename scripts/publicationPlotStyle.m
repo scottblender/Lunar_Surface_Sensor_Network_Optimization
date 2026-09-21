@@ -8,6 +8,11 @@ function style = publicationPlotStyle()
 % tiled layouts, or annotations after export.
 
 style = struct();
+% AAS text width and side-by-side placement used in the attached manuscript.
+style.manuscriptWidthInches = 6.0;
+style.manuscriptHalfWidthInches = 2.9;
+style.manuscriptFontSize = 9;
+style.manuscriptLabelFontSize = 10;
 
 style.fontName = "Arial";
 style.axisFontSize = 20;

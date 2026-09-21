@@ -27,8 +27,8 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     fig = figure("Name",objectiveMode + " convergence", ...
         "Color",style.backgroundColor,"Units","inches", ...
         "Position",[1 1 7.0 4.8],"Renderer","opengl");
-    % Extra left margin prevents the manuscript-size y label from clipping.
-    ax = axes(fig,"Position",[0.20 0.18 0.70 0.62]);
+    layout = tiledlayout(fig,1,1,"Padding","loose","TileSpacing","loose");
+    ax = nexttile(layout);
     hold(ax,"on");
 
     handles = gobjects(numel(config.networkSizes),1);
@@ -58,9 +58,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     lgd.FontName = style.fontName;
     lgd.FontSize = max(14,style.legendFontSize-2);
     lgd.FontWeight = "bold";
-    drawnow;
-    lgd.Units = "normalized";
-    lgd.Position = [0.49 0.845 0.46 0.12];
+    lgd.Layout.Tile = "north";
 
     outputFile = fullfile(outputDirectory, ...
         sprintf("convergence_%s.eps",objectiveMode));

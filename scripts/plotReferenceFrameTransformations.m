@@ -44,7 +44,7 @@ theta = deg2rad(35);
 figMoon = figure("Name","Reference frames: MCI and MR", ...
     "Color",backgroundColor,"Units","inches", ...
     "Position",[1 1 exportWidthInches exportHeightInches],"Renderer","opengl");
-axMoon = axes(figMoon,"Position",[0.015 0.015 0.97 0.97]);
+axMoon = axes(figMoon,"Position",[0.06 0.06 0.88 0.88]);
 hold(axMoon,"on");
 axis(axMoon,"equal");
 axis(axMoon,"off");
@@ -108,7 +108,7 @@ text(axMoon,angleLabel(1),angleLabel(2),"\theta(t)", ...
 figSensor = figure("Name","Reference frames: local ENU", ...
     "Color",backgroundColor,"Units","inches", ...
     "Position",[8 1 exportWidthInches exportHeightInches],"Renderer","opengl");
-axSensor = axes(figSensor,"Position",[0.015 0.015 0.97 0.97]);
+axSensor = axes(figSensor,"Position",[0.06 0.06 0.88 0.88]);
 hold(axSensor,"on");
 axis(axSensor,"equal");
 axis(axSensor,"off");
@@ -179,11 +179,10 @@ text(axSensor,rhoLabel(1),rhoLabel(2),"\rho_R", ...
 
 %% Export
 
-drawnow;
-exportgraphics(axMoon,moonCenteredFile,"ContentType","vector", ...
-    "BackgroundColor",backgroundColor,"Colorspace","rgb");
-exportgraphics(axSensor,sensorCenteredFile,"ContentType","vector", ...
-    "BackgroundColor",backgroundColor,"Colorspace","rgb");
+moonFig = ancestor(axMoon,"figure"); moonFig.Units = "inches";
+sensorFig = ancestor(axSensor,"figure"); sensorFig.Units = "inches";
+exportManuscriptFigure(moonFig,string(moonCenteredFile),moonFig.Position(3),moonFig.Position(4));
+exportManuscriptFigure(sensorFig,string(sensorCenteredFile),sensorFig.Position(3),sensorFig.Position(4));
 
 fprintf("Saved reference-frame figures.\n");
 

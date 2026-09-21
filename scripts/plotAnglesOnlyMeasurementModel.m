@@ -43,7 +43,7 @@ delta = deg2rad(32);
 figRa = figure("Name","Angles-only: right ascension", ...
     "Color",backgroundColor,"Units","inches", ...
     "Position",[1 1 exportWidthInches exportHeightInches],"Renderer","opengl");
-axRa = axes(figRa,"Position",[0.015 0.015 0.97 0.97]);
+axRa = axes(figRa,"Position",[0.06 0.06 0.88 0.88]);
 hold(axRa,"on");
 axis(axRa,"equal");
 axis(axRa,"off");
@@ -111,7 +111,7 @@ text(axRa,angleLabel(1),angleLabel(2),"\alpha_k", ...
 figDec = figure("Name","Angles-only: declination", ...
     "Color",backgroundColor,"Units","inches", ...
     "Position",[8 1 exportWidthInches exportHeightInches],"Renderer","opengl");
-axDec = axes(figDec,"Position",[0.015 0.015 0.97 0.97]);
+axDec = axes(figDec,"Position",[0.06 0.06 0.88 0.88]);
 hold(axDec,"on");
 axis(axDec,"equal");
 axis(axDec,"off");
@@ -196,9 +196,10 @@ fprintf("Saved angles-only geometry figures.\n");
 %% Local helpers
 
 function exportImageEps(ax,outputFile,backgroundColor)
-drawnow;
-exportgraphics(ax,outputFile,"ContentType","vector", ...
-    "BackgroundColor",backgroundColor,"Colorspace","rgb");
+fig = ancestor(ax,"figure");
+fig.Color = backgroundColor;
+fig.Units = "inches";
+exportManuscriptFigure(fig,string(outputFile),fig.Position(3),fig.Position(4));
 end
 
 function drawArrow2D(ax,startPoint,endPoint,color,lineWidth,headLength,headWidth,lineStyle)

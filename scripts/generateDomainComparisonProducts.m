@@ -91,7 +91,7 @@ latitudeDeg = linspace(-90,0,181);
 elevationKm = double(dem(deg2rad(latitudeMesh),deg2rad(longitudeMesh)));
 imagesc(ax,longitudeDeg,latitudeDeg,elevationKm,"HandleVisibility","off");
 ax.YDir = "normal";
-colormap(ax,turbo(256));
+colormap(ax,gray(256));
 cb = colorbar(ax); cb.Layout.Tile = "east";
 cb.Label.String = "Elevation (km)";
 cb.FontName = style.fontName; cb.FontSize = max(16,style.axisFontSize-2); cb.FontWeight = "bold";
@@ -168,8 +168,8 @@ coverageHandles = plotComparisonBars(axCoverage,networkSizes, ...
 
 lgd = legend(axCoverage,coverageHandles, ...
     ["Southern hemisphere","Restricted south-polar"], ...
-    "Location","none","Orientation","horizontal", ...
-    "NumColumns",2,"Box","off");
+    "Location","none","Orientation","vertical", ...
+    "NumColumns",1,"Box","off");
 lgd.FontName = style.fontName;
 lgd.FontSize = max(16,style.legendFontSize-2);
 lgd.FontWeight = "bold";
