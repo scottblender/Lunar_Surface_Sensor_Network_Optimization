@@ -38,7 +38,8 @@ for objectiveIndex = 1:numel(config.objectiveModes)
             latitudeEdges,longitudeEdges,dem,style);
     end
     cb = colorbar(ax); cb.Layout.Tile = "east";
-    cb.Label.String = "Runs selecting bin (%)";
+    cb.Label.String = "Selection frequency (%)";
+    cb.Ticks = 0:20:100;
     cb.FontSize = max(16,style.axisFontSize-2); cb.FontWeight = "bold";
     cb.Label.FontSize = max(18,style.labelFontSize-2); cb.Label.FontWeight = "bold";
     outputFile = fullfile(outputDirectory,sprintf("network_locations_vs_ns_%s.eps",mode));

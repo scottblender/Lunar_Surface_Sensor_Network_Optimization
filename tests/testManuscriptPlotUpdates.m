@@ -22,6 +22,11 @@ plotPolarSelectionMap(ax,frequency,-90:10:0,0:30:360, ...
     @(lat,lon) sin(lat)+cos(lon),publicationPlotStyle());
 terrain = findall(ax,"Type","surface");
 verifyEqual(testCase,size(terrain.CData,3),3); % DEM is truecolor.
+verifyEqual(testCase,terrain.CData(:,:,1),terrain.CData(:,:,2));
+verifyEqual(testCase,terrain.CData(:,:,2),terrain.CData(:,:,3));
+colors = colormap(ax);
+luminance = colors*[0.2126;0.7152;0.0722];
+verifyTrue(testCase,all(diff(luminance)<0));
 verifyNumElements(testCase,findall(ax,"Type","patch"),1);
 verifyEqual(testCase,ax.CLim,[0 100]);
 verifyEmpty(testCase,ax.Title.String);

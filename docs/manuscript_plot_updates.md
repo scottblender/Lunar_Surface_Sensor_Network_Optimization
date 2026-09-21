@@ -11,8 +11,8 @@ bounding box. Schematic exports now use this same path. No titles are added.
 Geographic recurrence maps (Figures 10/11 in the supplied PDF) use south-pole
 azimuthal maps with the original 10-degree latitude by 30-degree longitude
 frequency bins drawn as sectors. Radius is angular distance from the south
-pole; this is not an equal-area projection. A subdued truecolor synthetic DEM
-provides context, while purple sectors and their shared colorbar encode the
+pole; this is not an equal-area projection. A subdued grayscale synthetic DEM
+provides context, while blue sectors and their shared colorbar encode the
 percentage of runs selecting a bin. Zero-frequency bins reveal the DEM.
 Tracking performance matrices retain their object/network-size axes.
 Figure 15's location comparison now uses grayscale elevation.
@@ -64,3 +64,9 @@ axes use short x_R/y_R/z_R labels. Polar panels use compact spacing, exterior
 longitude labels, and only the two interior latitude labels. The frame angle
 label is shifted right. CLPS callouts use 19 pt source text and are measured
 at that size; their typography is preserved during export.
+
+The polar maps now reserve color for selection frequency: a low-contrast
+grayscale DEM, light-to-dark blue sectors, thin pale bin boundaries, and
+dotted interior latitude circles. The shared frequency scale is fixed at
+0--100 percent across panels and objectives; gray terrain denotes unselected
+bins. The maps retain a pole-centered top-down view.

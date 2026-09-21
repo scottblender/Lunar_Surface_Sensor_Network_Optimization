@@ -7,15 +7,17 @@ r = (lat+90)/90;
 x = r.*sind(lon); y = r.*cosd(lon);
 z = double(dem(deg2rad(lat),deg2rad(lon)));
 limits = [min(z,[],"all") max(z,[],"all")];
-indices = 1+round(255*(z-limits(1))/max(eps,diff(limits)));
-cmap = turbo(256);
-rgb = reshape(cmap(indices(:),:),[size(z) 3]);
-% Subdued elevation colors let the frequency sectors remain distinguishable.
-rgb = 0.55*rgb+0.45;
+% Neutral terrain is contextual only: blue is reserved for selection frequency.
+% Keep terrain contrast low and independent of the frequency colorbar.
+normalizedElevation = (z-limits(1))/max(eps,diff(limits));
+shade = 0.78+0.18*normalizedElevation;
+rgb = repmat(shade,1,1,3);
 surface(ax,x,y,zeros(size(x)),rgb,"FaceColor","texturemap", ...
     "EdgeColor","none","HandleVisibility","off");
-frequencyColors = [linspace(0.94,0.35,256).' ...
-    linspace(0.90,0.05,256).' linspace(0.97,0.50,256).'];
+% Sequential light-to-dark blue with monotonically decreasing luminance.
+anchors = [0.90 0.95 0.99; 0.67 0.81 0.91; 0.30 0.60 0.79; ...
+    0.10 0.38 0.65; 0.03 0.19 0.38];
+frequencyColors = interp1(linspace(0,1,size(anchors,1)),anchors,linspace(0,1,256));
 for i = 1:size(frequency,1)
     radii = (latitudeEdges(i:i+1)+90)/90;
     for j = 1:size(frequency,2)
@@ -26,17 +28,19 @@ for i = 1:size(frequency,1)
         py = [radii(1)*cosd(theta) radii(2)*cosd(fliplr(theta))];
         colorIndex = 1+round(255*min(100,value)/100);
         patch(ax,px,py,ones(size(px)),frequencyColors(colorIndex,:), ...
-            "EdgeColor",[0.2 0.2 0.2],"LineWidth",0.4);
+            "EdgeColor",[0.96 0.97 0.98],"LineWidth",0.25);
     end
 end
 angle = linspace(0,360,361);
 for latitude = [-60 -30 0]
     radius = (latitude+90)/90;
+    lineStyle = ":"; lineWidth = 0.55;
+    if latitude==0, lineStyle="-"; lineWidth=0.8; end
     plot3(ax,radius*sind(angle),radius*cosd(angle),2*ones(size(angle)), ...
-        "-","Color",[0.45 0.45 0.45],"LineWidth",0.5);
+        lineStyle,"Color",[0.40 0.43 0.47],"LineWidth",lineWidth);
     if latitude<0
         % Only interior latitude labels; the equator is the outer rim.
-        text(ax,radius*sind(225),radius*cosd(225),3,sprintf('%d°',latitude), ...
+        text(ax,radius*sind(225),radius*cosd(225),3,sprintf('%d°S',abs(latitude)), ...
             "FontSize",style.axisFontSize,"FontWeight","bold", ...
             "BackgroundColor","white","Margin",0.5, ...
             "HorizontalAlignment","center");
