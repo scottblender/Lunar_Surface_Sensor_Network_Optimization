@@ -13,8 +13,8 @@ addpath(scriptDirectory);
 style = publicationPlotStyle();
 
 fontName = style.fontName;
-axisLabelFontSize = 20;
-annotationFontSize = 16;
+axisLabelFontSize = style.labelFontSize;
+annotationFontSize = style.annotationFontSize;
 rsoMarkerArea = 360;
 
 backgroundColor = style.backgroundColor;
@@ -29,8 +29,8 @@ sensorColor = style.redColor;
 textColor = style.textColor;
 labelBackgroundColor = style.labelBackgroundColor;
 
-exportWidthInches = 6.50;
-exportHeightInches = 6.50;
+exportWidthInches = 6.80;
+exportHeightInches = 6.80;
 
 rightAscensionFile = fullfile(scriptDirectory,"angles_only_right_ascension_geometry.eps");
 declinationFile = fullfile(scriptDirectory,"angles_only_declination_geometry.eps");
