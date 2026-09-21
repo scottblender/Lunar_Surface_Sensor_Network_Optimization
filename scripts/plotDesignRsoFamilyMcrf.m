@@ -64,8 +64,11 @@ figureHeight = 2.9*numberOfRows;
 fig = figure("Name","Design RSO family in MCRF", ...
     "Color",style.backgroundColor,"Units","inches", ...
     "Position",[1 1 figureWidth figureHeight],"Renderer","opengl");
-layout = tiledlayout(fig,numberOfRows,numberOfColumns, ...
-    "Padding","loose","TileSpacing","loose");
+% Fixed inner boxes preserve the trajectory area independently of tick extents.
+% The physical cell geometry is identical for every object.
+cellWidth = figureWidth/numberOfColumns;
+cellHeight = figureHeight/numberOfRows;
+plotSide = 0.70*min(cellWidth,cellHeight);
 
 [sx,sy,sz] = sphere(36);
 
@@ -73,7 +76,14 @@ layout = tiledlayout(fig,numberOfRows,numberOfColumns, ...
 representativeObjectIndex = (numberOfRows-1)*numberOfColumns+1;
 
 for objectIndex = 1:numberOfObjects
-    ax = nexttile(layout,objectIndex);
+    column = mod(objectIndex-1,numberOfColumns);
+    row = floor((objectIndex-1)/numberOfColumns);
+    left = column*cellWidth + (cellWidth-plotSide)/2;
+    bottom = (numberOfRows-row-1)*cellHeight + 0.22*cellHeight;
+    ax = axes(fig,"Units","inches", ...
+        "Position",[left bottom plotSide plotSide], ...
+        "PositionConstraint","innerposition");
+    ax.Tag = "designRsoTrajectory";
     hold(ax,"on");
 
     surf(ax,moonRadius*sx,moonRadius*sy,moonRadius*sz, ...
@@ -82,7 +92,7 @@ for objectIndex = 1:numberOfObjects
 
     trajectory = positions(:,:,objectIndex);
     plot3(ax,trajectory(1,:),trajectory(2,:),trajectory(3,:), ...
-        "-","Color",style.blueColor,"LineWidth",1.35);
+        "-","Color",style.blueColor,"LineWidth",1.8);
     scatter3(ax,trajectory(1,1),trajectory(2,1),trajectory(3,1),24, ...
         style.redColor,"filled","MarkerEdgeColor",[1 1 1], ...
         "LineWidth",0.45);
@@ -102,7 +112,7 @@ for objectIndex = 1:numberOfObjects
 
 
     ax.FontName = style.fontName;
-    ax.FontSize = 8;
+    ax.FontSize = style.manuscriptFontSize*figureWidth/style.manuscriptWidthInches;
     ax.FontWeight = "bold";
     ax.LineWidth = 0.75;
     ax.TickDir = "out";
@@ -121,9 +131,9 @@ for objectIndex = 1:numberOfObjects
     ax.ZAxis.Exponent = 0;
 
     if objectIndex == representativeObjectIndex
-        xlabel(ax,"x_R (10^3 km)");
-        ylabel(ax,"y_R (10^3 km)");
-        zlabel(ax,"z_R (10^3 km)");
+        xlabel(ax,"x_R");
+        ylabel(ax,"y_R");
+        zlabel(ax,"z_R");
         ax.XLabel.FontSize = 11;
         ax.YLabel.FontSize = 11;
         ax.ZLabel.FontSize = 11;
@@ -136,7 +146,7 @@ for objectIndex = 1:numberOfObjects
         zlabel(ax,"");
     end
 
-    ax.LooseInset = max(ax.LooseInset,[0.015 0.015 0.015 0.015]);
+    if ~isempty(ax.Toolbar), ax.Toolbar.Visible = "off"; end
 end
 
 outputFile = fullfile(outputDirectory,"design_rso_family_mcrf_3d.eps");

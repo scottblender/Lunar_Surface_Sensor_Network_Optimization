@@ -62,7 +62,7 @@ theme = struct( ...
     "markerEdgeColor",[1 1 1]);
 
 fontName = style.fontName;
-calloutFontSize = 17;
+calloutFontSize = 19;
 coordinateFontSize = 17;
 boundaryFontSize = 17;
 legendFontSize = 17;
@@ -265,6 +265,8 @@ legendHandle.Color = theme.boxColor;
 legendHandle.EdgeColor = theme.boxEdgeColor;
 legendHandle.ItemTokenSize = [18 10];
 
+% Measure boxes at their final type size, then preserve that size on export.
+setappdata(fig,"ManuscriptTypographyFinalized",true);
 layoutClpsContext(fig,ax,callouts,leaders,targets, ...
     domainTitle,colorbarHandle,legendHandle);
 fig.Units = "inches";

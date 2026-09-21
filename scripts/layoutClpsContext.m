@@ -13,7 +13,7 @@ for k = 1:numel(boxes)
         "FontWeight",boxes(k).FontWeight,"Interpreter",boxes(k).Interpreter, ...
         "Visible","off");
     drawnow;
-    sizes(k,:) = probe.Extent(3:4) + 2*boxes(k).Margin + [8 4];
+    sizes(k,:) = probe.Extent(3:4) + 2*boxes(k).Margin + [4 2];
     delete(probe);
     boxes(k).Units = "points";
     boxes(k).FitBoxToText = "off";

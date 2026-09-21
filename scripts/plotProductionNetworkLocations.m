@@ -23,10 +23,10 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     mode = config.objectiveModes(objectiveIndex);
     columns = min(2,numel(config.networkSizes));
     rows = ceil(numel(config.networkSizes)/columns);
-    width = 10; height = 4.7*rows+0.8;
+    width = 10; height = 4.0*rows+0.5;
     fig = figure("Name",mode+" sensor selection by latitude/longitude", ...
         "Color","white","Units","inches","Position",[1 1 width height]);
-    layout = tiledlayout(fig,rows,columns,"TileSpacing","loose","Padding","loose");
+    layout = tiledlayout(fig,rows,columns,"TileSpacing","compact","Padding","compact");
     frequency = zeros(numel(latitudeCenters),numel(longitudeCenters),numel(config.networkSizes));
     for networkIndex = 1:numel(config.networkSizes)
         study = campaign.studies{networkIndex,objectiveIndex};

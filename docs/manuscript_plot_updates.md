@@ -52,3 +52,15 @@ runtests({'tests/testGlobalCandidateSampling.m', ...
 MATLAB was unavailable in the editing environment. Static MATLAB lint passed;
 the regression tests, new Monte Carlo campaign, and EPS rendering must run in
 MATLAB. Recompile the paper to verify label extents at its final placement sizes.
+
+## Follow-up layout correction
+
+The shared exporter no longer rewrites tiled-layout positions or copies
+`TightInset` into `LooseInset`. Font changes followed by that margin rewrite
+could exhaust small 3D subplot areas. RSO panels now use equal physical inner
+boxes, independent orbit limits, sparse ticks, no grid lines, and no titles.
+Coordinates remain in 10^3 km (state this in the caption); the representative
+axes use short x_R/y_R/z_R labels. Polar panels use compact spacing, exterior
+longitude labels, and only the two interior latitude labels. The frame angle
+label is shifted right. CLPS callouts use 19 pt source text and are measured
+at that size; their typography is preserved during export.

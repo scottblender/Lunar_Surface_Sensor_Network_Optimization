@@ -26,3 +26,32 @@ verifyNumElements(testCase,findall(ax,"Type","patch"),1);
 verifyEqual(testCase,ax.CLim,[0 100]);
 verifyEmpty(testCase,ax.Title.String);
 end
+
+function testExportPreservesTwentyTrajectoryPlotAreas(testCase)
+fig = figure("Visible","off","Units","inches","Position",[1 1 14.5 11.6]);
+cleanup = onCleanup(@()close(fig)); %#ok<NASGU>
+outputFile = string(tempname)+".eps";
+fileCleanup = onCleanup(@()deleteIfPresent(outputFile)); %#ok<NASGU>
+axesHandles = gobjects(20,1);
+expected = zeros(20,4);
+for k=1:20
+    column = mod(k-1,5); row = floor((k-1)/5);
+    position = [column*2.9+0.435 (3-row)*2.9+0.638 2.03 2.03];
+    ax = axes(fig,"Units","inches","Position",position, ...
+        "PositionConstraint","innerposition");
+    t = linspace(0,2*pi,101);
+    plot3(ax,cos(t),sin(t),0.2*sin(t));
+    view(ax,35,25); axis(ax,"equal");
+    axesHandles(k) = ax;
+    expected(k,:) = ax.Position;
+end
+exportManuscriptFigure(fig,outputFile,14.5,11.6);
+for k=1:20
+    verifyEqual(testCase,axesHandles(k).Position,expected(k,:),"AbsTol",1e-8);
+end
+verifyTrue(testCase,isfile(outputFile));
+end
+
+function deleteIfPresent(path)
+if isfile(path), delete(path); end
+end
