@@ -94,8 +94,8 @@ ax.YDir = "normal";
 colormap(ax,turbo(256));
 cb = colorbar(ax); cb.Layout.Tile = "east";
 cb.Label.String = "Elevation (km)";
-cb.FontName = style.fontName; cb.FontSize = 13; cb.FontWeight = "bold";
-cb.Label.FontSize = 14; cb.Label.FontWeight = "bold";
+cb.FontName = style.fontName; cb.FontSize = max(16,style.axisFontSize-2); cb.FontWeight = "bold";
+cb.Label.FontSize = max(18,style.labelFontSize-2); cb.Label.FontWeight = "bold";
 
 
 h1 = scatter(ax,mod(rad2deg(fullInfo.bestSensorLongitudesRad),360), ...
@@ -129,7 +129,7 @@ lgd = legend(ax,[h1 h2 h3 h4], ...
     "Location","none","Orientation","horizontal", ...
     "NumColumns",2,"Box","off");
 lgd.FontName = style.fontName;
-lgd.FontSize = 13;
+lgd.FontSize = max(16,style.legendFontSize-2);
 lgd.FontWeight = "bold";
 lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
