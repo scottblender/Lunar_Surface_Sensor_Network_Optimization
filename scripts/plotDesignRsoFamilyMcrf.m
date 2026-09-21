@@ -56,7 +56,7 @@ scaleKm = 1e3;
 positions = positionsMcrfKm/scaleKm;
 moonRadius = moonRadiusKm/scaleKm;
 
-numberOfColumns = min(5,numberOfObjects);
+numberOfColumns = min(4,numberOfObjects);
 numberOfRows = ceil(numberOfObjects/numberOfColumns);
 
 outerMargin = 0.6;
