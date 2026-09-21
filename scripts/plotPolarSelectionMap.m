@@ -60,7 +60,9 @@ for longitude = 0:90:270
         "FontSize",style.axisFontSize,"FontWeight","bold");
 end
 axis(ax,"equal"); axis(ax,"off"); view(ax,2);
-xlim(ax,[-1.30 1.30]); ylim(ax,[-1.18 1.18]);
+% Keep enough room for cardinal-longitude labels while allowing the polar
+% disk to occupy more of each manuscript subplot.
+xlim(ax,[-1.18 1.18]); ylim(ax,[-1.14 1.14]);
 if ~isempty(ax.Toolbar), ax.Toolbar.Visible = "off"; end
 colormap(ax,frequencyColors); clim(ax,[0 100]);
 end
