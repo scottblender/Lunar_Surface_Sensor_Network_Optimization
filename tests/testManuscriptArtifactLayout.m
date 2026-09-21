@@ -46,11 +46,15 @@ function testManuscriptInventoryExcludesDiagnostics(testCase)
 folder = string(tempname); mkdir(folder);
 cleanup = onCleanup(@()rmdir(folder,"s")); %#ok<NASGU>
 manifest = validateManuscriptArtifacts(folder);
-verifyFalse(testCase,any(contains(manifest.File,"screening")));
+verifyTrue(testCase,any(manifest.File=="constraint_screening_rso01.eps"));
+verifyFalse(testCase,any(startsWith(manifest.File,"screening_breakdown_")));
+verifyTrue(testCase,any(manifest.File=="design_rso_family_mcrf_3d.eps"));
+verifyFalse(testCase,any(manifest.File=="optimization_rso_population.csv"));
 verifyFalse(testCase,any(contains(manifest.File,"summary") & ...
     manifest.File~="network_summary.csv"));
-% Eleven paper tables; P0 is a second CSV supplying the IOD table.
-verifyEqual(testCase,sum(manifest.Kind=="table"),12);
+% The RSO population table is replaced by the MCRF family figure; P0 remains
+% a second CSV supplying the IOD table.
+verifyEqual(testCase,sum(manifest.Kind=="table"),11);
 verifyEqual(testCase,sum(startsWith(manifest.File,"monte_carlo_")),8);
 end
 
