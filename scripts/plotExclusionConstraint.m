@@ -12,8 +12,8 @@ addpath(scriptDirectory);
 style = publicationPlotStyle();
 
 fontName = style.fontName;
-objectFontSize = 15;
-angleFontSize = 17;
+objectFontSize = style.annotationFontSize;
+angleFontSize = style.labelFontSize;
 rsoMarkerArea = 360;
 backgroundColor = style.backgroundColor;
 textColor = style.textColor;
@@ -42,7 +42,7 @@ target = sensor + targetRange*[cos(thetaTarget),sin(thetaTarget)];
 
 fig = figure("Name","Celestial-body exclusion constraint", ...
     "Color",backgroundColor,"Units","inches", ...
-    "Position",[1 1 5.4 4.1],"Renderer","opengl");
+    "Position",[1 1 5.8 4.4],"Renderer","opengl");
 ax = axes(fig,"Units","normalized","Position",[0.03 0.04 0.94 0.92]);
 hold(ax,"on");
 axis(ax,"equal");
@@ -140,8 +140,8 @@ ax.LooseInset = max(ax.TightInset,0.005);
 outputFile = fullfile(scriptDirectory,"Exclusion_Constraint_Schematic.eps");
 fig.InvertHardcopy = "off";
 fig.PaperUnits = "inches";
-fig.PaperSize = [5.4 4.1];
-fig.PaperPosition = [0 0 5.4 4.1];
+fig.PaperSize = [5.8 4.4];
+fig.PaperPosition = [0 0 5.8 4.4];
 fig.PaperPositionMode = "manual";
 drawnow;
 print(fig,char(outputFile),"-depsc","-opengl","-r600");
