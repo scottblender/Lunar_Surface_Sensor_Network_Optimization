@@ -60,7 +60,7 @@ numberOfColumns = min(5,numberOfObjects);
 numberOfRows = ceil(numberOfObjects/numberOfColumns);
 
 figureWidth = 2.9*numberOfColumns;
-figureHeight = 2.9*numberOfRows;
+figureHeight = 3.1*numberOfRows;
 fig = figure("Name","Design RSO family in MCRF", ...
     "Color",style.backgroundColor,"Units","inches", ...
     "Position",[1 1 figureWidth figureHeight],"Renderer","opengl");
