@@ -12,7 +12,7 @@ labelRows = 1:labelStride:nObjects;
 % spacecraft labels (especially the first LRO row) after EPS export.
 height = max(style.heatmapHeightInches, ...
     2*numel(labelRows)*style.axisFontSize*1.15/72+2.2);
-width = max(style.heatmapWidthInches,4.5*nModes+1.5);
+width = max(style.heatmapWidthInches,4.8*nModes+1.8);
 fig = figure("Name",figureName,"Color",style.backgroundColor, ...
     "Units","inches","Position",[0.5 0.5 width height],"Renderer","opengl");
 outer = tiledlayout(fig,2,1,"TileSpacing","loose","Padding","loose");
@@ -69,7 +69,12 @@ axesHandles = findall(fig,"Type","axes");
 for ax = axesHandles.'
     ax.Units = "normalized";
     tight = ax.TightInset;
-    ax.LooseInset = max(ax.LooseInset,tight + [0.005 0.005 0.005 0.005]);
+    extraInset = [0.012 0.010 0.010 0.010];
+    if any(strlength(string(ax.YTickLabel)) > 0,"all")
+        % Preserve extra space for the left-column RSO/spacecraft labels.
+        extraInset(1) = 0.040;
+    end
+    ax.LooseInset = max(ax.LooseInset,tight + extraInset);
 end
 drawnow;
 end
