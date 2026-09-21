@@ -26,7 +26,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     width = 10; height = 4.3*rows+1.5;
     fig = figure("Name",mode+" sensor selection by latitude/longitude", ...
         "Color","white","Units","inches","Position",[1 1 width height]);
-    layout = tiledlayout(fig,rows,columns,"TileSpacing","compact","Padding","loose");
+    layout = tiledlayout(fig,rows,columns,"TileSpacing","compact","Padding","compact");
     frequency = zeros(numel(latitudeCenters),numel(longitudeCenters),numel(config.networkSizes));
     for networkIndex = 1:numel(config.networkSizes)
         study = campaign.studies{networkIndex,objectiveIndex};
@@ -63,7 +63,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     terrainAxes.Visible = "off";
     applyManuscriptTypography(fig,string(outputFile),width);
     layout.Units = "normalized";
-    layout.OuterPosition = [0.01 0.15 0.98 0.84];
+    layout.OuterPosition = [0.005 0.14 0.99 0.855];
     setappdata(fig,"ManuscriptTypographyFinalized",true);
     exportManuscriptFigure(fig,string(outputFile),width,height);
     plotInfo.(char(mode)) = struct("figure",fig,"outputFile",string(outputFile), ...
