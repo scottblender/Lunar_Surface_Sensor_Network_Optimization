@@ -93,7 +93,7 @@ imagesc(ax,longitudeDeg,latitudeDeg,elevationKm,"HandleVisibility","off");
 ax.YDir = "normal";
 colormap(ax,turbo(256));
 cb = colorbar(ax); cb.Layout.Tile = "east";
-cb.Label.String = "Synthetic DEM elevation (km)";
+cb.Label.String = "Elevation (km)";
 cb.FontName = style.fontName; cb.FontSize = 13; cb.FontWeight = "bold";
 cb.Label.FontSize = 14; cb.Label.FontWeight = "bold";
 
