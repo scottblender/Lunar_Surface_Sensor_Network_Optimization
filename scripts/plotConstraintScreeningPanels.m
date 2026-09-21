@@ -23,17 +23,17 @@ for domain = 1:2
     end
     ax.YDir = "reverse";
     ax.YTick = 1:n; ax.YTickLabel = compose("RSO %02d",1:n);
-    ax.FontName = style.fontName; ax.FontSize = 12; ax.FontWeight = "bold";
+    ax.FontName = style.fontName; ax.FontSize = 16; ax.FontWeight = "bold";
     ax.TickDir = "out"; ax.Box = "on";
     xlim(ax,[0 100]); ylim(ax,[0.4 n+0.6]); xticks(ax,0:25:100);
     if domain==1
         lgd = legend(ax,bars,categoryNames,"NumColumns",3, ...
             "Orientation","horizontal","Box","off");
-        lgd.FontName = style.fontName; lgd.FontSize = 12;
+        lgd.FontName = style.fontName; lgd.FontSize = 16;
         lgd.FontWeight = "bold"; lgd.AutoUpdate = "off";
         lgd.Layout.Tile = "north";
     end
 end
-xlabel(layout,"Measurement opportunities (%)","FontSize",16,"FontWeight","bold");
+xlabel(layout,"Measurement opportunities (%)","FontSize",20,"FontWeight","bold");
 drawnow;
 end
