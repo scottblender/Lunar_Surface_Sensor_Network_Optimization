@@ -144,6 +144,8 @@ fig.PaperSize = [5.8 4.4];
 fig.PaperPosition = [0 0 5.8 4.4];
 fig.PaperPositionMode = "manual";
 drawnow;
+% Preserve the schematic's original 19/22 pt object/angle typography.
+setappdata(fig,"ManuscriptTypographyFinalized",true);
 exportManuscriptFigure(fig,string(outputFile),5.8,4.4);
 
 fprintf("Saved exclusion-constraint schematic:\n  %s\n",outputFile);

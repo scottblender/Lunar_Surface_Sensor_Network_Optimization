@@ -91,3 +91,14 @@ text at 20 pt before export. The domain location comparison uses a 1.22 type
 scale multiplier. Convergence and polar layouts occupy more of their canvas
 with reduced outer margins and compact tile spacing. Polar figures retain
 their independent frequency and elevation bars.
+
+## Figure-number correction and label reset
+
+Figure 5 in the user's MATLAB sequence is the exclusion schematic, not the
+CLPS context map. Its original 19/22 pt source fonts are now preserved rather
+than overwritten by the generic export formatter. Shared tiled-layout labels
+now receive label sizing after the generic text pass; the domain-comparison
+sensor-count label is explicitly 12 pt at half-width placement. Domain-location
+markers are larger, with white contrasting edges/fills. The DEM figures reserve
+additional right margin for their colorbar labels. Both polar-map scales now
+sit side by side below the maps, freeing the right strip for the map panels.

@@ -34,12 +34,13 @@ for k = 1:2
 
     fig = figure("Name",names(k),"Color",style.backgroundColor, ...
         "Units","inches","Position",[1 1 9.0 4.6],"Renderer","opengl");
-    ax = axes(fig);
+    layout = tiledlayout(fig,1,1,"Padding","loose");
+    ax = nexttile(layout);
     imagesc(ax,lonDeg,latDeg,elevation);
     set(ax,"YDir","normal");
     axis(ax,"tight");
     colormap(ax,turbo(256));
-    cb = colorbar(ax);
+    cb = colorbar(ax); cb.Layout.Tile = "east";
     cb.Label.String = "Elevation (km)";
     cb.Label.FontWeight = "bold";
     cb.Label.FontSize = style.labelFontSize;
@@ -62,6 +63,10 @@ for k = 1:2
     ax.YLabel.FontWeight = "bold";
 
     outputFile = fullfile(config.outputDirectory,stems(k)+".eps");
+    applyManuscriptTypography(fig,string(outputFile),9.0);
+    layout.Units = "normalized";
+    layout.OuterPosition = [0.02 0.035 0.90 0.93];
+    setappdata(fig,"ManuscriptTypographyFinalized",true);
     exportManuscriptFigure(fig,string(outputFile),9.0,4.6);
     plotInfo.(char(stems(k))) = struct( ...
         "figure",fig,"outputFile",string(outputFile));

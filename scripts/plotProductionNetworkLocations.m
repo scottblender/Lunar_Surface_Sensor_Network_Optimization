@@ -37,7 +37,14 @@ for objectiveIndex = 1:numel(config.objectiveModes)
         terrainLimits = plotPolarSelectionMap(ax,frequency(:,:,networkIndex), ...
             latitudeEdges,longitudeEdges,dem,style);
     end
-    cb = colorbar(ax); cb.Layout.Tile = "east";
+    % Put both scales below the maps to free the complete panel width.
+    frequencyAxes = axes(fig,"Visible","off","Units","normalized", ...
+        "Position",[0.09 0.07 0.35 0.01]);
+    colormap(frequencyAxes,colormap(ax)); clim(frequencyAxes,[0 100]);
+    cb = colorbar(frequencyAxes,"southoutside");
+    cb.Units = "normalized";
+    cb.Position = [0.09 0.07 0.35 0.025];
+    frequencyAxes.Visible = "off";
     cb.Label.String = "Selection frequency (%)";
     cb.Ticks = 0:20:100;
     cb.FontSize = max(16,style.axisFontSize-2); cb.FontWeight = "bold";
@@ -46,13 +53,13 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     % A separate true elevation scale is required because DEM pixels use
     % truecolor while the panel colormap encodes selection frequency.
     terrainAxes = axes(fig,"Visible","off","Units","normalized", ...
-        "Position",[0.22 0.065 0.50 0.01]);
+        "Position",[0.58 0.07 0.35 0.01]);
     colormap(terrainAxes,repmat(linspace(0.30,0.96,256).',1,3));
     clim(terrainAxes,terrainLimits);
     elevationBar = colorbar(terrainAxes,"southoutside");
     elevationBar.Label.String = "Elevation (km)";
     elevationBar.Units = "normalized";
-    elevationBar.Position = [0.22 0.065 0.50 0.025];
+    elevationBar.Position = [0.58 0.07 0.35 0.025];
     terrainAxes.Visible = "off";
     applyManuscriptTypography(fig,string(outputFile),width);
     layout.Units = "normalized";

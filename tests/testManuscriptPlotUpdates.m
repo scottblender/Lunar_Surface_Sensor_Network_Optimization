@@ -61,3 +61,11 @@ end
 function deleteIfPresent(path)
 if isfile(path), delete(path); end
 end
+
+function testSharedLabelsKeepLabelFontSize(testCase)
+fig = figure("Visible","off"); cleanup = onCleanup(@()close(fig)); %#ok<NASGU>
+layout = tiledlayout(fig,2,1); nexttile(layout); plot(1:3);
+xlabel(layout,"Number of sensors, N_s");
+applyManuscriptTypography(fig,"domain_comparison_metrics.eps",7);
+verifyEqual(testCase,layout.XLabel.FontSize*2.9/7,10,"AbsTol",1e-12);
+end

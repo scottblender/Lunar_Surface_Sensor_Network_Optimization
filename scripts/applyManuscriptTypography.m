@@ -29,6 +29,13 @@ for ax = axesHandles.'
     ax.YLabel.FontSize = style.manuscriptLabelFontSize*scale;
     ax.ZLabel.FontSize = style.manuscriptLabelFontSize*scale;
 end
+% Shared tiled-layout labels are text objects too; restore label sizing
+% after the generic text pass rather than leaving them at tick-label size.
+layouts = findall(fig,"Type","tiledlayout");
+for layout = layouts.'
+    layout.XLabel.FontSize = style.manuscriptLabelFontSize*scale;
+    layout.YLabel.FontSize = style.manuscriptLabelFontSize*scale;
+end
 bars = findall(fig,"Type","colorbar");
 for cb = bars.'
     cb.Label.FontSize = style.manuscriptLabelFontSize*scale;
