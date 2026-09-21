@@ -90,7 +90,7 @@ for objectiveMode = config.objectiveModes
             "Location","none","Orientation","horizontal", ...
             "NumColumns",2,"Box","off");
         lgd.FontName = style.fontName;
-        lgd.FontSize = max(14,style.legendFontSize-2);
+        lgd.FontSize = max(20,style.legendFontSize+2);
         lgd.FontWeight = "bold";
         lgd.Layout.Tile = "north";
 
