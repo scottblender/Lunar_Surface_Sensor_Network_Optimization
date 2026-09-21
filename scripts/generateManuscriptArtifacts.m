@@ -53,7 +53,6 @@ defaults.comparisonNetworkSize=10;
 defaults.comparisonObjective="information";
 defaults.operationalTableObjective="information";
 defaults.operationalTableNetworkSize=10;
-defaults.constraintExampleRsoIndex=1;
 config=mergeStruct(defaults,userConfig);
 config.outputDirectory=string(config.outputDirectory);
 config.productionCampaignDates=string(config.productionCampaignDates(:));
@@ -139,7 +138,7 @@ if config.generateProductionResults
         @()plotProductionNetworkLocations(campaign,config),true);
 
     if config.generateScreeningBreakdown
-        products.screeningBreakdown=runJob("RSO-specific constraint-screening figure", ...
+        products.screeningBreakdown=runJob("all-RSO constraint-screening figure", ...
             @()plotMeasurementScreeningBreakdown( ...
                 campaign,restrictedCampaign,config),true);
     end
