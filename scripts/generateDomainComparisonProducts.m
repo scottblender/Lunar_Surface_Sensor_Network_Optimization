@@ -70,10 +70,33 @@ restrictedCoverage = bestRunState( ...
 
 locationFig = figure("Name","Domain comparison sensor locations", ...
     "Color",style.backgroundColor,"Units","inches", ...
-    "Position",[1 1 7.0 4.8],"Renderer","opengl");
+    "Position",[1 1 8.5 5.8],"Renderer","opengl");
 locationLayout = tiledlayout(locationFig,1,1,"Padding","loose");
 ax = nexttile(locationLayout);
 hold(ax,"on");
+
+% Draw the actual synthetic DEM first, in the same lon/lat coordinates as
+% the selected sites. Explicit legend handles below exclude this image.
+projectRoot = fileparts(fileparts(mfilename("fullpath")));
+syntheticFile = string(fullfile(projectRoot,"data","Synthetic_Lunar_DEM.mat"));
+if isfield(userConfig,"syntheticDemFile")
+    syntheticFile = string(userConfig.syntheticDemFile);
+end
+assert(isfile(syntheticFile),"Synthetic DEM not found: %s",syntheticFile);
+[dem,~] = digitalElevationModel.loadTriaxialLunarDem( ...
+    syntheticFile,fullCampaign.database.config.moon.radiusKm,24,48);
+longitudeDeg = linspace(0,360,721);
+latitudeDeg = linspace(-90,0,181);
+[longitudeMesh,latitudeMesh] = meshgrid(longitudeDeg,latitudeDeg);
+elevationKm = double(dem(deg2rad(latitudeMesh),deg2rad(longitudeMesh)));
+imagesc(ax,longitudeDeg,latitudeDeg,elevationKm,"HandleVisibility","off");
+ax.YDir = "normal";
+colormap(ax,gray(256));
+cb = colorbar(ax); cb.Layout.Tile = "east";
+cb.Label.String = "Synthetic DEM elevation (km)";
+cb.FontName = style.fontName; cb.FontSize = 13; cb.FontWeight = "bold";
+cb.Label.FontSize = 14; cb.Label.FontWeight = "bold";
+
 
 h1 = scatter(ax,mod(rad2deg(fullInfo.bestSensorLongitudesRad),360), ...
     rad2deg(fullInfo.bestSensorLatitudesRad),90,"o", ...
@@ -112,7 +135,7 @@ lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
 
 locationsFile = fullfile(outputDirectory,"domain_comparison_locations.eps");
-exportManuscriptFigure(locationFig,string(locationsFile),7.0,4.8);
+exportManuscriptFigure(locationFig,string(locationsFile),8.5,5.8);
 
 %% Coverage and information: BOTH studies as grouped bars
 

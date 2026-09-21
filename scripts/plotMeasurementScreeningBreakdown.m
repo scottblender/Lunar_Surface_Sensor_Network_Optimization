@@ -2,10 +2,8 @@ function plotInfo = plotMeasurementScreeningBreakdown( ...
     fullCampaign,restrictedCampaign,userConfig)
 % PLOTMEASUREMENTSCREENINGBREAKDOWN RSO-specific constraint screening.
 %
-% Figure 14 shows every design RSO. Each tile compares the Southern
-% Hemisphere and South Pole optimized networks using two adjacent stacked
-% bars. Domain identity is written directly below each bar; no line-style
-% encoding is used. Each stack partitions all sensor/epoch opportunities into
+% Figure 14 shows every design RSO in two aligned horizontal-bar panels,
+% one for each domain. Each stack partitions all sensor/epoch opportunities into
 % mutually exclusive rejection categories plus accepted measurements.
 
 arguments
@@ -73,77 +71,10 @@ numberOfRsos = size(fullPercent,1);
 assert(size(polarPercent,1)==numberOfRsos, ...
     "Full-domain and South Pole campaigns contain different RSO counts.");
 
-numberOfColumns = 4;
-numberOfRows = ceil(numberOfRsos/numberOfColumns);
-
-fig = figure("Name","Constraint screening by design RSO", ...
-    "Color",style.backgroundColor,"Units","inches", ...
-    "Position",[1 1 10.0 9.4],"Renderer","opengl");
-layout = tiledlayout(fig,numberOfRows,numberOfColumns, ...
-    "Padding","loose","TileSpacing","compact");
-
-axesHandles = gobjects(numberOfRsos,1);
-legendBars = gobjects(0);
-
-for rsoIndex = 1:numberOfRsos
-    ax = nexttile(layout,rsoIndex);
-    axesHandles(rsoIndex) = ax;
-    hold(ax,"on");
-
-    percentages = [fullPercent(rsoIndex,:);polarPercent(rsoIndex,:)];
-    bars = bar(ax,1:2,percentages,0.70,"stacked","LineWidth",0.55);
-
-    for categoryIndex = 1:numel(categoryNames)
-        bars(categoryIndex).FaceColor = categoryColors(categoryIndex,:);
-        bars(categoryIndex).EdgeColor = style.textColor;
-    end
-    if rsoIndex == 1
-        legendBars = bars;
-    end
-
-    xticks(ax,[1 2]);
-    xticklabels(ax,["Southern Hemisphere","South Pole"]);
-    xlim(ax,[0.45 2.55]);
-    ylim(ax,[0 100]);
-    yticks(ax,[0 50 100]);
-
-    title(ax,sprintf("RSO %02d",rsoIndex), ...
-        "FontName",style.fontName,"FontSize",11, ...
-        "FontWeight","bold");
-
-    ax.FontName = style.fontName;
-    ax.FontSize = 8;
-    ax.FontWeight = "bold";
-    ax.LineWidth = 0.8;
-    ax.TickDir = "out";
-    ax.Box = "on";
-    ax.XGrid = "off";
-    ax.YGrid = "off";
-
-    if mod(rsoIndex-1,numberOfColumns) ~= 0
-        yticklabels(ax,[]);
-    end
-end
-
-ylabel(layout,"Measurement opportunities (%)", ...
-    "FontName",style.fontName,"FontSize",style.labelFontSize, ...
-    "FontWeight","bold");
-title(layout,sprintf("Constraint screening by design RSO, N_s = %d, %s-driven network", ...
-    networkSize,objectiveMode), ...
-    "FontName",style.fontName,"FontSize",style.labelFontSize, ...
-    "FontWeight","bold");
-
-lgd = legend(axesHandles(1),legendBars,categoryNames, ...
-    "Location","none","Box","off","Orientation","horizontal", ...
-    "NumColumns",3);
-lgd.FontName = style.fontName;
-lgd.FontSize = 12;
-lgd.FontWeight = "bold";
-lgd.AutoUpdate = "off";
-lgd.Layout.Tile = "north";
-
+fig = plotConstraintScreeningPanels(fullPercent,polarPercent, ...
+    categoryNames,categoryColors,networkSize,objectiveMode);
 outputFile = fullfile(outputDirectory,"constraint_screening_all_rsos.eps");
-exportManuscriptFigure(fig,string(outputFile),10.0,9.4);
+exportManuscriptFigure(fig,string(outputFile),fig.Position(3),fig.Position(4));
 
 summaryTable = [fullRows;polarRows];
 summaryFile = "";

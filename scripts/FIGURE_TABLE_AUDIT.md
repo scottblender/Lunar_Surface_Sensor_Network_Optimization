@@ -202,3 +202,27 @@ advisory in its operational-catalog construction.
   axes as vector EPS files, giving them tight bounding boxes instead of the
   previous source-canvas margins.
 - The Monte Carlo legend font is increased for Figure 11.
+
+## Focused three-figure revision, 2026-09-21
+
+- `design_rso_family_mcrf_3d.eps`: twenty separate 3D axes in a 4-by-5
+  layout. Every propagated epoch is transformed into MCRF. Equal physical
+  scaling is retained, while the frozen `vis3d` camera is replaced by an
+  automatic view angle so each cube fits its own tile. Larger tiles, loose
+  spacing, short axis labels and a two-line heading replace the overlapping
+  layout. Coordinates remain in thousands of kilometers.
+- `domain_comparison_locations.eps` (Figure 24): synthetic DEM elevation is
+  drawn behind the selected sensor markers on the same longitude/latitude
+  axes. Grayscale elevation provides contrast with objective-colored markers;
+  an elevation colorbar has a dedicated tile. `syntheticDemFile` can override
+  the default `data/Synthetic_Lunar_DEM.mat`.
+- `constraint_screening_all_rsos.eps`: two aligned horizontal stacked-bar
+  panels compare the Southern Hemisphere and South Pole networks. Both show
+  all twenty RSO names, a common 0--100 percent scale and the same six
+  categories. A shared legend and short two-line heading replace the twenty
+  repeated domain tick labels. Screening counts and percentages are unchanged.
+
+Other figures and the manuscript output inventory are unchanged. MATLAB was
+not available for rendered verification. Static MATLAB lint and whitespace
+checks were run; the data-free `testRsoScreeningPanels` regression can be run
+in MATLAB to verify that both panels retain all twenty RSO distributions.

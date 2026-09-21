@@ -29,9 +29,8 @@ moonRadiusKm = double(database.config.moon.radiusKm);
 theta0Rad = double(database.config.moon.theta0Rad);
 angularRateRadS = 2*pi/double(database.config.moon.siderealPeriodSeconds);
 
-maximumSamples = 300;
-sampleIndices = unique(round(linspace(1,numel(times), ...
-    min(maximumSamples,numel(times)))));
+% Preserve every propagated epoch, especially for low-altitude orbits.
+sampleIndices = 1:numel(times);
 sampleTimes = times(sampleIndices);
 numberOfSamples = numel(sampleIndices);
 
@@ -50,14 +49,16 @@ scaleKm = 1e3;
 positions = positionsMcrfKm/scaleKm;
 moonRadius = moonRadiusKm/scaleKm;
 
-numberOfColumns = 4;
+numberOfColumns = min(5,numberOfObjects);
 numberOfRows = ceil(numberOfObjects/numberOfColumns);
 
+figureWidth = 2.6*numberOfColumns;
+figureHeight = 2.6*numberOfRows+0.5;
 fig = figure("Name","Design RSO family in MCRF", ...
     "Color",style.backgroundColor,"Units","inches", ...
-    "Position",[1 1 10.0 9.4],"Renderer","opengl");
+    "Position",[1 1 figureWidth figureHeight],"Renderer","opengl");
 layout = tiledlayout(fig,numberOfRows,numberOfColumns, ...
-    "Padding","compact","TileSpacing","compact");
+    "Padding","loose","TileSpacing","loose");
 
 [sx,sy,sz] = sphere(36);
 
@@ -82,29 +83,41 @@ for objectIndex = 1:numberOfObjects
     ylim(ax,[-plotLimit plotLimit]);
     zlim(ax,[-plotLimit plotLimit]);
 
-    axis(ax,"equal");
-    axis(ax,"vis3d");
+    % Let MATLAB recompute the camera for each tile at its final size.
+    % vis3d freezes the camera angle before layout and can overfill the tile.
+    daspect(ax,[1 1 1]);
+    pbaspect(ax,[1 1 1]);
+    ax.CameraViewAngleMode = "auto";
+    ax.Projection = "orthographic";
+    ax.Clipping = "on";
+    ax.ClippingStyle = "rectangle";
     grid(ax,"off");
     box(ax,"on");
     view(ax,38,24);
 
     title(ax,sprintf("RSO %02d",objectIndex), ...
-        "FontName",style.fontName,"FontSize",10, ...
+        "FontName",style.fontName,"FontSize",12, ...
         "FontWeight","bold");
 
     ax.FontName = style.fontName;
-    ax.FontSize = 7;
+    ax.FontSize = 9;
+    xlabel(ax,"x_R"); ylabel(ax,"y_R"); zlabel(ax,"z_R");
+    ax.XTick = [-plotLimit 0 plotLimit];
+    ax.YTick = [-plotLimit 0 plotLimit];
+    ax.ZTick = [-plotLimit 0 plotLimit];
+    xtickformat(ax,"%.1f"); ytickformat(ax,"%.1f"); ztickformat(ax,"%.1f");
     ax.FontWeight = "bold";
     ax.LineWidth = 0.75;
     ax.TickDir = "out";
 end
 
-title(layout,"Design RSO trajectories in MCRF (coordinates in 10^3 km)", ...
-    "FontName",style.fontName,"FontSize",style.labelFontSize, ...
+title(layout,{"Design RSO trajectories in MCRF", ...
+    "Coordinates in 10^3 km; red marker: initial position"}, ...
+    "FontName",style.fontName,"FontSize",16, ...
     "FontWeight","bold");
 
 outputFile = fullfile(outputDirectory,"design_rso_family_mcrf_3d.eps");
-exportManuscriptFigure(fig,string(outputFile),10.0,9.4);
+exportManuscriptFigure(fig,string(outputFile),figureWidth,figureHeight);
 
 plotInfo = struct();
 plotInfo.figure = fig;
