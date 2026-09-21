@@ -32,10 +32,10 @@ Outputs are written to `results/manuscript_artifacts/`.
 
 ## Screening and domain comparison
 
-`plotMeasurementScreeningBreakdown.m` now produces one manuscript constraint
-example for a single design RSO. The Southern Hemisphere and South Pole
-networks are adjacent stacked bars with the domain names written directly
-under the bars; no solid/dashed domain coding is used.
+`plotMeasurementScreeningBreakdown.m` now shows every design RSO in a tiled
+stacked-bar figure. Each tile compares the Southern Hemisphere and South Pole
+networks with the domain names written directly beneath the two bars; no
+solid/dashed domain coding is used.
 
 `generateDomainComparisonProducts.m` explicitly compares the southern-
 hemisphere and restricted south-polar studies using grouped bars and a
@@ -141,7 +141,7 @@ produces the following paper assets only (subject to data availability):
 | Convergence | convergence_information.eps; convergence_coverage.eps |
 | Network locations | network_locations_vs_ns_information.eps; network_locations_vs_ns_coverage.eps |
 | Design tracking | design_rso_tracking_heatmaps.eps |
-| RSO constraint example | constraint_screening_rso01.eps |
+| RSO constraint screening | constraint_screening_all_rsos.eps |
 | Robustness | eight monte_carlo_{objective}_n{size}.eps panels |
 | Domain comparison | domain_comparison_locations.eps; domain_comparison_metrics.eps |
 | Operational tracking | operational_rso_tracking_heatmaps.eps |
@@ -153,7 +153,7 @@ GA parameters, network summary, domain comparison, and spacecraft tracking.
 There are 11 CSV files because the IOD table still uses the separate P0 matrix
 CSV.
 
-The single RSO-specific screening figure is on by default. Separate
+The all-RSO constraint-screening figure is on by default. Separate
 DEM/discrete-neighbor validation jobs remain off by default because they are
 supporting analyses rather than manuscript figures. Diagnostic CSVs from tracking and Monte Carlo are suppressed by
 `exportDiagnosticTables=false`; standalone functions retain their diagnostic
@@ -182,20 +182,22 @@ advisory in its operational-catalog construction.
 
 ## 2026-09-20 visual-overhaul additions
 
-- The 20 design RSOs are now plotted together in a three-dimensional
-  Moon-centered rotating frame (MCRF) figure,
-  `design_rso_family_mcrf_3d.eps`. This replaces the long orbital-element
-  population table as the manuscript-facing representation; the complete
-  catalog remains stored in the optimization database.
+- The 20 design RSOs are now shown as separate three-dimensional MCRF
+  subplots in `design_rso_family_mcrf_3d.eps`, preventing the individual
+  trajectories from being obscured by a single overlaid family plot. This
+  replaces the long orbital-element population table as the manuscript-facing
+  representation; the complete catalog remains stored in the optimization
+  database.
 - The sensor-selection result remains a geographic frequency map instead of a
   raster heat map. The candidate grid is approximately uniform in physical
   spacing but longitude sampling changes with latitude, so interpolating it to
   a rectangular heat map would imply spatial resolution that was not part of
   the optimization. Information and coverage are already separate exports and
   are now enlarged for use as separate manuscript figures.
-- The constraint-screening result is one RSO-specific example at the configured
-  comparison network size/objective. Southern Hemisphere and South Pole are
-  identified beneath the two stacked bars; line-style coding is removed.
+- The constraint-screening result includes all design RSOs at the configured
+  comparison network size/objective. Every RSO tile contains Southern
+  Hemisphere and South Pole stacked bars identified directly beneath the bars;
+  line-style coding is removed.
 - Reference-frame and angles-only schematics are exported directly from their
   axes as vector EPS files, giving them tight bounding boxes instead of the
   previous source-canvas margins.
