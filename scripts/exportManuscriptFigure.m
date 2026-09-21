@@ -23,5 +23,8 @@ fig.PaperSize = [widthInches heightInches];
 fig.PaperPosition = [0 0 widthInches heightInches];
 fig.PaperPositionMode = "manual";
 drawnow;
-print(fig,char(outputFile),"-depsc","-opengl","-r600");
+% Use the full paper box for EPS output. The default tight EPS bounding box
+% can clip endpoint tick labels and other decorations whose extents land
+% exactly on the figure edge.
+print(fig,char(outputFile),"-depsc","-opengl","-r600","-loose");
 end
