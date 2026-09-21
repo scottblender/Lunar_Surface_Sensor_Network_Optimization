@@ -143,6 +143,10 @@ lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
 
 locationsFile = fullfile(outputDirectory,"domain_comparison_locations.eps");
+% The Figure 24 map has intentionally larger local typography. Prevent the
+% shared export helper from reapplying manuscript typography and overwriting
+% those final sizes immediately before the EPS print pass.
+setappdata(locationFig,"ManuscriptTypographyFinalized",true);
 exportManuscriptFigure(locationFig,string(locationsFile),8.5,5.8);
 
 %% Coverage and information: BOTH studies as grouped bars
