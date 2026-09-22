@@ -116,11 +116,11 @@ h4 = scatter(ax,mod(rad2deg(restrictedCoverage.bestSensorLongitudesRad),360), ..
     "MarkerFaceColor",[1 1 1],"MarkerEdgeColor",style.redColor, ...
     "LineWidth",2.5);
 
-% Keep the displayed 0--360 degree ticks, but place the endpoint ticks
-% slightly inside the axes box so EPS export cannot clip either label.
-xlim(ax,[-12 372]);
+% Longitude is periodic, so the 360-degree endpoint duplicates 0 degrees.
+% Omit that redundant boundary label entirely to avoid EPS clipping.
+xlim(ax,[0 360]);
 ylim(ax,[-90 0]);
-xticks(ax,0:60:360);
+xticks(ax,0:60:300);
 yticks(ax,-90:15:0);
 xlabel(ax,"East longitude (deg)");
 ylabel(ax,"Latitude (deg)");
