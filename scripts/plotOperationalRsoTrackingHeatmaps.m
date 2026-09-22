@@ -47,15 +47,9 @@ assert(isequal(size(observableEpochPercent),size(rmsPositionErrorKm)), ...
 
 if ~isfolder(config.outputDirectory), mkdir(config.outputDirectory); end
 
-fig = plotManuscriptTrackingHeatmaps(rmsPositionErrorKm, ...
+fig = plotOperationalTrackingHeatmaps(rmsPositionErrorKm, ...
     observableEpochPercent,spacecraftNames,config.networkSizes, ...
-    config.objectiveModes,"Operational RSO tracking performance");
-
-% Figure 26 is reduced substantially in the manuscript. Increase only this
-% operational/legacy figure's typography so the shared design-RSO heatmap
-% styling remains unchanged.
-increaseFigureTypography(fig,1.25);
-finalizeOperationalFigure(fig);
+    config.objectiveModes);
 
 outputFile = fullfile(config.outputDirectory,"operational_rso_tracking_heatmaps.eps");
 % Preserve the operational figure's local typography increase during export.
@@ -72,53 +66,124 @@ plotInfo.spacecraftNames = spacecraftNames;
 fprintf("Operational-RSO combined tracking figure:\n  %s\n",outputFile);
 end
 
-function increaseFigureTypography(fig,scaleFactor)
-objects = findall(fig,"-property","FontSize");
-for objectIndex = 1:numel(objects)
-    objects(objectIndex).FontSize = objects(objectIndex).FontSize*scaleFactor;
-    if isprop(objects(objectIndex),"FontWeight")
-        objects(objectIndex).FontWeight = "bold";
-    end
-end
+function fig = plotOperationalTrackingHeatmaps( ...
+    rms,observable,names,networkSizes,modes)
 
-% Re-evaluate text extents after the local size increase so EPS export keeps
-% the spacecraft names and colorbar labels inside each axes decoration box.
-drawnow;
-axesHandles = findall(fig,"Type","axes");
-for ax = axesHandles.'
-    ax.Units = "normalized";
-    ax.LooseInset = max(ax.LooseInset,ax.TightInset + [0.015 0.015 0.015 0.015]);
-end
-drawnow;
-end
-
-function finalizeOperationalFigure(fig)
 style = publicationPlotStyle();
+numberOfObjects = numel(names);
+numberOfModes = numel(modes);
+assert(numberOfModes==2, ...
+    "Operational manuscript layout expects information and coverage columns.");
 
-% Shift the full nested heatmap layout inward so long spacecraft names and
-% right-side colorbar labels remain inside the EPS page without changing the
-% compact 2-by-2 visual structure.
-layouts = findall(fig,"Type","tiledlayout");
-for layoutIndex = 1:numel(layouts)
-    layout = layouts(layoutIndex);
+% Use fixed axes positions rather than nested tiled layouts. The geometry is
+% deliberately compact, but the left margin is wide enough for the complete
+% spacecraft names and the right margin is reserved for the two colorbars.
+figureWidth = style.heatmapWidthInches;
+figureHeight = 9.5;
+fig = figure("Name","Operational RSO tracking performance", ...
+    "Color",style.backgroundColor,"Units","inches", ...
+    "Position",[0.5 0.5 figureWidth figureHeight], ...
+    "Renderer","opengl");
 
-    if isequal(layout.Parent,fig)
-        layout.Units = "normalized";
-        layout.OuterPosition = [0.085 0.055 0.83 0.90];
+positive = rms(isfinite(rms) & rms>0);
+assert(~isempty(positive),"No positive tracking errors are available.");
+rmsLimits = [floor(log10(min(positive))) ceil(log10(max(positive)))];
+if rmsLimits(2)<=rmsLimits(1)
+    rmsLimits(2)=rmsLimits(1)+1;
+end
 
-        layout.XLabel.FontName = style.fontName;
-        layout.XLabel.FontSize = 30;
-        layout.XLabel.FontWeight = "bold";
+% Explicit normalized positions prevent MATLAB from reflowing labels at EPS
+% print time. The x limits place the first and last sensor-count ticks well
+% inside the axes box rather than directly on its boundary.
+xPositions = [0.22 0.53];
+axesWidth = 0.23;
+rowBottom = [0.58 0.20];
+rowHeight = 0.25;
+colorbarX = 0.80;
+colorbarWidth = 0.015;
+
+axisFontSize = 22;
+colorbarFontSize = 20;
+colorbarLabelFontSize = 22;
+sharedLabelFontSize = 26;
+
+for row = 1:2
+    for column = 1:numberOfModes
+        axesPosition = [xPositions(column) rowBottom(row) axesWidth rowHeight];
+        ax = axes(fig,"Units","normalized", ...
+            "Position",axesPosition, ...
+            "PositionConstraint","innerposition");
+        hold(ax,"on");
+
+        if row==1
+            values = log10(max(rms(:,:,column),10^rmsLimits(1)));
+            colorLimits = rmsLimits;
+        else
+            values = observable(:,:,column);
+            colorLimits = [0 100];
+        end
+
+        imagesc(ax,1:numel(networkSizes),1:numberOfObjects,values);
+        colormap(ax,turbo(256));
+        clim(ax,colorLimits);
+
+        ax.YDir = "reverse";
+        ax.FontName = style.fontName;
+        ax.FontSize = axisFontSize;
+        ax.FontWeight = "bold";
+        ax.TickDir = "out";
+        ax.Box = "on";
+        ax.XTick = 1:numel(networkSizes);
+        ax.XTickLabel = string(networkSizes);
+        ax.YTick = 1:numberOfObjects;
+        ax.TickLabelInterpreter = "none";
+        xlim(ax,[0.25 numel(networkSizes)+0.75]);
+        ylim(ax,[0.5 numberOfObjects+0.5]);
+
+        if column==1
+            ax.YTickLabel = names;
+        else
+            ax.YTickLabel = strings(numberOfObjects,1);
+        end
+
+        if column==numberOfModes
+            cb = colorbar(ax);
+            cb.Units = "normalized";
+            cb.Position = [colorbarX rowBottom(row) colorbarWidth rowHeight];
+            cb.FontName = style.fontName;
+            cb.FontSize = colorbarFontSize;
+            cb.FontWeight = "bold";
+            cb.Label.FontName = style.fontName;
+            cb.Label.FontSize = colorbarLabelFontSize;
+            cb.Label.FontWeight = "bold";
+
+            if row==1
+                ticks = unique(round(linspace( ...
+                    rmsLimits(1),rmsLimits(2),min(6,diff(rmsLimits)+1))));
+                cb.Ticks = ticks;
+                cb.TickLabels = compose("%.3g",10.^ticks);
+                cb.Label.String = "RMS position error (km)";
+            else
+                cb.Ticks = 0:20:100;
+                cb.Label.String = "Observable epochs (%)";
+            end
+
+            % Colorbar creation can resize its peer axes; restore the fixed
+            % heatmap box after the colorbar has been positioned.
+            ax.Position = axesPosition;
+        end
     end
 end
 
-% Keep endpoint sensor-count labels away from the exact heatmap boundaries.
-axesHandles = findall(fig,"Type","axes");
-for ax = axesHandles.'
-    if numel(ax.XTick)==4 && isequal(double(ax.XTick(:).'),1:4)
-        xlim(ax,[0.35 4.65]);
-    end
-end
+annotation(fig,"textbox",[0.30 0.060 0.42 0.055], ...
+    "String","Number of sensors, N_s", ...
+    "EdgeColor","none", ...
+    "HorizontalAlignment","center", ...
+    "VerticalAlignment","middle", ...
+    "FontName",style.fontName, ...
+    "FontSize",sharedLabelFontSize, ...
+    "FontWeight","bold", ...
+    "Interpreter","tex");
 
 drawnow;
 end
