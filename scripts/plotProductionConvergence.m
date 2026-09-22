@@ -56,6 +56,9 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     xlabel(ax,"Function evaluations");
     ylabel(ax,{'Mean best-so-far','objective, J'});
     xlim(ax,[config.populationSize config.functionEvaluationBudget]);
+    if objectiveMode == "information"
+        ylim(ax,[-405 -335]);
+    end
     applyAxesStyle(ax,style);
     % Sparse FE ticks remain legible at the half-page manuscript width.
     xticks(ax,config.functionEvaluationBudget*(1:3)/3);
