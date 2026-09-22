@@ -54,7 +54,7 @@ fig = plotManuscriptTrackingHeatmaps(rmsPositionErrorKm, ...
 % Figure 26 is reduced substantially in the manuscript. Increase only this
 % operational/legacy figure's typography so the shared design-RSO heatmap
 % styling remains unchanged.
-increaseFigureTypography(fig,1.18);
+increaseFigureTypography(fig,1.40);
 
 outputFile = fullfile(config.outputDirectory,"operational_rso_tracking_heatmaps.eps");
 % Preserve the operational figure's local typography increase during export.
