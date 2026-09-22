@@ -138,9 +138,9 @@ for objectIndex = 1:numberOfObjects
         xlabel(ax,"x_R");
         ylabel(ax,"y_R");
         zlabel(ax,"z_R");
-        ax.XLabel.FontSize = 11;
-        ax.YLabel.FontSize = 11;
-        ax.ZLabel.FontSize = 11;
+        ax.XLabel.FontSize = 30;
+        ax.YLabel.FontSize = 30;
+        ax.ZLabel.FontSize = 30;
         ax.XLabel.FontWeight = "bold";
         ax.YLabel.FontWeight = "bold";
         ax.ZLabel.FontWeight = "bold";
