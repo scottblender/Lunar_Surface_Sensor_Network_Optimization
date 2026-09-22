@@ -142,6 +142,14 @@ lgd.FontWeight = "bold";
 lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
 
+% MATLAB can place the 360-degree endpoint label outside the map's inner
+% axes box even when the outer EPS bounding box is loose. Reserve explicit
+% decoration space inside the tiled layout so the endpoint survives print.
+drawnow;
+ax.Units = "normalized";
+ax.LooseInset = max(ax.LooseInset,ax.TightInset + [0.015 0.020 0.050 0.015]);
+drawnow;
+
 locationsFile = fullfile(outputDirectory,"domain_comparison_locations.eps");
 % The Figure 24 map has intentionally larger local typography. Prevent the
 % shared export helper from reapplying manuscript typography and overwriting
