@@ -39,10 +39,15 @@ for objectiveIndex = 1:numel(config.objectiveModes)
         [fe,meanHistory,stdHistory] = aggregateConvergence( ...
             studyState,config.numberOfRuns);
         c = networkColors(networkIndex,:);
+        % EPS does not preserve transparency as reliably as MATLAB's on-screen
+        % renderer. Use an opaque lightened version of the series color for
+        % the +/-1 sigma band so it remains visible after EPS/PDF conversion.
+        bandColor = 0.45*c + 0.55*[1 1 1];
 
         fill(ax,[fe;flipud(fe)], ...
             [meanHistory-stdHistory;flipud(meanHistory+stdHistory)], ...
-            c,"FaceAlpha",0.25,"EdgeColor","none","HandleVisibility","off");
+            bandColor,"FaceAlpha",1.0,"EdgeColor","none", ...
+            "HandleVisibility","off");
         handles(networkIndex) = plot(ax,fe,meanHistory, ...
             "Color",c,"LineWidth",2.3);
         labels(networkIndex) = sprintf("N_s = %d",config.networkSizes(networkIndex));
