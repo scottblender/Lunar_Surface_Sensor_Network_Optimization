@@ -95,33 +95,47 @@ end
 function finalizeOperationalLayout(fig)
 style = publicationPlotStyle();
 
-% The two 1-by-2 heatmap rows need more horizontal breathing room once the
-% operational labels are enlarged; compact spacing can clip the N_s = 10
-% endpoint against the neighboring tile in EPS output.
 layouts = findall(fig,"Type","tiledlayout");
 for layoutIndex = 1:numel(layouts)
     layout = layouts(layoutIndex);
+
     if isprop(layout,"GridSize") && isequal(double(layout.GridSize),[1 2])
+        % Give the two heatmap columns more separation after the larger type.
         layout.TileSpacing = "loose";
         layout.Padding = "loose";
-    end
+    elseif isprop(layout,"GridSize") && isequal(double(layout.GridSize),[9 1])
+        % Reserve a dedicated bottom band for a fixed figure-level x label.
+        layout.Units = "normalized";
+        layout.OuterPosition = [0.02 0.10 0.96 0.88];
 
-    % The outer shared x label is not reliably included in the generic
-    % FontSize object sweep, so set it explicitly after all scaling.
-    if strlength(string(layout.XLabel.String)) > 0
-        layout.XLabel.FontName = style.fontName;
-        layout.XLabel.FontSize = 36;
-        layout.XLabel.FontWeight = "bold";
+        if strlength(string(layout.XLabel.String)) > 0
+            layout.XLabel.String = "";
+        end
     end
 end
 
-drawnow;
+% Move the first and last network-size ticks away from the exact image/axes
+% boundaries. The heatmap still shows the same four N_s columns; the small
+% outer margin only protects the endpoint labels in EPS output.
 axesHandles = findall(fig,"Type","axes");
 for ax = axesHandles.'
-    ax.Units = "normalized";
-    ax.LooseInset = max(ax.LooseInset, ...
-        ax.TightInset + [0.020 0.015 0.035 0.015]);
+    if numel(ax.XTick)==4 && isequal(double(ax.XTick(:).'),1:4)
+        xlim(ax,[0.35 4.65]);
+    end
 end
+
+% Use a figure annotation for the shared x label so nested tiled layouts
+% cannot resize, relocate, or clip it during EPS printing.
+annotation(fig,"textbox",[0.20 0.018 0.60 0.060], ...
+    "String","Number of sensors, N_s", ...
+    "EdgeColor","none", ...
+    "HorizontalAlignment","center", ...
+    "VerticalAlignment","middle", ...
+    "FontName",style.fontName, ...
+    "FontSize",36, ...
+    "FontWeight","bold", ...
+    "Interpreter","tex");
+
 drawnow;
 end
 
