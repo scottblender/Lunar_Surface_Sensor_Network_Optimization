@@ -55,6 +55,7 @@ fig = plotManuscriptTrackingHeatmaps(rmsPositionErrorKm, ...
 % operational/legacy figure's typography so the shared design-RSO heatmap
 % styling remains unchanged.
 increaseFigureTypography(fig,1.40);
+finalizeOperationalLayout(fig);
 
 outputFile = fullfile(config.outputDirectory,"operational_rso_tracking_heatmaps.eps");
 % Preserve the operational figure's local typography increase during export.
@@ -87,6 +88,39 @@ axesHandles = findall(fig,"Type","axes");
 for ax = axesHandles.'
     ax.Units = "normalized";
     ax.LooseInset = max(ax.LooseInset,ax.TightInset + [0.015 0.015 0.015 0.015]);
+end
+drawnow;
+end
+
+function finalizeOperationalLayout(fig)
+style = publicationPlotStyle();
+
+% The two 1-by-2 heatmap rows need more horizontal breathing room once the
+% operational labels are enlarged; compact spacing can clip the N_s = 10
+% endpoint against the neighboring tile in EPS output.
+layouts = findall(fig,"Type","tiledlayout");
+for layoutIndex = 1:numel(layouts)
+    layout = layouts(layoutIndex);
+    if isprop(layout,"GridSize") && isequal(double(layout.GridSize),[1 2])
+        layout.TileSpacing = "loose";
+        layout.Padding = "loose";
+    end
+
+    % The outer shared x label is not reliably included in the generic
+    % FontSize object sweep, so set it explicitly after all scaling.
+    if strlength(string(layout.XLabel.String)) > 0
+        layout.XLabel.FontName = style.fontName;
+        layout.XLabel.FontSize = 36;
+        layout.XLabel.FontWeight = "bold";
+    end
+end
+
+drawnow;
+axesHandles = findall(fig,"Type","axes");
+for ax = axesHandles.'
+    ax.Units = "normalized";
+    ax.LooseInset = max(ax.LooseInset, ...
+        ax.TightInset + [0.020 0.015 0.035 0.015]);
 end
 drawnow;
 end
