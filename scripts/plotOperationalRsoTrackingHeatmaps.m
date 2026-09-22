@@ -91,16 +91,16 @@ end
 
 % Fixed normalized geometry. This deliberately avoids nested tiledlayout
 % because MATLAB can reflow tile decorations during EPS printing.
-xPositions = [0.11 0.50];
-axesWidth = 0.28;
+xPositions = [0.18 0.52];
+axesWidth = 0.24;
 rowHeight = 0.25;
 rowBottom = [0.59 0.19];
-colorbarX = 0.84;
+colorbarX = 0.81;
 colorbarWidth = 0.018;
 
 axisFontSize = 30;
 colorbarFontSize = 28;
-colorbarLabelFontSize = 32;
+metricLabelFontSize = 28;
 sharedLabelFontSize = 42;
 
 for row = 1:2
@@ -160,19 +160,31 @@ for row = 1:2
     cb.FontName = style.fontName;
     cb.FontSize = colorbarFontSize;
     cb.FontWeight = "bold";
-    cb.Label.FontSize = colorbarLabelFontSize;
-    cb.Label.FontWeight = "bold";
+    cb.Label.String = "";
 
     if row==1
         ticks = unique(round(linspace( ...
             rmsLimits(1),rmsLimits(2),min(6,diff(rmsLimits)+1))));
         cb.Ticks = ticks;
         cb.TickLabels = compose("%.3g",10.^ticks);
-        cb.Label.String = "RMS position error (km)";
+        metricLabel = "RMS position error (km)";
     else
         cb.Ticks = 0:20:100;
-        cb.Label.String = "Observable epochs (%)";
+        metricLabel = "Observable epochs (%)";
     end
+
+    % Keep the long vertical metric labels independent of the colorbar so
+    % they cannot collide when EPS resolves the colorbar decoration bounds.
+    annotation(fig,"textbox",[0.885 rowBottom(row) 0.055 rowHeight], ...
+        "String",metricLabel, ...
+        "EdgeColor","none", ...
+        "HorizontalAlignment","center", ...
+        "VerticalAlignment","middle", ...
+        "FontName",style.fontName, ...
+        "FontSize",metricLabelFontSize, ...
+        "FontWeight","bold", ...
+        "Rotation",90, ...
+        "Interpreter","tex");
 end
 
 % Fixed figure-level label: it is not owned by a layout, so its size and
