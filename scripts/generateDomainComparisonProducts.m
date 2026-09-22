@@ -116,7 +116,9 @@ h4 = scatter(ax,mod(rad2deg(restrictedCoverage.bestSensorLongitudesRad),360), ..
     "MarkerFaceColor",[1 1 1],"MarkerEdgeColor",style.redColor, ...
     "LineWidth",2.5);
 
-xlim(ax,[0 360]);
+% Keep the displayed 0--360 degree ticks, but place the endpoint ticks
+% slightly inside the axes box so EPS export cannot clip either label.
+xlim(ax,[-12 372]);
 ylim(ax,[-90 0]);
 xticks(ax,0:60:360);
 yticks(ax,-90:15:0);
@@ -141,14 +143,6 @@ lgd.FontSize = style.legendFontSize + 2;
 lgd.FontWeight = "bold";
 lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
-
-% MATLAB can place the 360-degree endpoint label outside the map's inner
-% axes box even when the outer EPS bounding box is loose. Reserve explicit
-% decoration space inside the tiled layout so the endpoint survives print.
-drawnow;
-ax.Units = "normalized";
-ax.LooseInset = max(ax.LooseInset,ax.TightInset + [0.015 0.020 0.050 0.015]);
-drawnow;
 
 locationsFile = fullfile(outputDirectory,"domain_comparison_locations.eps");
 % The Figure 24 map has intentionally larger local typography. Prevent the
