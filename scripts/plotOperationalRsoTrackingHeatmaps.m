@@ -47,15 +47,9 @@ assert(isequal(size(observableEpochPercent),size(rmsPositionErrorKm)), ...
 
 if ~isfolder(config.outputDirectory), mkdir(config.outputDirectory); end
 
-fig = plotManuscriptTrackingHeatmaps(rmsPositionErrorKm, ...
+fig = plotOperationalTrackingHeatmaps(rmsPositionErrorKm, ...
     observableEpochPercent,spacecraftNames,config.networkSizes, ...
-    config.objectiveModes,"Operational RSO tracking performance");
-
-% Figure 26 is reduced substantially in the manuscript. Increase only this
-% operational/legacy figure's typography so the shared design-RSO heatmap
-% styling remains unchanged.
-increaseFigureTypography(fig,1.40);
-finalizeOperationalLayout(fig);
+    config.objectiveModes);
 
 outputFile = fullfile(config.outputDirectory,"operational_rso_tracking_heatmaps.eps");
 % Preserve the operational figure's local typography increase during export.
@@ -72,67 +66,124 @@ plotInfo.spacecraftNames = spacecraftNames;
 fprintf("Operational-RSO combined tracking figure:\n  %s\n",outputFile);
 end
 
-function increaseFigureTypography(fig,scaleFactor)
-objects = findall(fig,"-property","FontSize");
-for objectIndex = 1:numel(objects)
-    objects(objectIndex).FontSize = objects(objectIndex).FontSize*scaleFactor;
-    if isprop(objects(objectIndex),"FontWeight")
-        objects(objectIndex).FontWeight = "bold";
-    end
-end
+function fig = plotOperationalTrackingHeatmaps( ...
+    rms,observable,names,networkSizes,modes)
 
-% Re-evaluate text extents after the local size increase so EPS export keeps
-% the spacecraft names and colorbar labels inside each axes decoration box.
-drawnow;
-axesHandles = findall(fig,"Type","axes");
-for ax = axesHandles.'
-    ax.Units = "normalized";
-    ax.LooseInset = max(ax.LooseInset,ax.TightInset + [0.015 0.015 0.015 0.015]);
-end
-drawnow;
-end
-
-function finalizeOperationalLayout(fig)
 style = publicationPlotStyle();
+numberOfObjects = numel(names);
+numberOfModes = numel(modes);
+assert(numberOfModes==2, ...
+    "Operational manuscript layout expects information and coverage columns.");
 
-layouts = findall(fig,"Type","tiledlayout");
-for layoutIndex = 1:numel(layouts)
-    layout = layouts(layoutIndex);
+figureWidth = style.heatmapWidthInches;
+figureHeight = style.heatmapHeightInches + 1.0;
+fig = figure("Name","Operational RSO tracking performance", ...
+    "Color",style.backgroundColor,"Units","inches", ...
+    "Position",[0.5 0.5 figureWidth figureHeight], ...
+    "Renderer","opengl");
 
-    if isprop(layout,"GridSize") && isequal(double(layout.GridSize),[1 2])
-        % Give the two heatmap columns more separation after the larger type.
-        layout.TileSpacing = "loose";
-        layout.Padding = "loose";
-    elseif isprop(layout,"GridSize") && isequal(double(layout.GridSize),[9 1])
-        % Reserve a dedicated bottom band for a fixed figure-level x label.
-        layout.Units = "normalized";
-        layout.OuterPosition = [0.02 0.10 0.96 0.88];
+positive = rms(isfinite(rms) & rms>0);
+assert(~isempty(positive),"No positive tracking errors are available.");
+rmsLimits = [floor(log10(min(positive))) ceil(log10(max(positive)))];
+if rmsLimits(2)<=rmsLimits(1)
+    rmsLimits(2)=rmsLimits(1)+1;
+end
 
-        if strlength(string(layout.XLabel.String)) > 0
-            layout.XLabel.String = "";
+% Fixed normalized geometry. This deliberately avoids nested tiledlayout
+% because MATLAB can reflow tile decorations during EPS printing.
+xPositions = [0.11 0.50];
+axesWidth = 0.28;
+rowHeight = 0.25;
+rowBottom = [0.59 0.19];
+colorbarX = 0.84;
+colorbarWidth = 0.018;
+
+axisFontSize = 30;
+colorbarFontSize = 28;
+colorbarLabelFontSize = 32;
+sharedLabelFontSize = 42;
+
+for row = 1:2
+    for column = 1:numberOfModes
+        ax = axes(fig,"Units","normalized", ...
+            "Position",[xPositions(column) rowBottom(row) axesWidth rowHeight]);
+        ax.Tag = "operationalTrackingHeatmap";
+
+        if row==1
+            values = log10(max(rms(:,:,column),10^rmsLimits(1)));
+            colorLimits = rmsLimits;
+        else
+            values = observable(:,:,column);
+            colorLimits = [0 100];
+        end
+
+        imagesc(ax,1:numel(networkSizes),1:numberOfObjects,values);
+        colormap(ax,turbo(256));
+        clim(ax,colorLimits);
+
+        ax.YDir = "reverse";
+        ax.FontName = style.fontName;
+        ax.FontSize = axisFontSize;
+        ax.FontWeight = "bold";
+        ax.TickDir = "out";
+        ax.Box = "on";
+        ax.XTick = 1:numel(networkSizes);
+        ax.XTickLabel = string(networkSizes);
+        ax.YTick = 1:numberOfObjects;
+        ax.TickLabelInterpreter = "none";
+
+        % Give the first and last sensor-count labels real physical room
+        % inside the axes instead of placing them on the image boundaries.
+        xlim(ax,[0.20 numel(networkSizes)+0.80]);
+        ylim(ax,[0.5 numberOfObjects+0.5]);
+
+        if column==1
+            ax.YTickLabel = names;
+        else
+            ax.YTickLabel = strings(numberOfObjects,1);
         end
     end
-end
 
-% Move the first and last network-size ticks away from the exact image/axes
-% boundaries. The heatmap still shows the same four N_s columns; the small
-% outer margin only protects the endpoint labels in EPS output.
-axesHandles = findall(fig,"Type","axes");
-for ax = axesHandles.'
-    if numel(ax.XTick)==4 && isequal(double(ax.XTick(:).'),1:4)
-        xlim(ax,[0.35 4.65]);
+    % Independent colorbar axes keep the right-hand scale from shrinking
+    % either heatmap axis.
+    cax = axes(fig,"Visible","off","Units","normalized", ...
+        "Position",[colorbarX rowBottom(row) 0.01 rowHeight]);
+    colormap(cax,turbo(256));
+    if row==1
+        clim(cax,rmsLimits);
+    else
+        clim(cax,[0 100]);
+    end
+    cb = colorbar(cax);
+    cb.Units = "normalized";
+    cb.Position = [colorbarX rowBottom(row) colorbarWidth rowHeight];
+    cb.FontName = style.fontName;
+    cb.FontSize = colorbarFontSize;
+    cb.FontWeight = "bold";
+    cb.Label.FontSize = colorbarLabelFontSize;
+    cb.Label.FontWeight = "bold";
+
+    if row==1
+        ticks = unique(round(linspace( ...
+            rmsLimits(1),rmsLimits(2),min(6,diff(rmsLimits)+1))));
+        cb.Ticks = ticks;
+        cb.TickLabels = compose("%.3g",10.^ticks);
+        cb.Label.String = "RMS position error (km)";
+    else
+        cb.Ticks = 0:20:100;
+        cb.Label.String = "Observable epochs (%)";
     end
 end
 
-% Use a figure annotation for the shared x label so nested tiled layouts
-% cannot resize, relocate, or clip it during EPS printing.
-annotation(fig,"textbox",[0.20 0.018 0.60 0.060], ...
+% Fixed figure-level label: it is not owned by a layout, so its size and
+% placement cannot be reset when the EPS renderer resolves axes decorations.
+annotation(fig,"textbox",[0.18 0.055 0.64 0.060], ...
     "String","Number of sensors, N_s", ...
     "EdgeColor","none", ...
     "HorizontalAlignment","center", ...
     "VerticalAlignment","middle", ...
     "FontName",style.fontName, ...
-    "FontSize",36, ...
+    "FontSize",sharedLabelFontSize, ...
     "FontWeight","bold", ...
     "Interpreter","tex");
 
