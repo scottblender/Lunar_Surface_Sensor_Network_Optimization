@@ -56,7 +56,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
     xlabel(ax,"Function evaluations");
     ylabel(ax,{'Mean best-so-far','objective, J'});
     xlim(ax,[config.populationSize config.functionEvaluationBudget]);
-    if objectiveMode == "information"
+    if objectiveMode == "coverage"
         ylim(ax,[-405 -335]);
     end
     applyAxesStyle(ax,style);
