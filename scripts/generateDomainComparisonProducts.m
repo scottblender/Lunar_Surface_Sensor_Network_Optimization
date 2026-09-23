@@ -173,7 +173,7 @@ metricsFig = figure("Name","Domain comparison performance", ...
     "Color",style.backgroundColor,"Units","inches", ...
     "Position",[1 1 8.5 4.6],"Renderer","opengl");
 layout = tiledlayout(metricsFig,1,2, ...
-    "TileSpacing","compact","Padding","compact");
+    "TileSpacing","loose","Padding","compact");
 
 axCoverage = nexttile(layout,1);
 coverageHandles = plotComparisonBars(axCoverage,networkSizes, ...
@@ -204,7 +204,7 @@ layout.XLabel.FontWeight = "bold";
 setappdata(metricsFig,"ManuscriptPlacementWidthInches", ...
     style.manuscriptWidthInches);
 % Increase the final manuscript typography for this compact two-panel figure.
-setappdata(metricsFig,"ManuscriptTypographyScale",1.20);
+setappdata(metricsFig,"ManuscriptTypographyScale",1.35);
 applyManuscriptTypography(metricsFig,string(metricsFile),8.5);
 layout.XLabel.FontWeight = "bold";
 layout.Units = "normalized";
