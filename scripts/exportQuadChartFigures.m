@@ -6,8 +6,8 @@ function products = exportQuadChartFigures(userConfig)
 % rather than for LaTeX/EPS placement.
 %
 % Outputs:
-%   quadchart_figure10_selection_frequency.pdf/.png
-%   quadchart_figure13_constraint_screening.pdf/.png
+%   quadchart_figure10_selection_frequency.pdf
+%   quadchart_figure13_constraint_screening.pdf
 %
 % Example:
 %   products = exportQuadChartFigures();
@@ -36,9 +36,8 @@ defaults.restrictedResultsDirectory = "";
 defaults.restrictedStudyName = "";
 defaults.comparisonNetworkSize = 10;
 defaults.comparisonObjective = "information";
-defaults.pngResolution = 600;
-defaults.figure10SizeInches = [10.8 7.2];
-defaults.figure13SizeInches = [12.8 5.4];
+defaults.figure10SizeInches = [8.8 7.0];
+defaults.figure13SizeInches = [12.0 6.6];
 defaults.keepFiguresOpen = true;
 config = mergeStruct(defaults,userConfig);
 
@@ -106,7 +105,7 @@ figure10 = buildSelectionFrequencyFigure( ...
 figure10Base = fullfile(config.outputDirectory, ...
     "quadchart_figure10_selection_frequency");
 figure10Files = exportPowerPointFigure( ...
-    figure10,figure10Base,config.figure10SizeInches,config.pngResolution);
+    figure10,figure10Base,config.figure10SizeInches);
 
 %% Figure 13 -- constraint screening by RSO
 
@@ -117,7 +116,7 @@ figure13 = buildConstraintScreeningFigure( ...
 figure13Base = fullfile(config.outputDirectory, ...
     "quadchart_figure13_constraint_screening");
 figure13Files = exportPowerPointFigure( ...
-    figure13,figure13Base,config.figure13SizeInches,config.pngResolution);
+    figure13,figure13Base,config.figure13SizeInches);
 
 if ~config.keepFiguresOpen
     close(figure10);
@@ -141,14 +140,17 @@ fprintf("Quad-chart figure export complete\n");
 fprintf("============================================================\n");
 fprintf("Figure 10 PDF: %s\n",figure10Files.pdf);
 fprintf("Figure 13 PDF: %s\n",figure13Files.pdf);
-fprintf("PNG fallbacks are exported at %d dpi.\n",config.pngResolution);
 
 clear cleanupObject;
 cleanupScratch(scratchDirectory);
 end
 
 function fig = buildSelectionFrequencyFigure(plotInfo,campaign,style,figureSize)
-% Use a balanced 2x2 layout so each polar map remains readable in a quad-chart panel.
+% Presentation layout for manuscript Figure 10.
+%
+% Manual axes placement is used instead of tiledlayout so the four circular
+% maps, their N_s labels, cardinal labels, and shared colorbars never compete
+% for the same layout space during PDF export.
 
 latitudeEdges = double(plotInfo.latitudeEdges);
 longitudeEdges = double(plotInfo.longitudeEdges);
@@ -168,70 +170,83 @@ fig = figure( ...
     "Renderer","opengl", ...
     "InvertHardcopy","off");
 
-% A 2x2 arrangement gives each circular map a nearly square tile and avoids
-% the crowding that occurs in a 1x4 PowerPoint layout.
-layout = tiledlayout(fig,2,2, ...
-    "TileSpacing","loose","Padding","compact");
-layout.Units = "normalized";
-layout.OuterPosition = [0.035 0.20 0.93 0.775];
+% Keep the polar maps square in physical units. The explicit positions also
+% leave dedicated vertical space for titles and the two colorbars.
+mapPositions = [ ...
+    0.08 0.56 0.36 0.28; ...
+    0.56 0.56 0.36 0.28; ...
+    0.08 0.21 0.36 0.28; ...
+    0.56 0.21 0.36 0.28];
 
-% Presentation-specific map typography. These values remain readable after
-% insertion into a half-slide quadrant without crowding the longitude labels.
 mapStyle = style;
-mapStyle.axisFontSize = 16;
-mapStyle.labelFontSize = 18;
+mapStyle.axisFontSize = 15;
+mapStyle.labelFontSize = 17;
 
 terrainLimits = [0 1];
 lastAxis = gobjects(1);
+
 for networkIndex = 1:numel(networkSizes)
-    ax = nexttile(layout,networkIndex);
+    ax = axes(fig, ...
+        "Units","normalized", ...
+        "Position",mapPositions(networkIndex,:));
+
     terrainLimits = plotPolarSelectionMap( ...
         ax,frequency(:,:,networkIndex), ...
         latitudeEdges,longitudeEdges,dem,mapStyle);
-    title(ax,sprintf("N_s = %d",networkSizes(networkIndex)), ...
+
+    % Put the N_s label in a separate annotation box rather than using an
+    % axes title. This prevents overlap with the 0-deg E longitude label.
+    box = mapPositions(networkIndex,:);
+    annotation(fig,"textbox", ...
+        [box(1) box(2)+box(4)+0.030 box(3) 0.040], ...
+        "String",sprintf("N_s = %d",networkSizes(networkIndex)), ...
+        "HorizontalAlignment","center", ...
+        "VerticalAlignment","middle", ...
+        "LineStyle","none", ...
         "FontName",style.fontName, ...
-        "FontSize",20, ...
+        "FontSize",18, ...
         "FontWeight","bold", ...
         "Interpreter","tex");
+
     lastAxis = ax;
 end
 
-% Selection-frequency color scale.
+% Selection-frequency scale.
 frequencyAxes = axes(fig, ...
     "Visible","off", ...
     "Units","normalized", ...
-    "Position",[0.08 0.070 0.36 0.01]);
+    "Position",[0.07 0.065 0.38 0.01]);
 colormap(frequencyAxes,colormap(lastAxis));
 clim(frequencyAxes,[0 100]);
 frequencyBar = colorbar(frequencyAxes,"southoutside");
 frequencyBar.Units = "normalized";
-frequencyBar.Position = [0.08 0.070 0.36 0.030];
+frequencyBar.Position = [0.07 0.065 0.38 0.028];
 frequencyBar.Ticks = 0:20:100;
 frequencyBar.FontName = style.fontName;
-frequencyBar.FontSize = 15;
+frequencyBar.FontSize = 14;
 frequencyBar.FontWeight = "bold";
 frequencyBar.Label.String = "Selection frequency (%)";
 frequencyBar.Label.FontName = style.fontName;
-frequencyBar.Label.FontSize = 17;
+frequencyBar.Label.FontSize = 16;
 frequencyBar.Label.FontWeight = "bold";
 frequencyAxes.Visible = "off";
 
-% DEM elevation color scale.
+% Elevation scale.
 terrainAxes = axes(fig, ...
     "Visible","off", ...
     "Units","normalized", ...
-    "Position",[0.56 0.070 0.36 0.01]);
+    "Position",[0.55 0.065 0.38 0.01]);
 colormap(terrainAxes,repmat(linspace(0.30,0.96,256).',1,3));
 clim(terrainAxes,terrainLimits);
 elevationBar = colorbar(terrainAxes,"southoutside");
 elevationBar.Units = "normalized";
-elevationBar.Position = [0.56 0.070 0.36 0.030];
+elevationBar.Position = [0.55 0.065 0.38 0.028];
 elevationBar.FontName = style.fontName;
-elevationBar.FontSize = 15;
+elevationBar.FontSize = 14;
 elevationBar.FontWeight = "bold";
 elevationBar.Label.String = "Elevation (km)";
 elevationBar.Label.FontName = style.fontName;
-elevationBar.Label.FontSize = 17;
+elevationBar.Label.FontSize = 16;
 elevationBar.Label.FontWeight = "bold";
 terrainAxes.Visible = "off";
 
@@ -241,6 +256,10 @@ end
 
 function fig = buildConstraintScreeningFigure( ...
     fullPercent,polarPercent,style,figureSize)
+% Presentation layout for manuscript Figure 13.
+%
+% Explicit axes/legend positions keep the 20 RSO labels readable and prevent
+% the legend, domain headings, bars, and shared x-axis label from colliding.
 
 categoryNames = [ ...
     "Below local horizon", ...
@@ -269,15 +288,20 @@ fig = figure( ...
     "Renderer","painters", ...
     "InvertHardcopy","off");
 
-layout = tiledlayout(fig,1,2, ...
-    "TileSpacing","compact","Padding","compact");
-
 domains = ["Southern hemisphere","Restricted south-polar"];
 values = {fullPercent,polarPercent};
+axisPositions = [ ...
+    0.105 0.16 0.405 0.64; ...
+    0.565 0.16 0.405 0.64];
+
+legendHandle = gobjects(1);
 
 for domainIndex = 1:2
-    ax = nexttile(layout,domainIndex);
-    bars = barh(ax,1:numberOfRsos,values{domainIndex},0.80, ...
+    ax = axes(fig, ...
+        "Units","normalized", ...
+        "Position",axisPositions(domainIndex,:));
+
+    bars = barh(ax,1:numberOfRsos,values{domainIndex},0.76, ...
         "stacked","EdgeColor","none");
 
     for categoryIndex = 1:numel(categoryNames)
@@ -293,7 +317,7 @@ for domainIndex = 1:2
     end
 
     ax.FontName = style.fontName;
-    ax.FontSize = 18;
+    ax.FontSize = 13;
     ax.FontWeight = "bold";
     ax.TickDir = "out";
     ax.Box = "on";
@@ -301,9 +325,15 @@ for domainIndex = 1:2
     ylim(ax,[0.4 numberOfRsos+0.6]);
     xticks(ax,0:25:100);
 
-    title(ax,domains(domainIndex), ...
+    box = axisPositions(domainIndex,:);
+    annotation(fig,"textbox", ...
+        [box(1) 0.815 box(3) 0.050], ...
+        "String",domains(domainIndex), ...
+        "HorizontalAlignment","center", ...
+        "VerticalAlignment","middle", ...
+        "LineStyle","none", ...
         "FontName",style.fontName, ...
-        "FontSize",22, ...
+        "FontSize",19, ...
         "FontWeight","bold");
 
     if domainIndex == 1
@@ -311,25 +341,31 @@ for domainIndex = 1:2
             "NumColumns",3, ...
             "Orientation","horizontal", ...
             "Box","off");
+        legendHandle.Units = "normalized";
+        legendHandle.Position = [0.275 0.885 0.45 0.085];
         legendHandle.FontName = style.fontName;
-        legendHandle.FontSize = 18;
+        legendHandle.FontSize = 13;
         legendHandle.FontWeight = "bold";
         legendHandle.AutoUpdate = "off";
-        legendHandle.Layout.Tile = "north";
     end
 end
 
-xlabel(layout,"Measurement opportunities (%)", ...
+annotation(fig,"textbox", ...
+    [0.28 0.055 0.44 0.055], ...
+    "String","Measurement opportunities (%)", ...
+    "HorizontalAlignment","center", ...
+    "VerticalAlignment","middle", ...
+    "LineStyle","none", ...
     "FontName",style.fontName, ...
-    "FontSize",22, ...
+    "FontSize",18, ...
     "FontWeight","bold");
 
 applyPresentationFont(fig,style.fontName);
 drawnow;
 end
 
-function files = exportPowerPointFigure(fig,baseFile,figureSize,pngResolution)
-% Export a vector PDF for conversion to SVG and a high-DPI PNG fallback.
+function files = exportPowerPointFigure(fig,baseFile,figureSize)
+% Export only a vector PDF. The PDF can be converted to SVG in Inkscape.
 
 fig.Color = "white";
 fig.InvertHardcopy = "off";
@@ -342,21 +378,12 @@ fig.PaperPositionMode = "manual";
 drawnow;
 
 pdfFile = string(baseFile) + ".pdf";
-pngFile = string(baseFile) + ".png";
 
-% PDF is the primary vector output. Direct MATLAB SVG export can be very
-% slow for the polar maps because each terrain/selection sector is a separate
-% vector object; converting this PDF to SVG externally is much faster.
 exportgraphics(fig,char(pdfFile), ...
     "ContentType","vector", ...
     "BackgroundColor","white");
 
-% PNG is a compatibility fallback for PowerPoint or other slide software.
-exportgraphics(fig,char(pngFile), ...
-    "Resolution",pngResolution, ...
-    "BackgroundColor","white");
-
-files = struct("pdf",pdfFile,"png",pngFile);
+files = struct("pdf",pdfFile);
 end
 
 function applyPresentationFont(fig,fontName)
