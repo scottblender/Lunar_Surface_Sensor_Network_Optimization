@@ -171,42 +171,44 @@ end
 
 metricsFig = figure("Name","Domain comparison performance", ...
     "Color",style.backgroundColor,"Units","inches", ...
-    "Position",[1 1 7.0 8.6],"Renderer","opengl");
-layout = tiledlayout(metricsFig,5,1, ...
+    "Position",[1 1 8.5 4.6],"Renderer","opengl");
+layout = tiledlayout(metricsFig,1,2, ...
     "TileSpacing","compact","Padding","compact");
 
-axCoverage = nexttile(layout,1,[2 1]);
+axCoverage = nexttile(layout,1);
 coverageHandles = plotComparisonBars(axCoverage,networkSizes, ...
     fullCoverageScore,restrictedCoverageScore, ...
     "Coverage score, C",style);
 
+axInformation = nexttile(layout,2);
+plotComparisonBars(axInformation,networkSizes, ...
+    fullInformationScore,restrictedInformationScore, ...
+    "Information score, I",style);
+
 lgd = legend(axCoverage,coverageHandles, ...
     ["Southern hemisphere","Restricted south-polar"], ...
-    "Location","none","Orientation","vertical", ...
-    "NumColumns",1,"Box","off");
+    "Location","none","Orientation","horizontal", ...
+    "NumColumns",2,"Box","off");
 lgd.FontName = style.fontName;
 lgd.FontSize = max(16,style.legendFontSize-2);
 lgd.FontWeight = "bold";
 lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
 
-axInformation = nexttile(layout,4,[2 1]);
-plotComparisonBars(axInformation,networkSizes, ...
-    fullInformationScore,restrictedInformationScore, ...
-    "Information score, I",style);
-
 metricsFile = fullfile(outputDirectory,"domain_comparison_metrics.eps");
-% One shared x label and an unused middle tile separate the two panels.
+% Use one shared x label beneath the two side-by-side comparison panels.
 xlabel(axCoverage,""); xlabel(axInformation,"");
 xlabel(layout,"Number of sensors, N_s");
 layout.XLabel.FontWeight = "bold";
-applyManuscriptTypography(metricsFig,string(metricsFile),7.0);
-layout.XLabel.FontSize = 12*7.0/style.manuscriptHalfWidthInches;
+% This figure is now intended for full-width manuscript placement.
+setappdata(metricsFig,"ManuscriptPlacementWidthInches", ...
+    style.manuscriptWidthInches);
+applyManuscriptTypography(metricsFig,string(metricsFile),8.5);
 layout.XLabel.FontWeight = "bold";
 layout.Units = "normalized";
-layout.OuterPosition = [0.035 0.025 0.93 0.955];
+layout.OuterPosition = [0.035 0.045 0.93 0.92];
 setappdata(metricsFig,"ManuscriptTypographyFinalized",true);
-exportManuscriptFigure(metricsFig,string(metricsFile),7.0,8.6);
+exportManuscriptFigure(metricsFig,string(metricsFile),8.5,4.6);
 
 %% Common-budget manuscript table
 
