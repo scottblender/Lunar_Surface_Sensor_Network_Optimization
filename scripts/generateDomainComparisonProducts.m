@@ -203,6 +203,8 @@ layout.XLabel.FontWeight = "bold";
 % This figure is now intended for full-width manuscript placement.
 setappdata(metricsFig,"ManuscriptPlacementWidthInches", ...
     style.manuscriptWidthInches);
+% Increase the final manuscript typography for this compact two-panel figure.
+setappdata(metricsFig,"ManuscriptTypographyScale",1.20);
 applyManuscriptTypography(metricsFig,string(metricsFile),8.5);
 layout.XLabel.FontWeight = "bold";
 layout.Units = "normalized";
