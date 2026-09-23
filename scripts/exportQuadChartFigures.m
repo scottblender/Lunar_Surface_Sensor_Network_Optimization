@@ -177,7 +177,7 @@ layout.Units = "normalized";
 
 % Reserve a generous frame around the tiled region and leave a dedicated
 % band below it for the two shared colorbars.
-layout.OuterPosition = [0.055 0.19 0.89 0.76];
+layout.OuterPosition = [0.025 0.18 0.95 0.78];
 
 mapStyle = style;
 mapStyle.axisFontSize = 14;
@@ -192,6 +192,11 @@ for networkIndex = 1:numel(networkSizes)
     terrainLimits = plotPolarSelectionMap( ...
         ax,frequency(:,:,networkIndex), ...
         latitudeEdges,longitudeEdges,dem,mapStyle);
+
+    % Enlarge the polar disk within each tile while retaining enough room
+    % for the cardinal-longitude labels drawn just outside the unit circle.
+    xlim(ax,[-1.09 1.09]);
+    ylim(ax,[-1.09 1.09]);
 
     title(ax,sprintf("N_s = %d",networkSizes(networkIndex)), ...
         "FontName",style.fontName, ...
