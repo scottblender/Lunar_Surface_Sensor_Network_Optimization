@@ -36,8 +36,8 @@ defaults.restrictedResultsDirectory = "";
 defaults.restrictedStudyName = "";
 defaults.comparisonNetworkSize = 10;
 defaults.comparisonObjective = "information";
-defaults.figure10SizeInches = [8.8 7.0];
-defaults.figure13SizeInches = [12.0 6.6];
+defaults.figure10SizeInches = [9.2 8.0];
+defaults.figure13SizeInches = [12.4 8.2];
 defaults.keepFiguresOpen = true;
 config = mergeStruct(defaults,userConfig);
 
@@ -148,9 +148,8 @@ end
 function fig = buildSelectionFrequencyFigure(plotInfo,campaign,style,figureSize)
 % Presentation layout for manuscript Figure 10.
 %
-% Manual axes placement is used instead of tiledlayout so the four circular
-% maps, their N_s labels, cardinal labels, and shared colorbars never compete
-% for the same layout space during PDF export.
+% A 2x2 tiled layout is retained, but with substantially more outer padding
+% and tile spacing so the circular maps and longitude labels do not crowd.
 
 latitudeEdges = double(plotInfo.latitudeEdges);
 longitudeEdges = double(plotInfo.longitudeEdges);
@@ -170,39 +169,27 @@ fig = figure( ...
     "Renderer","opengl", ...
     "InvertHardcopy","off");
 
-% Keep the polar maps square in physical units. The explicit positions also
-% leave dedicated vertical space for titles and the two colorbars.
-mapPositions = [ ...
-    0.08 0.56 0.36 0.28; ...
-    0.56 0.56 0.36 0.28; ...
-    0.08 0.21 0.36 0.28; ...
-    0.56 0.21 0.36 0.28];
+layout = tiledlayout(fig,2,2, ...
+    "TileSpacing","loose", ...
+    "Padding","loose");
+layout.Units = "normalized";
+layout.OuterPosition = [0.035 0.18 0.93 0.78];
 
 mapStyle = style;
-mapStyle.axisFontSize = 15;
-mapStyle.labelFontSize = 17;
+mapStyle.axisFontSize = 14;
+mapStyle.labelFontSize = 16;
 
 terrainLimits = [0 1];
 lastAxis = gobjects(1);
 
 for networkIndex = 1:numel(networkSizes)
-    ax = axes(fig, ...
-        "Units","normalized", ...
-        "Position",mapPositions(networkIndex,:));
+    ax = nexttile(layout,networkIndex);
 
     terrainLimits = plotPolarSelectionMap( ...
         ax,frequency(:,:,networkIndex), ...
         latitudeEdges,longitudeEdges,dem,mapStyle);
 
-    % Put the N_s label in a separate annotation box rather than using an
-    % axes title. This prevents overlap with the 0-deg E longitude label.
-    box = mapPositions(networkIndex,:);
-    annotation(fig,"textbox", ...
-        [box(1) box(2)+box(4)+0.030 box(3) 0.040], ...
-        "String",sprintf("N_s = %d",networkSizes(networkIndex)), ...
-        "HorizontalAlignment","center", ...
-        "VerticalAlignment","middle", ...
-        "LineStyle","none", ...
+    title(ax,sprintf("N_s = %d",networkSizes(networkIndex)), ...
         "FontName",style.fontName, ...
         "FontSize",18, ...
         "FontWeight","bold", ...
@@ -215,19 +202,19 @@ end
 frequencyAxes = axes(fig, ...
     "Visible","off", ...
     "Units","normalized", ...
-    "Position",[0.07 0.065 0.38 0.01]);
+    "Position",[0.07 0.055 0.38 0.01]);
 colormap(frequencyAxes,colormap(lastAxis));
 clim(frequencyAxes,[0 100]);
 frequencyBar = colorbar(frequencyAxes,"southoutside");
 frequencyBar.Units = "normalized";
-frequencyBar.Position = [0.07 0.065 0.38 0.028];
+frequencyBar.Position = [0.07 0.055 0.38 0.026];
 frequencyBar.Ticks = 0:20:100;
 frequencyBar.FontName = style.fontName;
-frequencyBar.FontSize = 14;
+frequencyBar.FontSize = 13;
 frequencyBar.FontWeight = "bold";
 frequencyBar.Label.String = "Selection frequency (%)";
 frequencyBar.Label.FontName = style.fontName;
-frequencyBar.Label.FontSize = 16;
+frequencyBar.Label.FontSize = 15;
 frequencyBar.Label.FontWeight = "bold";
 frequencyAxes.Visible = "off";
 
@@ -235,18 +222,18 @@ frequencyAxes.Visible = "off";
 terrainAxes = axes(fig, ...
     "Visible","off", ...
     "Units","normalized", ...
-    "Position",[0.55 0.065 0.38 0.01]);
+    "Position",[0.55 0.055 0.38 0.01]);
 colormap(terrainAxes,repmat(linspace(0.30,0.96,256).',1,3));
 clim(terrainAxes,terrainLimits);
 elevationBar = colorbar(terrainAxes,"southoutside");
 elevationBar.Units = "normalized";
-elevationBar.Position = [0.55 0.065 0.38 0.028];
+elevationBar.Position = [0.55 0.055 0.38 0.026];
 elevationBar.FontName = style.fontName;
-elevationBar.FontSize = 14;
+elevationBar.FontSize = 13;
 elevationBar.FontWeight = "bold";
 elevationBar.Label.String = "Elevation (km)";
 elevationBar.Label.FontName = style.fontName;
-elevationBar.Label.FontSize = 16;
+elevationBar.Label.FontSize = 15;
 elevationBar.Label.FontWeight = "bold";
 terrainAxes.Visible = "off";
 
@@ -258,8 +245,8 @@ function fig = buildConstraintScreeningFigure( ...
     fullPercent,polarPercent,style,figureSize)
 % Presentation layout for manuscript Figure 13.
 %
-% Explicit axes/legend positions keep the 20 RSO labels readable and prevent
-% the legend, domain headings, bars, and shared x-axis label from colliding.
+% The figure is intentionally taller than the manuscript version so the 20
+% RSO rows remain distinct after insertion into a PowerPoint quad chart.
 
 categoryNames = [ ...
     "Below local horizon", ...
@@ -288,20 +275,19 @@ fig = figure( ...
     "Renderer","painters", ...
     "InvertHardcopy","off");
 
+layout = tiledlayout(fig,1,2, ...
+    "TileSpacing","loose", ...
+    "Padding","loose");
+layout.Units = "normalized";
+layout.OuterPosition = [0.035 0.09 0.93 0.80];
+
 domains = ["Southern hemisphere","Restricted south-polar"];
 values = {fullPercent,polarPercent};
-axisPositions = [ ...
-    0.105 0.16 0.405 0.64; ...
-    0.565 0.16 0.405 0.64];
-
-legendHandle = gobjects(1);
 
 for domainIndex = 1:2
-    ax = axes(fig, ...
-        "Units","normalized", ...
-        "Position",axisPositions(domainIndex,:));
+    ax = nexttile(layout,domainIndex);
 
-    bars = barh(ax,1:numberOfRsos,values{domainIndex},0.76, ...
+    bars = barh(ax,1:numberOfRsos,values{domainIndex},0.68, ...
         "stacked","EdgeColor","none");
 
     for categoryIndex = 1:numel(categoryNames)
@@ -317,23 +303,17 @@ for domainIndex = 1:2
     end
 
     ax.FontName = style.fontName;
-    ax.FontSize = 13;
+    ax.FontSize = 11.5;
     ax.FontWeight = "bold";
     ax.TickDir = "out";
     ax.Box = "on";
     xlim(ax,[0 100]);
-    ylim(ax,[0.4 numberOfRsos+0.6]);
+    ylim(ax,[0.35 numberOfRsos+0.65]);
     xticks(ax,0:25:100);
 
-    box = axisPositions(domainIndex,:);
-    annotation(fig,"textbox", ...
-        [box(1) 0.815 box(3) 0.050], ...
-        "String",domains(domainIndex), ...
-        "HorizontalAlignment","center", ...
-        "VerticalAlignment","middle", ...
-        "LineStyle","none", ...
+    title(ax,domains(domainIndex), ...
         "FontName",style.fontName, ...
-        "FontSize",19, ...
+        "FontSize",18, ...
         "FontWeight","bold");
 
     if domainIndex == 1
@@ -341,23 +321,17 @@ for domainIndex = 1:2
             "NumColumns",3, ...
             "Orientation","horizontal", ...
             "Box","off");
-        legendHandle.Units = "normalized";
-        legendHandle.Position = [0.275 0.885 0.45 0.085];
         legendHandle.FontName = style.fontName;
-        legendHandle.FontSize = 13;
+        legendHandle.FontSize = 12;
         legendHandle.FontWeight = "bold";
         legendHandle.AutoUpdate = "off";
+        legendHandle.Layout.Tile = "north";
     end
 end
 
-annotation(fig,"textbox", ...
-    [0.28 0.055 0.44 0.055], ...
-    "String","Measurement opportunities (%)", ...
-    "HorizontalAlignment","center", ...
-    "VerticalAlignment","middle", ...
-    "LineStyle","none", ...
+xlabel(layout,"Measurement opportunities (%)", ...
     "FontName",style.fontName, ...
-    "FontSize",18, ...
+    "FontSize",17, ...
     "FontWeight","bold");
 
 applyPresentationFont(fig,style.fontName);
