@@ -37,7 +37,7 @@ defaults.restrictedStudyName = "";
 defaults.comparisonNetworkSize = 10;
 defaults.comparisonObjective = "information";
 defaults.pngResolution = 600;
-defaults.figure10SizeInches = [12.8 4.6];
+defaults.figure10SizeInches = [10.8 7.2];
 defaults.figure13SizeInches = [12.8 5.4];
 defaults.keepFiguresOpen = true;
 config = mergeStruct(defaults,userConfig);
@@ -148,7 +148,7 @@ cleanupScratch(scratchDirectory);
 end
 
 function fig = buildSelectionFrequencyFigure(plotInfo,campaign,style,figureSize)
-% Use a 1x4 layout because a quad-chart panel is much wider than a paper page.
+% Use a balanced 2x2 layout so each polar map remains readable in a quad-chart panel.
 
 latitudeEdges = double(plotInfo.latitudeEdges);
 longitudeEdges = double(plotInfo.longitudeEdges);
@@ -168,10 +168,18 @@ fig = figure( ...
     "Renderer","opengl", ...
     "InvertHardcopy","off");
 
-layout = tiledlayout(fig,1,numel(networkSizes), ...
-    "TileSpacing","compact","Padding","compact");
+% A 2x2 arrangement gives each circular map a nearly square tile and avoids
+% the crowding that occurs in a 1x4 PowerPoint layout.
+layout = tiledlayout(fig,2,2, ...
+    "TileSpacing","loose","Padding","compact");
 layout.Units = "normalized";
-layout.OuterPosition = [0.005 0.20 0.99 0.79];
+layout.OuterPosition = [0.035 0.20 0.93 0.775];
+
+% Presentation-specific map typography. These values remain readable after
+% insertion into a half-slide quadrant without crowding the longitude labels.
+mapStyle = style;
+mapStyle.axisFontSize = 16;
+mapStyle.labelFontSize = 18;
 
 terrainLimits = [0 1];
 lastAxis = gobjects(1);
@@ -179,10 +187,10 @@ for networkIndex = 1:numel(networkSizes)
     ax = nexttile(layout,networkIndex);
     terrainLimits = plotPolarSelectionMap( ...
         ax,frequency(:,:,networkIndex), ...
-        latitudeEdges,longitudeEdges,dem,style);
+        latitudeEdges,longitudeEdges,dem,mapStyle);
     title(ax,sprintf("N_s = %d",networkSizes(networkIndex)), ...
         "FontName",style.fontName, ...
-        "FontSize",22, ...
+        "FontSize",20, ...
         "FontWeight","bold", ...
         "Interpreter","tex");
     lastAxis = ax;
@@ -192,19 +200,19 @@ end
 frequencyAxes = axes(fig, ...
     "Visible","off", ...
     "Units","normalized", ...
-    "Position",[0.07 0.075 0.38 0.01]);
+    "Position",[0.08 0.070 0.36 0.01]);
 colormap(frequencyAxes,colormap(lastAxis));
 clim(frequencyAxes,[0 100]);
 frequencyBar = colorbar(frequencyAxes,"southoutside");
 frequencyBar.Units = "normalized";
-frequencyBar.Position = [0.07 0.075 0.38 0.035];
+frequencyBar.Position = [0.08 0.070 0.36 0.030];
 frequencyBar.Ticks = 0:20:100;
 frequencyBar.FontName = style.fontName;
-frequencyBar.FontSize = 18;
+frequencyBar.FontSize = 15;
 frequencyBar.FontWeight = "bold";
 frequencyBar.Label.String = "Selection frequency (%)";
 frequencyBar.Label.FontName = style.fontName;
-frequencyBar.Label.FontSize = 20;
+frequencyBar.Label.FontSize = 17;
 frequencyBar.Label.FontWeight = "bold";
 frequencyAxes.Visible = "off";
 
@@ -212,18 +220,18 @@ frequencyAxes.Visible = "off";
 terrainAxes = axes(fig, ...
     "Visible","off", ...
     "Units","normalized", ...
-    "Position",[0.55 0.075 0.38 0.01]);
+    "Position",[0.56 0.070 0.36 0.01]);
 colormap(terrainAxes,repmat(linspace(0.30,0.96,256).',1,3));
 clim(terrainAxes,terrainLimits);
 elevationBar = colorbar(terrainAxes,"southoutside");
 elevationBar.Units = "normalized";
-elevationBar.Position = [0.55 0.075 0.38 0.035];
+elevationBar.Position = [0.56 0.070 0.36 0.030];
 elevationBar.FontName = style.fontName;
-elevationBar.FontSize = 18;
+elevationBar.FontSize = 15;
 elevationBar.FontWeight = "bold";
 elevationBar.Label.String = "Elevation (km)";
 elevationBar.Label.FontName = style.fontName;
-elevationBar.Label.FontSize = 20;
+elevationBar.Label.FontSize = 17;
 elevationBar.Label.FontWeight = "bold";
 terrainAxes.Visible = "off";
 
