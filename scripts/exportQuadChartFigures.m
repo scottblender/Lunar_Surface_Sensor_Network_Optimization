@@ -36,7 +36,7 @@ defaults.restrictedResultsDirectory = "";
 defaults.restrictedStudyName = "";
 defaults.comparisonNetworkSize = 10;
 defaults.comparisonObjective = "information";
-defaults.figure10SizeInches = [11.5 9.0];
+defaults.figure10SizeInches = [13.0 10.0];
 defaults.figure13SizeInches = [12.4 8.2];
 defaults.keepFiguresOpen = true;
 config = mergeStruct(defaults,userConfig);
@@ -148,9 +148,9 @@ end
 function fig = buildSelectionFrequencyFigure(plotInfo,campaign,style,figureSize)
 % Presentation layout for manuscript Figure 10.
 %
-% Use a 3x3 tiled layout with the middle row and middle column intentionally
-% left empty. This creates substantially more separation between the four
-% polar maps while retaining tiledlayout for robust sizing/export.
+% Retain the 2x2 tiled layout so the four polar maps remain large. The
+% presentation canvas is enlarged and generous loose tile spacing is used
+% so the cardinal labels and N_s headings do not crowd adjacent panels.
 
 latitudeEdges = double(plotInfo.latitudeEdges);
 longitudeEdges = double(plotInfo.longitudeEdges);
@@ -170,15 +170,14 @@ fig = figure( ...
     "Renderer","opengl", ...
     "InvertHardcopy","off");
 
-% Corner tiles are used for the four maps. Tiles 2,4,5,6,8 remain empty and
-% act as explicit horizontal/vertical spacers.
-layout = tiledlayout(fig,3,3, ...
+layout = tiledlayout(fig,2,2, ...
     "TileSpacing","loose", ...
     "Padding","loose");
 layout.Units = "normalized";
-layout.OuterPosition = [0.045 0.19 0.91 0.77];
 
-mapTiles = [1 3 7 9];
+% Reserve a generous frame around the tiled region and leave a dedicated
+% band below it for the two shared colorbars.
+layout.OuterPosition = [0.055 0.19 0.89 0.76];
 
 mapStyle = style;
 mapStyle.axisFontSize = 14;
@@ -188,7 +187,7 @@ terrainLimits = [0 1];
 lastAxis = gobjects(1);
 
 for networkIndex = 1:numel(networkSizes)
-    ax = nexttile(layout,mapTiles(networkIndex));
+    ax = nexttile(layout,networkIndex);
 
     terrainLimits = plotPolarSelectionMap( ...
         ax,frequency(:,:,networkIndex), ...
@@ -199,7 +198,6 @@ for networkIndex = 1:numel(networkSizes)
         "FontSize",18, ...
         "FontWeight","bold", ...
         "Interpreter","tex");
-
     lastAxis = ax;
 end
 
@@ -207,12 +205,12 @@ end
 frequencyAxes = axes(fig, ...
     "Visible","off", ...
     "Units","normalized", ...
-    "Position",[0.08 0.055 0.36 0.01]);
+    "Position",[0.075 0.050 0.37 0.01]);
 colormap(frequencyAxes,colormap(lastAxis));
 clim(frequencyAxes,[0 100]);
 frequencyBar = colorbar(frequencyAxes,"southoutside");
 frequencyBar.Units = "normalized";
-frequencyBar.Position = [0.08 0.055 0.36 0.026];
+frequencyBar.Position = [0.075 0.050 0.37 0.026];
 frequencyBar.Ticks = 0:20:100;
 frequencyBar.FontName = style.fontName;
 frequencyBar.FontSize = 13;
@@ -227,12 +225,12 @@ frequencyAxes.Visible = "off";
 terrainAxes = axes(fig, ...
     "Visible","off", ...
     "Units","normalized", ...
-    "Position",[0.56 0.055 0.36 0.01]);
+    "Position",[0.555 0.050 0.37 0.01]);
 colormap(terrainAxes,repmat(linspace(0.30,0.96,256).',1,3));
 clim(terrainAxes,terrainLimits);
 elevationBar = colorbar(terrainAxes,"southoutside");
 elevationBar.Units = "normalized";
-elevationBar.Position = [0.56 0.055 0.36 0.026];
+elevationBar.Position = [0.555 0.050 0.37 0.026];
 elevationBar.FontName = style.fontName;
 elevationBar.FontSize = 13;
 elevationBar.FontWeight = "bold";
