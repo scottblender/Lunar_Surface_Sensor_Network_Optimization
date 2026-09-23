@@ -36,9 +36,8 @@ defaults.restrictedResultsDirectory = "";
 defaults.restrictedStudyName = "";
 defaults.comparisonNetworkSize = 10;
 defaults.comparisonObjective = "information";
-defaults.figure10SizeInches = [13.0 10.0];
+defaults.figure10SizeInches = [11.0 9.0];
 defaults.figure13SizeInches = [12.4 8.2];
-defaults.keepFiguresOpen = true;
 config = mergeStruct(defaults,userConfig);
 
 config.outputDirectory = string(config.outputDirectory);
@@ -51,6 +50,13 @@ config.restrictedStudyName = string(config.restrictedStudyName);
 if ~isfolder(config.outputDirectory)
     mkdir(config.outputDirectory);
 end
+
+% Keep the export workflow non-interactive: helper routines still create
+% MATLAB figures internally, but none of them should open preview windows.
+previousFigureVisibility = get(groot,"defaultFigureVisible");
+set(groot,"defaultFigureVisible","off");
+visibilityCleanup = onCleanup(@()set(groot, ...
+    "defaultFigureVisible",previousFigureVisibility));
 
 %% Load the same campaigns used by the manuscript
 
@@ -118,19 +124,15 @@ figure13Base = fullfile(config.outputDirectory, ...
 figure13Files = exportPowerPointFigure( ...
     figure13,figure13Base,config.figure13SizeInches);
 
-if ~config.keepFiguresOpen
-    close(figure10);
-    close(figure13);
-end
+close(figure10);
+close(figure13);
 
 products = struct();
 products.outputDirectory = config.outputDirectory;
 products.figure10 = struct( ...
-    "figure",figure10, ...
     "files",figure10Files, ...
     "selectionPercent",networkData.information.selectionPercent);
 products.figure13 = struct( ...
-    "figure",figure13, ...
     "files",figure13Files, ...
     "fullPercent",screeningData.fullPercent, ...
     "polarPercent",screeningData.polarPercent);
@@ -143,6 +145,7 @@ fprintf("Figure 13 PDF: %s\n",figure13Files.pdf);
 
 clear cleanupObject;
 cleanupScratch(scratchDirectory);
+clear visibilityCleanup;
 end
 
 function fig = buildSelectionFrequencyFigure(plotInfo,campaign,style,figureSize)
@@ -168,16 +171,17 @@ fig = figure( ...
     "Units","inches", ...
     "Position",[1 1 figureSize], ...
     "Renderer","opengl", ...
-    "InvertHardcopy","off");
+    "InvertHardcopy","off", ...
+    "Visible","off");
 
 layout = tiledlayout(fig,2,2, ...
     "TileSpacing","loose", ...
-    "Padding","loose");
+    "Padding","compact");
 layout.Units = "normalized";
 
-% Reserve a generous frame around the tiled region and leave a dedicated
-% band below it for the two shared colorbars.
-layout.OuterPosition = [0.025 0.18 0.95 0.78];
+% Keep generous spacing between tiles, but do not waste canvas area on outer
+% tiled-layout padding. The bottom band is reserved for the shared colorbars.
+layout.OuterPosition = [0.025 0.145 0.95 0.835];
 
 mapStyle = style;
 mapStyle.axisFontSize = 14;
@@ -195,8 +199,8 @@ for networkIndex = 1:numel(networkSizes)
 
     % Enlarge the polar disk within each tile while retaining enough room
     % for the cardinal-longitude labels drawn just outside the unit circle.
-    xlim(ax,[-1.09 1.09]);
-    ylim(ax,[-1.09 1.09]);
+    xlim(ax,[-1.065 1.065]);
+    ylim(ax,[-1.065 1.065]);
 
     title(ax,sprintf("N_s = %d",networkSizes(networkIndex)), ...
         "FontName",style.fontName, ...
@@ -210,12 +214,12 @@ end
 frequencyAxes = axes(fig, ...
     "Visible","off", ...
     "Units","normalized", ...
-    "Position",[0.075 0.050 0.37 0.01]);
+    "Position",[0.075 0.040 0.37 0.01]);
 colormap(frequencyAxes,colormap(lastAxis));
 clim(frequencyAxes,[0 100]);
 frequencyBar = colorbar(frequencyAxes,"southoutside");
 frequencyBar.Units = "normalized";
-frequencyBar.Position = [0.075 0.050 0.37 0.026];
+frequencyBar.Position = [0.075 0.040 0.37 0.026];
 frequencyBar.Ticks = 0:20:100;
 frequencyBar.FontName = style.fontName;
 frequencyBar.FontSize = 13;
@@ -230,12 +234,12 @@ frequencyAxes.Visible = "off";
 terrainAxes = axes(fig, ...
     "Visible","off", ...
     "Units","normalized", ...
-    "Position",[0.555 0.050 0.37 0.01]);
+    "Position",[0.555 0.040 0.37 0.01]);
 colormap(terrainAxes,repmat(linspace(0.30,0.96,256).',1,3));
 clim(terrainAxes,terrainLimits);
 elevationBar = colorbar(terrainAxes,"southoutside");
 elevationBar.Units = "normalized";
-elevationBar.Position = [0.555 0.050 0.37 0.026];
+elevationBar.Position = [0.555 0.040 0.37 0.026];
 elevationBar.FontName = style.fontName;
 elevationBar.FontSize = 13;
 elevationBar.FontWeight = "bold";
@@ -281,7 +285,8 @@ fig = figure( ...
     "Units","inches", ...
     "Position",[1 1 figureSize], ...
     "Renderer","painters", ...
-    "InvertHardcopy","off");
+    "InvertHardcopy","off", ...
+    "Visible","off");
 
 layout = tiledlayout(fig,1,2, ...
     "TileSpacing","loose", ...
