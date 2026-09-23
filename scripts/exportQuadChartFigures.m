@@ -6,8 +6,8 @@ function products = exportQuadChartFigures(userConfig)
 % rather than for LaTeX/EPS placement.
 %
 % Outputs:
-%   quadchart_figure10_selection_frequency.svg/.pdf/.png
-%   quadchart_figure13_constraint_screening.svg/.pdf/.png
+%   quadchart_figure10_selection_frequency.pdf/.png
+%   quadchart_figure13_constraint_screening.pdf/.png
 %
 % Example:
 %   products = exportQuadChartFigures();
@@ -139,8 +139,8 @@ products.figure13 = struct( ...
 fprintf("\n============================================================\n");
 fprintf("Quad-chart figure export complete\n");
 fprintf("============================================================\n");
-fprintf("Figure 10 SVG: %s\n",figure10Files.svg);
-fprintf("Figure 13 SVG: %s\n",figure13Files.svg);
+fprintf("Figure 10 PDF: %s\n",figure10Files.pdf);
+fprintf("Figure 13 PDF: %s\n",figure13Files.pdf);
 fprintf("PNG fallbacks are exported at %d dpi.\n",config.pngResolution);
 
 clear cleanupObject;
@@ -329,7 +329,7 @@ drawnow;
 end
 
 function files = exportPowerPointFigure(fig,baseFile,figureSize,pngResolution)
-% Export an SVG for PowerPoint, a vector PDF backup, and a high-DPI PNG.
+% Export a vector PDF for conversion to SVG and a high-DPI PNG fallback.
 
 fig.Color = "white";
 fig.InvertHardcopy = "off";
@@ -341,14 +341,12 @@ fig.PaperPosition = [0 0 figureSize];
 fig.PaperPositionMode = "manual";
 drawnow;
 
-svgFile = string(baseFile) + ".svg";
 pdfFile = string(baseFile) + ".pdf";
 pngFile = string(baseFile) + ".png";
 
-% SVG is the preferred PowerPoint format because text and linework remain sharp.
-print(fig,char(svgFile),"-dsvg","-painters");
-
-% PDF is a vector backup for editing/conversion workflows.
+% PDF is the primary vector output. Direct MATLAB SVG export can be very
+% slow for the polar maps because each terrain/selection sector is a separate
+% vector object; converting this PDF to SVG externally is much faster.
 exportgraphics(fig,char(pdfFile), ...
     "ContentType","vector", ...
     "BackgroundColor","white");
@@ -358,7 +356,7 @@ exportgraphics(fig,char(pngFile), ...
     "Resolution",pngResolution, ...
     "BackgroundColor","white");
 
-files = struct("svg",svgFile,"pdf",pdfFile,"png",pngFile);
+files = struct("pdf",pdfFile,"png",pngFile);
 end
 
 function applyPresentationFont(fig,fontName)
