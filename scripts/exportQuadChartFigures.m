@@ -8,8 +8,8 @@ function products = exportQuadChartFigures(userConfig)
 %
 % Outputs:
 %   quadchart_figure10_selection_table.xlsx
-%   quadchart_candidate_discretization.pdf
-%   quadchart_clps_design_domain.pdf
+%   quadchart_candidate_discretization.png
+%   quadchart_clps_design_domain.png
 %   quadchart_figure13_constraint_screening.pdf
 %
 % Example:
@@ -44,6 +44,7 @@ defaults.candidateDiscretizationSizeInches = [7.8 7.2];
 defaults.candidateDisplayLatitudeBinDeg = 5;
 defaults.candidateDisplayLongitudeBinDeg = 10;
 defaults.clpsFigureSizeInches = [12.0 7.6];
+defaults.rasterResolutionDpi = 300;
 defaults.figure13SizeInches = [12.4 8.2];
 config = mergeStruct(defaults,userConfig);
 
@@ -131,8 +132,9 @@ candidateFigure = buildCandidateDiscretizationFigure( ...
 
 candidateBase = fullfile(config.outputDirectory, ...
     "quadchart_candidate_discretization");
-candidateFiles = exportPowerPointFigure( ...
-    candidateFigure,candidateBase,config.candidateDiscretizationSizeInches);
+candidateFiles = exportPowerPointImage( ...
+    candidateFigure,candidateBase,config.candidateDiscretizationSizeInches, ...
+    config.rasterResolutionDpi);
 
 close(candidateFigure);
 
@@ -144,8 +146,9 @@ clpsInfo = plotClpsDesignDomain(clpsConfig);
 
 clpsBase = fullfile(config.outputDirectory, ...
     "quadchart_clps_design_domain");
-clpsFiles = exportPowerPointFigure( ...
-    clpsInfo.figure,clpsBase,config.clpsFigureSizeInches);
+clpsFiles = exportPowerPointImage( ...
+    clpsInfo.figure,clpsBase,config.clpsFigureSizeInches, ...
+    config.rasterResolutionDpi);
 
 if isgraphics(clpsInfo.figure)
     close(clpsInfo.figure);
@@ -183,8 +186,8 @@ fprintf("\n============================================================\n");
 fprintf("Quad-chart figure export complete\n");
 fprintf("============================================================\n");
 fprintf("Figure 10 raw table: %s\n",figure10TableFile);
-fprintf("Candidate discretization PDF: %s\n",candidateFiles.pdf);
-fprintf("CLPS design-domain PDF: %s\n",clpsFiles.pdf);
+fprintf("Candidate discretization PNG: %s\n",candidateFiles.png);
+fprintf("CLPS design-domain PNG: %s\n",clpsFiles.png);
 fprintf("Figure 13 PDF: %s\n",figure13Files.pdf);
 
 clear cleanupObject;
@@ -503,6 +506,25 @@ xlabel(layout,"Measurement opportunities (%)", ...
 
 applyPresentationFont(fig,style.fontName);
 drawnow;
+end
+
+function files = exportPowerPointImage(fig,baseFile,figureSize,resolutionDpi)
+% Export DEM-heavy figures as high-resolution raster PNGs for PowerPoint.
+% Raster export is much faster than converting dense surface/patch graphics
+% into thousands of vector primitives.
+
+fig.Color = "white";
+fig.InvertHardcopy = "off";
+fig.Units = "inches";
+fig.Position(3:4) = figureSize;
+drawnow;
+
+pngFile = string(baseFile) + ".png";
+exportgraphics(fig,char(pngFile), ...
+    "Resolution",resolutionDpi, ...
+    "BackgroundColor","white");
+
+files = struct("png",pngFile);
 end
 
 function files = exportPowerPointFigure(fig,baseFile,figureSize)
