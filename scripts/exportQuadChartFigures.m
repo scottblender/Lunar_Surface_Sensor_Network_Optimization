@@ -439,14 +439,6 @@ for networkIndex = 1:numel(networkSizes)
     xlim(ax,[-1.065 1.065]);
     ylim(ax,[-1.065 1.065]);
 
-    t = title(ax,sprintf("N_s = %d",networkSizes(networkIndex)), ...
-        "FontName",style.fontName, ...
-        "FontSize",17, ...
-        "FontWeight","bold", ...
-        "Interpreter","tex");
-    t.Units = "normalized";
-    t.Position(2) = 1.20;
-
     lastAxis = ax;
 end
 
