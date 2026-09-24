@@ -43,7 +43,6 @@ defaults.topSelectionBins = 3;
 defaults.candidateDiscretizationSizeInches = [7.8 7.2];
 defaults.candidateDisplayLatitudeBinDeg = 5;
 defaults.candidateDisplayLongitudeBinDeg = 10;
-defaults.clpsFigureSizeInches = [12.0 7.6];
 defaults.rasterResolutionDpi = 300;
 defaults.figure13SizeInches = [12.4 8.2];
 config = mergeStruct(defaults,userConfig);
@@ -146,8 +145,15 @@ clpsInfo = plotClpsDesignDomain(clpsConfig);
 
 clpsBase = fullfile(config.outputDirectory, ...
     "quadchart_clps_design_domain");
+
+% plotClpsDesignDomain lays out its callout boxes, leaders, legend, colorbar,
+% and polar map in physical points and then resizes the figure to the exact
+% content bounds. Preserve that computed size here; forcing it back to a
+% fixed 12 x 7.6 in canvas distorts the annotation layout and clips callouts.
+clpsInfo.figure.Units = "inches";
+clpsFigureSize = clpsInfo.figure.Position(3:4);
 clpsFiles = exportPowerPointImage( ...
-    clpsInfo.figure,clpsBase,config.clpsFigureSizeInches, ...
+    clpsInfo.figure,clpsBase,clpsFigureSize, ...
     config.rasterResolutionDpi);
 
 if isgraphics(clpsInfo.figure)
