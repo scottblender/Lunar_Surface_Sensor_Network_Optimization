@@ -8,6 +8,8 @@ function products = exportQuadChartFigures(userConfig)
 %
 % Outputs:
 %   quadchart_figure10_selection_table.xlsx
+%   quadchart_synthetic_dem.png
+%   quadchart_sensor_selection_distribution.png
 %   quadchart_candidate_discretization.png
 %   quadchart_clps_design_domain.png
 %   quadchart_figure13_constraint_screening.pdf
@@ -40,6 +42,8 @@ defaults.restrictedStudyName = "";
 defaults.comparisonNetworkSize = 10;
 defaults.comparisonObjective = "information";
 defaults.topSelectionBins = 3;
+defaults.syntheticDemSizeInches = [10.0 5.4];
+defaults.sensorSelectionSizeInches = [11.0 9.0];
 defaults.candidateDiscretizationSizeInches = [7.8 7.2];
 defaults.candidateDisplayLatitudeBinDeg = 5;
 defaults.candidateDisplayLongitudeBinDeg = 10;
@@ -122,6 +126,32 @@ writetable(selectionSummaryTable,figure10TableFile);
 fprintf("\nFigure 10 selection-frequency summary table:\n");
 disp(selectionSummaryTable);
 
+%% Synthetic DEM -- PowerPoint visual
+
+syntheticDemFigure = buildSyntheticDemFigure( ...
+    fullCampaign,style,config.syntheticDemSizeInches);
+
+syntheticDemBase = fullfile(config.outputDirectory, ...
+    "quadchart_synthetic_dem");
+syntheticDemFiles = exportPowerPointImage( ...
+    syntheticDemFigure,syntheticDemBase,config.syntheticDemSizeInches, ...
+    config.rasterResolutionDpi);
+
+close(syntheticDemFigure);
+
+%% Sensor-selection distribution -- PowerPoint visual
+
+sensorSelectionFigure = buildSensorSelectionDistributionFigure( ...
+    selectionData,fullCampaign,style,config.sensorSelectionSizeInches);
+
+sensorSelectionBase = fullfile(config.outputDirectory, ...
+    "quadchart_sensor_selection_distribution");
+sensorSelectionFiles = exportPowerPointImage( ...
+    sensorSelectionFigure,sensorSelectionBase, ...
+    config.sensorSelectionSizeInches,config.rasterResolutionDpi);
+
+close(sensorSelectionFigure);
+
 %% Candidate-site discretization -- PowerPoint visual
 
 candidateFigure = buildCandidateDiscretizationFigure( ...
@@ -179,6 +209,10 @@ products.figure10Table = struct( ...
     "file",string(figure10TableFile), ...
     "summaryTable",selectionSummaryTable, ...
     "selectionPercent",selectionData.selectionPercent);
+products.syntheticDem = struct( ...
+    "files",syntheticDemFiles);
+products.sensorSelectionDistribution = struct( ...
+    "files",sensorSelectionFiles);
 products.candidateDiscretization = struct( ...
     "files",candidateFiles);
 products.clpsDesignDomain = struct( ...
@@ -192,6 +226,8 @@ fprintf("\n============================================================\n");
 fprintf("Quad-chart figure export complete\n");
 fprintf("============================================================\n");
 fprintf("Figure 10 raw table: %s\n",figure10TableFile);
+fprintf("Synthetic DEM PNG: %s\n",syntheticDemFiles.png);
+fprintf("Sensor-selection distribution PNG: %s\n",sensorSelectionFiles.png);
 fprintf("Candidate discretization PNG: %s\n",candidateFiles.png);
 fprintf("CLPS design-domain PNG: %s\n",clpsFiles.png);
 fprintf("Figure 13 PDF: %s\n",figure13Files.pdf);
@@ -290,6 +326,169 @@ function label = formatSouthLatitudeBin(lowerEdge,upperEdge)
 southA = abs(lowerEdge);
 southB = abs(upperEdge);
 label = sprintf("%d--%d deg S",southA,southB);
+end
+
+function fig = buildSyntheticDemFigure(campaign,style,figureSize)
+% Export the synthetic lunar DEM alone as a clean PowerPoint-ready image.
+
+projectRoot = string(campaign.projectRoot);
+demFile = fullfile(projectRoot,"data","Synthetic_Lunar_DEM.mat");
+assert(isfile(demFile),"Synthetic DEM not found: %s",demFile);
+
+[dem,~] = digitalElevationModel.loadTriaxialLunarDem( ...
+    demFile,campaign.database.config.moon.radiusKm,24,48);
+
+longitudeDeg = linspace(0,360,721);
+latitudeDeg = linspace(-90,90,361);
+[longitudeMesh,latitudeMesh] = meshgrid(longitudeDeg,latitudeDeg);
+elevationKm = double(dem( ...
+    deg2rad(latitudeMesh),deg2rad(longitudeMesh)));
+
+fig = figure( ...
+    "Name","Quad chart - synthetic DEM", ...
+    "Color","white", ...
+    "Units","inches", ...
+    "Position",[1 1 figureSize], ...
+    "Renderer","opengl", ...
+    "InvertHardcopy","off", ...
+    "Visible","off");
+
+ax = axes(fig, ...
+    "Units","normalized", ...
+    "Position",[0.095 0.17 0.76 0.76]);
+
+imagesc(ax,longitudeDeg,latitudeDeg,elevationKm);
+ax.YDir = "normal";
+axis(ax,"tight");
+colormap(ax,turbo(256));
+
+ax.FontName = style.fontName;
+ax.FontSize = 15;
+ax.FontWeight = "bold";
+ax.LineWidth = 0.9;
+ax.TickDir = "out";
+ax.XTick = 0:60:360;
+ax.YTick = -90:30:90;
+
+xlabel(ax,"East longitude (deg)", ...
+    "FontName",style.fontName, ...
+    "FontSize",17, ...
+    "FontWeight","bold");
+ylabel(ax,"Latitude (deg)", ...
+    "FontName",style.fontName, ...
+    "FontSize",17, ...
+    "FontWeight","bold");
+
+cb = colorbar(ax);
+cb.Units = "normalized";
+cb.Position = [0.885 0.17 0.025 0.76];
+cb.FontName = style.fontName;
+cb.FontSize = 14;
+cb.FontWeight = "bold";
+cb.Label.String = "Elevation (km)";
+cb.Label.FontName = style.fontName;
+cb.Label.FontSize = 16;
+cb.Label.FontWeight = "bold";
+
+drawnow;
+end
+
+function fig = buildSensorSelectionDistributionFigure( ...
+    selectionData,campaign,style,figureSize)
+% Export the information-driven selection-frequency distribution as a
+% presentation-ready 2-by-2 polar-map figure.
+
+frequency = double(selectionData.selectionPercent);
+latitudeEdges = double(selectionData.latitudeEdges);
+longitudeEdges = double(selectionData.longitudeEdges);
+networkSizes = double(selectionData.networkSizes(:).');
+
+projectRoot = string(campaign.projectRoot);
+demFile = fullfile(projectRoot,"data","Synthetic_Lunar_DEM.mat");
+[dem,~] = digitalElevationModel.loadTriaxialLunarDem( ...
+    demFile,campaign.database.config.moon.radiusKm,24,48);
+
+fig = figure( ...
+    "Name","Quad chart - sensor-selection distribution", ...
+    "Color","white", ...
+    "Units","inches", ...
+    "Position",[1 1 figureSize], ...
+    "Renderer","opengl", ...
+    "InvertHardcopy","off", ...
+    "Visible","off");
+
+layout = tiledlayout(fig,2,2, ...
+    "TileSpacing","loose", ...
+    "Padding","compact");
+layout.Units = "normalized";
+layout.OuterPosition = [0.025 0.145 0.95 0.835];
+
+mapStyle = style;
+mapStyle.axisFontSize = 14;
+mapStyle.labelFontSize = 16;
+
+terrainLimits = [0 1];
+lastAxis = gobjects(1);
+
+for networkIndex = 1:numel(networkSizes)
+    ax = nexttile(layout,networkIndex);
+    terrainLimits = plotPolarSelectionMap( ...
+        ax,frequency(:,:,networkIndex), ...
+        latitudeEdges,longitudeEdges,dem,mapStyle);
+
+    xlim(ax,[-1.065 1.065]);
+    ylim(ax,[-1.065 1.065]);
+
+    t = title(ax,sprintf("N_s = %d",networkSizes(networkIndex)), ...
+        "FontName",style.fontName, ...
+        "FontSize",17, ...
+        "FontWeight","bold", ...
+        "Interpreter","tex");
+    t.Units = "normalized";
+    t.Position(2) = 1.20;
+
+    lastAxis = ax;
+end
+
+frequencyAxes = axes(fig, ...
+    "Visible","off", ...
+    "Units","normalized", ...
+    "Position",[0.075 0.040 0.37 0.01]);
+colormap(frequencyAxes,colormap(lastAxis));
+clim(frequencyAxes,[0 100]);
+frequencyBar = colorbar(frequencyAxes,"southoutside");
+frequencyBar.Units = "normalized";
+frequencyBar.Position = [0.075 0.040 0.37 0.026];
+frequencyBar.Ticks = 0:20:100;
+frequencyBar.FontName = style.fontName;
+frequencyBar.FontSize = 13;
+frequencyBar.FontWeight = "bold";
+frequencyBar.Label.String = "Selection frequency (%)";
+frequencyBar.Label.FontName = style.fontName;
+frequencyBar.Label.FontSize = 15;
+frequencyBar.Label.FontWeight = "bold";
+frequencyAxes.Visible = "off";
+
+terrainAxes = axes(fig, ...
+    "Visible","off", ...
+    "Units","normalized", ...
+    "Position",[0.555 0.040 0.37 0.01]);
+colormap(terrainAxes,repmat(linspace(0.30,0.96,256).',1,3));
+clim(terrainAxes,terrainLimits);
+elevationBar = colorbar(terrainAxes,"southoutside");
+elevationBar.Units = "normalized";
+elevationBar.Position = [0.555 0.040 0.37 0.026];
+elevationBar.FontName = style.fontName;
+elevationBar.FontSize = 13;
+elevationBar.FontWeight = "bold";
+elevationBar.Label.String = "Elevation (km)";
+elevationBar.Label.FontName = style.fontName;
+elevationBar.Label.FontSize = 15;
+elevationBar.Label.FontWeight = "bold";
+terrainAxes.Visible = "off";
+
+applyPresentationFont(fig,style.fontName);
+drawnow;
 end
 
 function fig = buildCandidateDiscretizationFigure( ...
