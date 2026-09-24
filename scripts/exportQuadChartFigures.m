@@ -8,6 +8,7 @@ function products = exportQuadChartFigures(userConfig)
 %
 % Outputs:
 %   quadchart_figure10_selection_table.xlsx
+%   quadchart_candidate_discretization.pdf
 %   quadchart_figure13_constraint_screening.pdf
 %
 % Example:
@@ -38,6 +39,9 @@ defaults.restrictedStudyName = "";
 defaults.comparisonNetworkSize = 10;
 defaults.comparisonObjective = "information";
 defaults.topSelectionBins = 3;
+defaults.candidateDiscretizationSizeInches = [7.8 7.2];
+defaults.candidateDisplayLatitudeBinDeg = 5;
+defaults.candidateDisplayLongitudeBinDeg = 10;
 defaults.figure13SizeInches = [12.4 8.2];
 config = mergeStruct(defaults,userConfig);
 
@@ -116,6 +120,20 @@ writetable(selectionSummaryTable,figure10TableFile);
 fprintf("\nFigure 10 selection-frequency summary table:\n");
 disp(selectionSummaryTable);
 
+%% Candidate-site discretization -- PowerPoint visual
+
+candidateFigure = buildCandidateDiscretizationFigure( ...
+    fullCampaign,style,config.candidateDiscretizationSizeInches, ...
+    config.candidateDisplayLatitudeBinDeg, ...
+    config.candidateDisplayLongitudeBinDeg);
+
+candidateBase = fullfile(config.outputDirectory, ...
+    "quadchart_candidate_discretization");
+candidateFiles = exportPowerPointFigure( ...
+    candidateFigure,candidateBase,config.candidateDiscretizationSizeInches);
+
+close(candidateFigure);
+
 %% Figure 13 -- constraint screening by RSO
 
 figure13 = buildConstraintScreeningFigure( ...
@@ -135,6 +153,8 @@ products.figure10Table = struct( ...
     "file",string(figure10TableFile), ...
     "summaryTable",selectionSummaryTable, ...
     "selectionPercent",selectionData.selectionPercent);
+products.candidateDiscretization = struct( ...
+    "files",candidateFiles);
 products.figure13 = struct( ...
     "files",figure13Files, ...
     "fullPercent",screeningData.fullPercent, ...
@@ -144,6 +164,7 @@ fprintf("\n============================================================\n");
 fprintf("Quad-chart figure export complete\n");
 fprintf("============================================================\n");
 fprintf("Figure 10 raw table: %s\n",figure10TableFile);
+fprintf("Candidate discretization PDF: %s\n",candidateFiles.pdf);
 fprintf("Figure 13 PDF: %s\n",figure13Files.pdf);
 
 clear cleanupObject;
@@ -240,6 +261,130 @@ function label = formatSouthLatitudeBin(lowerEdge,upperEdge)
 southA = abs(lowerEdge);
 southB = abs(upperEdge);
 label = sprintf("%d--%d deg S",southA,southB);
+end
+
+function fig = buildCandidateDiscretizationFigure( ...
+    campaign,style,figureSize,latitudeBinDeg,longitudeBinDeg)
+% Illustrate the lunar-surface candidate-site discretization on the DEM.
+%
+% The actual optimization candidate database is used. For presentation
+% clarity, one real candidate is displayed per coarse latitude/longitude bin;
+% this changes only the visualization density, not the optimization database.
+
+validateattributes(latitudeBinDeg,{'numeric'}, ...
+    {'scalar','positive','finite'});
+validateattributes(longitudeBinDeg,{'numeric'}, ...
+    {'scalar','positive','finite'});
+
+latitudeDeg = rad2deg(double( ...
+    campaign.database.candidates.latitudesRad(:)));
+longitudeDeg = mod(rad2deg(double( ...
+    campaign.database.candidates.longitudesRad(:))),360);
+
+valid = isfinite(latitudeDeg) & isfinite(longitudeDeg) & ...
+    latitudeDeg>=-90 & latitudeDeg<=0;
+latitudeDeg = latitudeDeg(valid);
+longitudeDeg = longitudeDeg(valid);
+
+displayIndices = selectCandidateDisplaySubset( ...
+    latitudeDeg,longitudeDeg,latitudeBinDeg,longitudeBinDeg);
+displayLatitudeDeg = latitudeDeg(displayIndices);
+displayLongitudeDeg = longitudeDeg(displayIndices);
+
+projectRoot = string(campaign.projectRoot);
+demFile = fullfile(projectRoot,"data","Synthetic_Lunar_DEM.mat");
+[dem,~] = digitalElevationModel.loadTriaxialLunarDem( ...
+    demFile,campaign.database.config.moon.radiusKm,24,48);
+
+fig = figure( ...
+    "Name","Quad chart - candidate discretization", ...
+    "Color","white", ...
+    "Units","inches", ...
+    "Position",[1 1 figureSize], ...
+    "Renderer","painters", ...
+    "InvertHardcopy","off", ...
+    "Visible","off");
+
+ax = axes(fig, ...
+    "Units","normalized", ...
+    "Position",[0.08 0.16 0.84 0.79]);
+
+mapStyle = style;
+mapStyle.axisFontSize = 15;
+mapStyle.labelFontSize = 17;
+
+% A zero-valued frequency field draws only the grayscale DEM and polar-grid
+% context from the manuscript plotting routine.
+latitudeEdges = -90:10:0;
+longitudeEdges = 0:30:360;
+dummyFrequency = zeros( ...
+    numel(latitudeEdges)-1,numel(longitudeEdges)-1);
+terrainLimits = plotPolarSelectionMap( ...
+    ax,dummyFrequency,latitudeEdges,longitudeEdges,dem,mapStyle);
+
+[xCandidate,yCandidate] = southPolarCoordinates( ...
+    displayLatitudeDeg,displayLongitudeDeg);
+
+hold(ax,"on");
+candidateHandle = scatter(ax,xCandidate,yCandidate,18, ...
+    [0.04 0.29 0.55],"filled", ...
+    "MarkerEdgeColor","white", ...
+    "LineWidth",0.35, ...
+    "DisplayName","Candidate sites");
+
+% Let the terrain fill the panel while retaining the cardinal labels.
+xlim(ax,[-1.10 1.10]);
+ylim(ax,[-1.10 1.10]);
+
+legend(ax,candidateHandle, ...
+    "Location","southoutside", ...
+    "Orientation","horizontal", ...
+    "Box","off", ...
+    "FontName",style.fontName, ...
+    "FontSize",13, ...
+    "FontWeight","bold");
+
+% Independent grayscale elevation scale.
+terrainAxes = axes(fig, ...
+    "Visible","off", ...
+    "Units","normalized", ...
+    "Position",[0.20 0.045 0.60 0.01]);
+colormap(terrainAxes,repmat(linspace(0.30,0.96,256).',1,3));
+clim(terrainAxes,terrainLimits);
+elevationBar = colorbar(terrainAxes,"southoutside");
+elevationBar.Units = "normalized";
+elevationBar.Position = [0.20 0.045 0.60 0.028];
+elevationBar.FontName = style.fontName;
+elevationBar.FontSize = 12;
+elevationBar.FontWeight = "bold";
+elevationBar.Label.String = "Elevation (km)";
+elevationBar.Label.FontName = style.fontName;
+elevationBar.Label.FontSize = 14;
+elevationBar.Label.FontWeight = "bold";
+terrainAxes.Visible = "off";
+
+applyPresentationFont(fig,style.fontName);
+drawnow;
+end
+
+function displayIndices = selectCandidateDisplaySubset( ...
+    latitudeDeg,longitudeDeg,latitudeBinDeg,longitudeBinDeg)
+% Retain one real candidate per coarse geographic display bin.
+
+latitudeBin = floor((latitudeDeg+90)./latitudeBinDeg);
+longitudeBin = floor(longitudeDeg./longitudeBinDeg);
+numberOfLongitudeBins = ceil(360/longitudeBinDeg);
+binKey = latitudeBin.*numberOfLongitudeBins + longitudeBin;
+
+[~,displayIndices] = unique(binKey,"stable");
+displayIndices = sort(displayIndices);
+end
+
+function [x,y] = southPolarCoordinates(latitudeDeg,longitudeDeg)
+% South-pole azimuthal projection used by plotPolarSelectionMap.
+radius = (latitudeDeg+90)./90;
+x = radius.*sind(longitudeDeg);
+y = radius.*cosd(longitudeDeg);
 end
 
 function fig = buildConstraintScreeningFigure( ...
