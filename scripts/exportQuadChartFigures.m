@@ -9,6 +9,7 @@ function products = exportQuadChartFigures(userConfig)
 % Outputs:
 %   quadchart_figure10_selection_table.xlsx
 %   quadchart_candidate_discretization.pdf
+%   quadchart_clps_design_domain.pdf
 %   quadchart_figure13_constraint_screening.pdf
 %
 % Example:
@@ -42,6 +43,7 @@ defaults.topSelectionBins = 3;
 defaults.candidateDiscretizationSizeInches = [7.8 7.2];
 defaults.candidateDisplayLatitudeBinDeg = 5;
 defaults.candidateDisplayLongitudeBinDeg = 10;
+defaults.clpsFigureSizeInches = [12.0 7.6];
 defaults.figure13SizeInches = [12.4 8.2];
 config = mergeStruct(defaults,userConfig);
 
@@ -134,6 +136,21 @@ candidateFiles = exportPowerPointFigure( ...
 
 close(candidateFigure);
 
+%% CLPS design-domain context -- PowerPoint visual
+
+clpsConfig = struct();
+clpsConfig.outputDirectory = scratchDirectory;
+clpsInfo = plotClpsDesignDomain(clpsConfig);
+
+clpsBase = fullfile(config.outputDirectory, ...
+    "quadchart_clps_design_domain");
+clpsFiles = exportPowerPointFigure( ...
+    clpsInfo.figure,clpsBase,config.clpsFigureSizeInches);
+
+if isgraphics(clpsInfo.figure)
+    close(clpsInfo.figure);
+end
+
 %% Figure 13 -- constraint screening by RSO
 
 figure13 = buildConstraintScreeningFigure( ...
@@ -155,6 +172,8 @@ products.figure10Table = struct( ...
     "selectionPercent",selectionData.selectionPercent);
 products.candidateDiscretization = struct( ...
     "files",candidateFiles);
+products.clpsDesignDomain = struct( ...
+    "files",clpsFiles);
 products.figure13 = struct( ...
     "files",figure13Files, ...
     "fullPercent",screeningData.fullPercent, ...
@@ -165,6 +184,7 @@ fprintf("Quad-chart figure export complete\n");
 fprintf("============================================================\n");
 fprintf("Figure 10 raw table: %s\n",figure10TableFile);
 fprintf("Candidate discretization PDF: %s\n",candidateFiles.pdf);
+fprintf("CLPS design-domain PDF: %s\n",clpsFiles.pdf);
 fprintf("Figure 13 PDF: %s\n",figure13Files.pdf);
 
 clear cleanupObject;
