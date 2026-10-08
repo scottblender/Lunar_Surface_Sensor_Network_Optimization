@@ -1,15 +1,14 @@
-%% testParallelGaMultiRun
-% Exercise three independent parallel GA runs using ONE shared process pool,
-% matching the normal pilot and production workflow.
-%
-% The test deliberately does NOT delete an existing process pool, restart
-% the pool between runs, or close it afterward. It checks the pool's identity,
-% callback FE accounting, reproducible seeds, and preserved GA incumbent.
-%
-% This is intentionally small: three independent 120-FE runs with a
-% 60-member population. The frozen objective database is shared on workers.
+function tests = testParallelGaMultiRun
+% TESTPARALLELGAMULTIRUN Function-based test of the shared process pool.
+% Keep setup, all three GA runs, and checks in the SAME function workspace.
+% MATLAB runtests treats sections in a script as independent tests with
+% separate workspaces, so this must not be a section-based script.
+tests = functiontests(localfunctions);
+end
 
-%% Project paths
+function testSharedPoolAcrossThreeGARuns(testCase)
+% Exercise the normal pilot/production policy: reuse ONE process pool.
+% Leave an existing pool untouched, and leave the pool open afterward.
 
 testDirectory = fileparts(mfilename("fullpath"));
 projectRoot = fileparts(testDirectory);
@@ -17,24 +16,20 @@ addpath(fullfile(projectRoot,"src"));
 addpath(fullfile(projectRoot,"scripts"));
 rehash path;
 
-%% Start or reuse one process pool before entering the driver
-
+% Use the caller's existing process pool. Create one only if absent.
 poolBefore = gcp("nocreate");
-
 if isempty(poolBefore)
     poolBefore = parpool("Processes");
 elseif isa(poolBefore,"parallel.ThreadPool")
     error("testParallelGaMultiRun:ThreadPool", ...
-        ["An existing thread-based pool is active. This test checks " ...
-         "process-pool reuse; close the thread pool and rerun."]);
+        ["A thread-based pool is active; this test requires a " ...
+         "process pool. Close the thread pool and rerun."]);
 end
+workerCount = poolBefore.NumWorkers;
+fprintf("Parallel GA smoke test using process pool: %d workers.\n", ...
+    workerCount);
 
-initialWorkerCount = poolBefore.NumWorkers;
-fprintf("Parallel GA smoke test using existing pool: %d workers.\n", ...
-    initialWorkerCount);
-
-%% Three-run parallel smoke test (shared pool, no per-run restart)
-
+% Run once, then keep all assertions in this same test function.
 config = struct();
 config.optimizer = "GA";
 config.networkSize = 3;
@@ -53,10 +48,9 @@ config.studyName = "parallel_ga_shared_pool_smoke_test";
 
 studyState = runGlobalOptimization(config);
 
-%% Verify callback FE, best-so-far results, seeds, and no pool restarts
-
-assert(studyState.numberOfRuns == 3, ...
-    "Expected three independent GA runs.");
+verifyEqual(testCase,studyState.numberOfRuns,3);
+verifyEqual(testCase,studyState.config.parallelRestartEachRun,false);
+verifyEqual(testCase,studyState.config.closeParallelPoolAtEnd,false);
 
 expectedSeeds = (1000:1002).';
 actualSeeds = zeros(3,1);
@@ -65,50 +59,38 @@ for runIndex = 1:3
     runState = studyState.runStates{runIndex};
     actualSeeds(runIndex) = runState.seed;
 
-    assert(runState.usedParallel, ...
-        "Run %d did not use parallel evaluation.",runIndex);
-    assert(~runState.parallelRestartEachRun, ...
-        "Run %d requested a per-run pool restart.",runIndex);
-    assert(runState.parallelRetryCount == 0 && ...
-        ~runState.parallelPoolRestarted, ...
-        "Run %d restarted the pool after a dispatch failure.",runIndex);
+    verifyTrue(testCase,runState.usedParallel);
+    verifyFalse(testCase,runState.parallelRestartEachRun);
+    verifyEqual(testCase,runState.parallelRetryCount,0);
+    verifyFalse(testCase,runState.parallelPoolRestarted);
 
-    assert(runState.searchFunctionEvaluations == 120, ...
-        "Run %d did not reach 120 callback FE.",runIndex);
-    assert(runState.history.fe(end) == 120, ...
-        "Run %d callback history does not end at 120 FE.",runIndex);
-    assert(all(diff(runState.history.fe) > 0), ...
-        "Run %d callback FE history is not strictly increasing.",runIndex);
-    assert(all(diff(runState.history.bestJ) <= 1e-12), ...
-        "Run %d best-so-far objective is not monotonic.",runIndex);
-    assert(abs(runState.history.bestJ(end)-runState.bestObjective) <= ...
-        1e-10*max(1,abs(runState.bestObjective)), ...
-        "Run %d stored network is not the best-so-far incumbent.",runIndex);
-    assert(numel(unique(runState.bestSensorIndices)) == 3, ...
-        "Run %d returned duplicate sensor indices.",runIndex);
+    % The comparison FE uses the capped callback checkpoint, not raw
+    % solver output.funccount (GA commonly reports 121 here).
+    verifyEqual(testCase,runState.searchFunctionEvaluations,120);
+    verifyEqual(testCase,runState.history.fe(end),120);
+    verifyGreaterThanOrEqual(testCase, ...
+        runState.solverFunctionEvaluations,120);
+    verifyTrue(testCase,all(diff(runState.history.fe) > 0));
+    verifyTrue(testCase,all(diff(runState.history.bestJ) <= 1e-12));
+    verifyEqual(testCase,runState.history.bestJ(end), ...
+        runState.bestObjective,"AbsTol", ...
+        1e-10*max(1,abs(runState.bestObjective)));
+    verifyEqual(testCase,numel(unique(runState.bestSensorIndices)),3);
 end
+verifyEqual(testCase,actualSeeds,expectedSeeds);
 
-assert(isequal(actualSeeds,expectedSeeds), ...
-    "Independent optimizer seeds are incorrect.");
-
-%% Verify that the exact same pool remains open after all runs
-
+% The same handle proves the study did not replace the original pool.
 poolAfter = gcp("nocreate");
-
 assert(~isempty(poolAfter), ...
-    "Shared parallel pool was closed by the optimization study.");
-assert(isequal(poolAfter,poolBefore), ...
-    "The process pool was replaced during the three-run study.");
-assert(poolAfter.NumWorkers == initialWorkerCount, ...
-    "The process pool worker count changed during the study.");
+    "The optimization study unexpectedly closed the shared process pool.");
+verifyTrue(testCase,isequal(poolAfter,poolBefore), ...
+    "The optimization study replaced the shared process pool.");
+verifyEqual(testCase,poolAfter.NumWorkers,workerCount);
 
-fprintf("\n");
-fprintf("Shared-pool parallel GA smoke test passed.\n");
-fprintf("  Runs:          3\n");
-fprintf("  Callback FE:   120 per run\n");
-fprintf("  Seeds:         1000 through 1002\n");
-fprintf("  Pool reuse:    same process pool throughout\n");
-fprintf("  Pool remains:  open (%d workers)\n",poolAfter.NumWorkers);
-fprintf("  Incumbent:     preserved\n");
-fprintf("\n");
-fprintf("testParallelGaMultiRun passed.\n");
+fprintf("\nShared-pool parallel GA smoke test passed.\n");
+fprintf("  Independent runs: 3\n");
+fprintf("  Callback FE:       120 per run\n");
+fprintf("  Seeds:             1000 through 1002\n");
+fprintf("  Pool:              same pool, still open (%d workers)\n", ...
+    poolAfter.NumWorkers);
+end
