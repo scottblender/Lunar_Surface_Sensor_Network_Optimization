@@ -202,8 +202,12 @@ been implemented. See [the optimizer adapter guide](docs/optimizer_adapter_guide
 for inputs, required outputs, equal-FE accounting, round-and-penalize PSO
 behavior, tests, and Ava's branch workflow.
 
-GA FE accounting note: `config.functionEvaluationBudget` is the requested
-search cap. When GA reuses scores for duplicate discrete individuals, actual
-search evaluations (`runState.searchFunctionEvaluations`) can be less than
-that cap. Optimizer comparisons must use recorded actual FE, not assume the
-population size multiplied by the number of generations.
+FE accounting: all optimizers use callback FE checkpoints, capped at
+`config.functionEvaluationBudget`, for the comparison history and
+`runState.searchFunctionEvaluations`. The separate
+`runState.solverFunctionEvaluations` stores MATLAB's raw
+`output.funccount`. Thus the original GA behavior of 12,000 callback FE
+versus 12,001 raw solver FE is supported without error. Runs that stop
+early retain their actual final callback checkpoint. For strict at-budget
+comparisons, check whether a parallel solver evaluated additional points
+before its last callback.

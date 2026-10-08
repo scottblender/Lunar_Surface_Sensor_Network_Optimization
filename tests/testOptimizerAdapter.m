@@ -36,12 +36,14 @@ cfg = struct("optimizer","GA","populationSize",60, ...
     "functionEvaluationBudget",120,"useParallel",false,"display","off");
 fun = @(x) sum((x(:).'-[3 7]).^2);
 result = optimization.runOptimizer(fun,problem,cfg);
-% A 2-of-10 network has only 45 feasible distinct configurations.
-% MATLAB GA may reuse evaluations for duplicates in the 60-point population.
+% A small finite domain can stop early; preserve the callback history.
+% Never replace its FE count with MATLAB's final raw solver funccount.
 verifyGreaterThan(testCase,result.functionEvaluations,0);
 verifyLessThanOrEqual(testCase,result.functionEvaluations,120);
-verifyEqual(testCase,result.functionEvaluations,result.output.funccount);
 verifyEqual(testCase,result.history.fe(end),result.functionEvaluations);
+verifyEqual(testCase,result.solverFunctionEvaluations,result.output.funccount);
+verifyGreaterThanOrEqual(testCase,result.solverFunctionEvaluations, ...
+    result.functionEvaluations);
 verifyEqual(testCase,result.history.bestJ(end),result.fval);
 verifyTrue(testCase,all(diff(result.history.bestJ) <= 1e-10));
 verifyEqual(testCase,numel(unique(result.x)),2);
@@ -65,8 +67,10 @@ fun = @(x) sum((x(:).'-[10 50 250]).^2);
 result = optimization.runOptimizer(fun,problem,cfg);
 verifyGreaterThan(testCase,result.functionEvaluations,0);
 verifyLessThanOrEqual(testCase,result.functionEvaluations,120);
-verifyEqual(testCase,result.functionEvaluations,result.output.funccount);
 verifyEqual(testCase,result.history.fe(end),result.functionEvaluations);
+verifyEqual(testCase,result.solverFunctionEvaluations,result.output.funccount);
+verifyGreaterThanOrEqual(testCase,result.solverFunctionEvaluations, ...
+    result.functionEvaluations);
 verifyEqual(testCase,result.history.bestJ(end),result.fval);
 verifyEqual(testCase,fun(result.x),result.fval,'AbsTol',1e-10);
 verifyEqual(testCase,numel(unique(result.x)),3);

@@ -12,9 +12,9 @@ function studyState = runGlobalOptimization(userConfig)
 %
 % A common function-evaluation (FE) budget and discrete design problem are
 % shared across solvers. The original GA search and its exact FE accounting
-% live in optimization.runGA; new methods implement the same result contract.
+% live in optimization.runGA; new methods implement the same callback contract.
 %
-% % Parallel execution normally follows the same efficient pattern used by the
+% Parallel execution normally follows the same efficient pattern used by the
 % related cislunar gradient-free study: create/reuse one process pool for the
 % complete multi-run study and create one worker-local parallel.pool.Constant
 % containing the frozen objective database. If MATLAB reports a recoverable
@@ -404,7 +404,7 @@ for runIndex = 1:config.numberOfRuns
         'VariableNames',{ ...
             'Sensor','CandidateIndex','LatitudeDeg','LongitudeDeg'});
 
-    %% Standard FE audit: GA remains exact; other solvers report actual FE
+    %% Standard FE audit: callback checkpoint for every optimizer
 
     searchFunctionEvaluations = double(solverResult.functionEvaluations);
     assert(isscalar(searchFunctionEvaluations) && ...
@@ -412,8 +412,10 @@ for runIndex = 1:config.numberOfRuns
         searchFunctionEvaluations > 0 && ...
         searchFunctionEvaluations == round(searchFunctionEvaluations), ...
         "Optimizer must report a positive integer FE count.");
-    assert(historyFe(end) <= searchFunctionEvaluations, ...
-        "FE history cannot exceed the reported FE count.");
+    assert(historyFe(end) == searchFunctionEvaluations, ...
+        "Comparison FE must equal the final callback FE checkpoint.");
+    assert(searchFunctionEvaluations <= functionEvaluationBudget, ...
+        "Optimizer callback FE exceeded the requested comparison budget.");
     if isfield(solverResult,"solverFunctionEvaluations")
         solverFunctionEvaluations = ...
             double(solverResult.solverFunctionEvaluations);
@@ -424,18 +426,18 @@ for runIndex = 1:config.numberOfRuns
         solverFunctionEvaluations = searchFunctionEvaluations;
     end
 
-    if config.optimizer == "GA"
-        assert(searchFunctionEvaluations <= functionEvaluationBudget, ...
-            "GA exceeded the requested FE budget.");
-        if searchFunctionEvaluations < functionEvaluationBudget
-            fprintf("GA completed %d of %d requested FE; duplicate individuals " + ...
-                "may have reused scores.\n", ...
-                searchFunctionEvaluations,functionEvaluationBudget);
-        end
-    elseif searchFunctionEvaluations > functionEvaluationBudget
-        warning("runGlobalOptimization:FeBudgetOvershoot", ...
-            "%s used %d FE against a %d-FE budget; report actual FE.", ...
+    % Every solver uses its output callback for comparison FE. A solver's
+    % raw funccount can exceed the admitted callback budget (GA commonly
+    % reports one extra terminal evaluation); keep that count separately.
+    if searchFunctionEvaluations < functionEvaluationBudget
+        fprintf("%s stopped at callback FE %d of the requested %d.\n", ...
             config.optimizer,searchFunctionEvaluations,functionEvaluationBudget);
+    end
+    if isfinite(solverFunctionEvaluations) && ...
+            solverFunctionEvaluations ~= searchFunctionEvaluations
+        fprintf("%s raw solver FE: %d (comparison callback FE: %d).\n", ...
+            config.optimizer,solverFunctionEvaluations, ...
+            searchFunctionEvaluations);
     end
 
     %% Run state

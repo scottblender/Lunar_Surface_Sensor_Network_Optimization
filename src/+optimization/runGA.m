@@ -1,5 +1,5 @@
 function result = runGA(objectiveFcn,problem,config)
-% RUNGA Preserve the production integer-GA behavior and actual FE accounting.
+% RUNGA Preserve production integer-GA callback FE accounting and incumbent.
 % This adapter was extracted from scripts/runGlobalOptimization.m.
 % Input/output contract: docs/optimizer_adapter_guide.md.
 
@@ -42,38 +42,25 @@ gaOptions = optimoptions( ...
 
 assert(~isempty(incumbentX) && isfinite(incumbentJ), ...
     "GA did not record a finite best-so-far incumbent.");
-% Mixed-integer GA can reuse scores for duplicate feasible individuals.
-% Consequently, the nominal generation-based FE budget is an upper bound,
-% not a guarantee of that many actual calls for small discrete domains.
-% Keep the solver's real funccount rather than inventing missing evaluations.
-actualFe = double(solverOutput.funccount);
-assert(isfinite(actualFe) && actualFe > 0 && ...
-    actualFe == round(actualFe) && ...
-    actualFe <= functionEvaluationBudget, ...
-    "GA reported an invalid FE count or exceeded the requested FE budget.");
+% Preserve the original production accounting convention. The callback
+% supplies the FE count admitted to the comparison history, capped at the
+% requested budget. MATLAB's final output.funccount can be one (or more)
+% higher; it is retained separately and MUST NOT redefine the callback FE.
 assert(~isempty(historyFe) && ...
-    historyFe(end) <= actualFe, ...
-    "GA callback history is empty or exceeds the solver FE count.");
-
-% Solver output is authoritative if its final count differs from the last
-% callback checkpoint (e.g., an internal final objective evaluation).
-if actualFe > historyFe(end)
-    if isfinite(solverBestObjective) && solverBestObjective < incumbentJ
-        incumbentJ = solverBestObjective;
-        incumbentX = solverBestX;
-    end
-    historyFe(end+1,1) = actualFe;
-    historyBestJ(end+1,1) = incumbentJ;
-    historyGeneration(end+1,1) = solverOutput.generations;
-end
+    isfinite(historyFe(end)) && historyFe(end) > 0 && ...
+    historyFe(end) <= functionEvaluationBudget, ...
+    "GA did not produce a valid callback FE history.");
+solverFe = double(solverOutput.funccount);
+assert(isfinite(solverFe) && solverFe >= historyFe(end), ...
+    "GA solver FE count is inconsistent with its callback FE history.");
 
 result = struct();
 result.x = incumbentX(:);
 result.fval = incumbentJ;
 result.exitflag = exitFlag;
 result.output = solverOutput;
-result.functionEvaluations = actualFe;
-result.solverFunctionEvaluations = solverOutput.funccount;
+result.functionEvaluations = historyFe(end);
+result.solverFunctionEvaluations = solverFe;
 result.history = struct("fe",historyFe,"bestJ",historyBestJ, ...
     "generation",historyGeneration);
 result.numberOfGenerations = numberOfGenerations;
