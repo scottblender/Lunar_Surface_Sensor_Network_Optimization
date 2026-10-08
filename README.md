@@ -191,3 +191,13 @@ The production workflow uses these components to perform discrete GA
 sensor-site optimization over the precomputed candidate network and to
 generate the manuscript figures, tables, and validation products from the
 completed campaign.
+
+## Optimizer adapters (GA, surrogateopt, PSO)
+
+The GA implementation now lives in `src/+optimization/runGA.m` and is
+called through `optimization.runOptimizer` by the unchanged production
+entry point `scripts/runGlobalOptimization.m`. The new SURROGATE and PSO
+choices are reserved for separate adapter functions; these have not yet
+been implemented. See [the optimizer adapter guide](docs/optimizer_adapter_guide.md)
+for inputs, required outputs, equal-FE accounting, round-and-penalize PSO
+behavior, tests, and Ava's branch workflow.

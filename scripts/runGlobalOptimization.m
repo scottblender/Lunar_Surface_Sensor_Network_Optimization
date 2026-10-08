@@ -10,14 +10,11 @@ function studyState = runGlobalOptimization(userConfig)
 % with strictly increasing integer indices, so duplicate sensors and
 % permutation-equivalent networks are not intentionally searched.
 %
-% The search uses a universal function-evaluation (FE) budget. Generation
-% zero evaluates the initial population. EliteCount is set to zero so every
-% generation consumes one full population of objective evaluations. Because
-% this allows MATLAB GA to lose a previously discovered best individual, an
-% explicit best-so-far incumbent is recorded by the OutputFcn and returned as
-% the run result.
+% A common function-evaluation (FE) budget and discrete design problem are
+% shared across solvers. The original GA search and its exact FE accounting
+% live in optimization.runGA; new methods implement the same result contract.
 %
-% Parallel execution normally follows the same efficient pattern used by the
+% % Parallel execution normally follows the same efficient pattern used by the
 % related cislunar gradient-free study: create/reuse one process pool for the
 % complete multi-run study and create one worker-local parallel.pool.Constant
 % containing the frozen objective database. If MATLAB reports a recoverable
@@ -106,13 +103,11 @@ for fieldIndex = 1:numel(logicalFields)
         "%s must be a scalar logical.",fieldName);
 end
 
-assert(config.optimizer == "GA", ...
-    "This runner currently implements GA only.");
+assert(ismember(config.optimizer,["GA","SURROGATE","PSO"]), ...
+    "optimizer must be GA, SURROGATE, or PSO.");
 assert(ismember(config.objectiveMode,["information","coverage"]), ...
     "objectiveMode must be information or coverage.");
-assert(mod(config.functionEvaluationBudget,config.populationSize) == 0, ...
-    ["For exact GA FE accounting, functionEvaluationBudget must be " ...
-     "divisible by populationSize."]);
+
 
 %% Load frozen production database
 
@@ -187,19 +182,17 @@ assert(~isfolder(studyDirectory), ...
     "Study output directory already exists.");
 mkdir(studyDirectory);
 
-%% GA decision-space definition
+%% Shared discrete decision-space formulation
 
 numberOfVariables = config.networkSize;
 lowerBounds = ones(1,numberOfVariables);
 upperBounds = numberOfCandidates*ones(1,numberOfVariables);
 integerVariables = 1:numberOfVariables;
 
-% xi < x(i+1) for integer variables is equivalent to
-% xi - x(i+1) <= -1.
+% xi < x(i+1) is xi - x(i+1) <= -1 for integer solutions.
 if numberOfVariables > 1
     A = zeros(numberOfVariables-1,numberOfVariables);
     b = -ones(numberOfVariables-1,1);
-
     for constraintIndex = 1:numberOfVariables-1
         A(constraintIndex,constraintIndex) = 1;
         A(constraintIndex,constraintIndex+1) = -1;
@@ -209,28 +202,25 @@ else
     b = [];
 end
 
-%% Exact GA FE definition
-
-populationSize = config.populationSize;
-functionEvaluationBudget = config.functionEvaluationBudget;
-numberOfGenerations = functionEvaluationBudget/populationSize - 1;
-
-assert(numberOfGenerations >= 0, ...
-    "FE budget must be at least one population.");
+problem = struct();
+problem.nvars = numberOfVariables;
+problem.numberOfCandidates = numberOfCandidates;
+problem.lb = lowerBounds;
+problem.ub = upperBounds;
+problem.intcon = integerVariables;
+problem.A = A;
+problem.b = b;
+problem.Aeq = [];
+problem.beq = [];
+problem.infeasiblePenalty = database.objective.infeasiblePenalty;
 
 %% Run storage
 
+populationSize = config.populationSize;
+functionEvaluationBudget = config.functionEvaluationBudget;
 runStates = cell(config.numberOfRuns,1);
 bestObjectives = NaN(config.numberOfRuns,1);
 runTimes = NaN(config.numberOfRuns,1);
-
-%% Variables owned by the nested GA OutputFcn
-
-historyFe = zeros(0,1);
-historyBestJ = zeros(0,1);
-historyGeneration = zeros(0,1);
-incumbentJ = Inf;
-incumbentX = [];
 
 %% Independent optimization runs
 
@@ -244,7 +234,6 @@ for runIndex = 1:config.numberOfRuns
     runSeed = config.baseSeed + runIndex - 1;
     rng(runSeed,"twister");
 
-    resetRunHistory();
 
     %% Parallel resources for this run
 
@@ -286,75 +275,45 @@ for runIndex = 1:config.numberOfRuns
 
     objectiveFunction = buildObjectiveFunction(activeDatabaseConstant);
 
-    %% GA options
-
-    gaOptions = optimoptions( ...
-        "ga", ...
-        "UseParallel",config.useParallel, ...
-        "UseVectorized",false, ...
-        "Display",config.display, ...
-        "PopulationSize",populationSize, ...
-        "EliteCount",0, ...
-        "MaxGenerations",numberOfGenerations, ...
-        "MaxStallGenerations",Inf, ...
-        "FunctionTolerance",0, ...
-        "ConstraintTolerance",0, ...
-        "FitnessLimit",-Inf, ...
-        "OutputFcn",@gaOutputFunction);
-
-    %% Run optimizer with one safe shared-pool recovery attempt
+    %% Execute the selected solver, retaining the shared-pool retry policy
 
     parallelRetryCount = 0;
     parallelPoolRestarted = false;
     runTimer = tic;
 
     try
-        [solverBestX,solverBestObjective,exitFlag,solverOutput, ...
-            finalPopulation,finalScores] = ...
-            executeGa(objectiveFunction,gaOptions);
-
+        solverResult = optimization.runOptimizer( ...
+            objectiveFunction,problem,config);
     catch optimizerError
-
         canRetry = ...
             config.useParallel && ...
             ~config.parallelRestartEachRun && ...
             config.parallelRetryOnFailure && ...
             isRecoverableParallelDispatchError(optimizerError);
-
         if ~canRetry
             rethrow(optimizerError);
         end
-
         parallelRetryCount = 1;
         parallelPoolRestarted = true;
-
-        fprintf("\nRecoverable parallel GA dispatch failure detected.\n");
+        fprintf("\nRecoverable parallel %s dispatch failure detected.\n", ...
+            config.optimizer);
         fprintf("Restarting the process pool and retrying run %d once...\n", ...
             runIndex);
 
-        % Release handles tied to the failed pool before replacing it.
         objectiveFunction = [];
         activeDatabaseConstant = [];
         sharedObjectiveDatabaseConstant = [];
-
         [sharedPool,~] = ensureProcessPool(true);
         sharedPoolOwned = true;
-
         if config.useParallelDatabaseConstant
             sharedObjectiveDatabaseConstant = ...
                 parallel.pool.Constant(objectiveDatabase);
             activeDatabaseConstant = sharedObjectiveDatabaseConstant;
         end
-
         objectiveFunction = buildObjectiveFunction(activeDatabaseConstant);
-
-        % Preserve the exact stochastic definition of this independent run.
         rng(runSeed,"twister");
-        resetRunHistory();
-
-        [solverBestX,solverBestObjective,exitFlag,solverOutput, ...
-            finalPopulation,finalScores] = ...
-            executeGa(objectiveFunction,gaOptions);
+        solverResult = optimization.runOptimizer( ...
+            objectiveFunction,problem,config);
     end
 
     runtimeSeconds = toc(runTimer);
@@ -367,19 +326,54 @@ for runIndex = 1:config.numberOfRuns
         clear runPoolCleanup
     end
 
-    %% Best-so-far incumbent across the complete FE budget
+    %% Validate standardized result and candidate-site feasibility
 
-    assert(~isempty(incumbentX) && isfinite(incumbentJ), ...
-        "GA did not record a finite best-so-far incumbent.");
+    requiredFields = ["x","fval","exitflag","output", ...
+        "functionEvaluations","history"];
+    assert(all(isfield(solverResult,cellstr(requiredFields))), ...
+        "Optimizer returned an incomplete standard result.");
 
-    bestSensorIndices = sort(round(incumbentX(:)));
-    bestObjective = incumbentJ;
+    candidateX = double(solverResult.x(:));
+    assert(numel(candidateX) == config.networkSize && ...
+        all(isfinite(candidateX)), ...
+        "Optimizer did not return one finite index per sensor.");
+    if config.optimizer == "PSO"
+        candidateX = round(candidateX);
+    else
+        assert(all(candidateX == round(candidateX)), ...
+            "Discrete optimizer returned noninteger indices.");
+    end
+    bestSensorIndices = sort(candidateX);
+    bestObjective = double(solverResult.fval);
 
-    assert(length(unique(bestSensorIndices)) == config.networkSize, ...
-        "GA returned duplicate candidate indices.");
+    assert(isscalar(bestObjective) && isfinite(bestObjective), ...
+        "Optimizer returned no finite objective.");
+    assert(numel(unique(bestSensorIndices)) == config.networkSize, ...
+        "Optimizer returned duplicate candidate indices.");
     assert(all(bestSensorIndices >= 1) && ...
         all(bestSensorIndices <= numberOfCandidates), ...
-        "GA returned an invalid candidate index.");
+        "Optimizer returned invalid candidate indices.");
+
+    assert(isfield(solverResult.history,"fe") && ...
+        isfield(solverResult.history,"bestJ"), ...
+        "Optimizer must return history.fe and history.bestJ.");
+    historyFe = double(solverResult.history.fe(:));
+    historyBestJ = double(solverResult.history.bestJ(:));
+    assert(~isempty(historyFe) && numel(historyFe) == numel(historyBestJ), ...
+        "Optimizer convergence history is empty or inconsistent.");
+    assert(all(isfinite(historyFe)) && ...
+        all(historyFe > 0 & historyFe == round(historyFe)) && ...
+        all(diff(historyFe) > 0), ...
+        "FE history must contain strictly increasing integer counts.");
+    assert(all(diff(historyBestJ) <= 1e-10), ...
+        "Best-so-far history must be nonincreasing.");
+    if isfield(solverResult.history,"generation")
+        historyGeneration = double(solverResult.history.generation(:));
+    else
+        historyGeneration = NaN(size(historyFe));
+    end
+    assert(numel(historyGeneration) == numel(historyFe), ...
+        "Optimizer iteration history length mismatch.");
 
     %% Diagnostic evaluation outside the search FE budget
 
@@ -389,11 +383,11 @@ for runIndex = 1:config.numberOfRuns
 
     objectiveTolerance = 1e-10*max(1,abs(bestObjective));
     assert(abs(diagnosticObjective-bestObjective) <= objectiveTolerance, ...
-        "Final diagnostic objective does not match the GA incumbent.");
+        "Final diagnostic objective does not match the optimizer incumbent.");
 
     assert(~isempty(historyBestJ) && ...
         abs(historyBestJ(end)-bestObjective) <= objectiveTolerance, ...
-        "Convergence history does not end at the stored GA incumbent.");
+        "Convergence history does not end at the stored incumbent.");
 
     %% Candidate coordinates
 
@@ -410,24 +404,34 @@ for runIndex = 1:config.numberOfRuns
         'VariableNames',{ ...
             'Sensor','CandidateIndex','LatitudeDeg','LongitudeDeg'});
 
-    %% FE audit
+    %% Standard FE audit: GA remains exact; other solvers report actual FE
 
-    expectedSearchEvaluations = functionEvaluationBudget;
-
-    if isempty(historyFe)
-        searchFunctionEvaluations = 0;
+    searchFunctionEvaluations = double(solverResult.functionEvaluations);
+    assert(isscalar(searchFunctionEvaluations) && ...
+        isfinite(searchFunctionEvaluations) && ...
+        searchFunctionEvaluations > 0 && ...
+        searchFunctionEvaluations == round(searchFunctionEvaluations), ...
+        "Optimizer must report a positive integer FE count.");
+    assert(historyFe(end) <= searchFunctionEvaluations, ...
+        "FE history cannot exceed the reported FE count.");
+    if isfield(solverResult,"solverFunctionEvaluations")
+        solverFunctionEvaluations = ...
+            double(solverResult.solverFunctionEvaluations);
+    elseif isfield(solverResult.output,"funccount")
+        solverFunctionEvaluations = ...
+            double(solverResult.output.funccount);
     else
-        searchFunctionEvaluations = historyFe(end);
+        solverFunctionEvaluations = searchFunctionEvaluations;
     end
 
-    if isfield(solverOutput,"funccount")
-        solverFunctionEvaluations = solverOutput.funccount;
-    else
-        solverFunctionEvaluations = NaN;
+    if config.optimizer == "GA"
+        assert(searchFunctionEvaluations == functionEvaluationBudget, ...
+            "GA callback history did not reach the requested FE budget.");
+    elseif searchFunctionEvaluations > functionEvaluationBudget
+        warning("runGlobalOptimization:FeBudgetOvershoot", ...
+            "%s used %d FE against a %d-FE budget; report actual FE.", ...
+            config.optimizer,searchFunctionEvaluations,functionEvaluationBudget);
     end
-
-    assert(searchFunctionEvaluations == expectedSearchEvaluations, ...
-        "GA callback history did not reach the requested FE budget.");
 
     %% Run state
 
@@ -446,7 +450,10 @@ for runIndex = 1:config.numberOfRuns
     runState.numberOfObjects = numberOfObjects;
     runState.functionEvaluationBudget = functionEvaluationBudget;
     runState.populationSize = populationSize;
-    runState.numberOfGenerations = numberOfGenerations;
+    runState.numberOfGenerations = NaN;
+    if isfield(solverResult,"numberOfGenerations")
+        runState.numberOfGenerations = solverResult.numberOfGenerations;
+    end
     runState.searchFunctionEvaluations = searchFunctionEvaluations;
     runState.solverFunctionEvaluations = solverFunctionEvaluations;
     runState.bestSensorIndices = bestSensorIndices;
@@ -459,12 +466,25 @@ for runIndex = 1:config.numberOfRuns
     runState.informationByObject = bestDetails.informationByObject;
     runState.coverageByObject = bestDetails.coverageByObject;
     runState.runtimeSeconds = runtimeSeconds;
-    runState.exitFlag = exitFlag;
-    runState.solverOutput = solverOutput;
-    runState.solverFinalBestX = solverBestX;
-    runState.solverFinalBestObjective = solverBestObjective;
-    runState.finalPopulation = finalPopulation;
-    runState.finalScores = finalScores;
+    runState.exitFlag = solverResult.exitflag;
+    runState.solverOutput = solverResult.output;
+    runState.solverFinalBestX = [];
+    runState.solverFinalBestObjective = NaN;
+    runState.finalPopulation = [];
+    runState.finalScores = [];
+    if isfield(solverResult,"solverFinalBestX")
+        runState.solverFinalBestX = solverResult.solverFinalBestX;
+    end
+    if isfield(solverResult,"solverFinalBestObjective")
+        runState.solverFinalBestObjective = ...
+            solverResult.solverFinalBestObjective;
+    end
+    if isfield(solverResult,"finalPopulation")
+        runState.finalPopulation = solverResult.finalPopulation;
+    end
+    if isfield(solverResult,"finalScores")
+        runState.finalScores = solverResult.finalScores;
+    end
     runState.usedParallel = config.useParallel;
     runState.parallelRestartEachRun = config.parallelRestartEachRun;
     runState.parallelRetryCount = parallelRetryCount;
@@ -573,15 +593,7 @@ fprintf("\nOverall best network\n");
 disp(studyState.overallBestSensorTable);
 fprintf("Results saved to:\n  %s\n",studyDirectory);
 
-%% Nested helpers that share optimizer run state
-
-    function resetRunHistory()
-        historyFe = zeros(0,1);
-        historyBestJ = zeros(0,1);
-        historyGeneration = zeros(0,1);
-        incumbentJ = Inf;
-        incumbentX = [];
-    end
+%% Nested helpers for objective handles and pool cleanup
 
     function objectiveFunctionHandle = ...
             buildObjectiveFunction(databaseConstant)
@@ -597,60 +609,6 @@ fprintf("Results saved to:\n  %s\n",studyDirectory);
             objectiveFunctionHandle = @(sensorIndices) ...
                 optimization.networkObjective( ...
                     sensorIndices,objectiveDatabase,config.objectiveMode);
-        end
-    end
-
-    function [solverBestX,solverBestObjective,exitFlag,solverOutput, ...
-            finalPopulation,finalScores] = ...
-            executeGa(objectiveFunctionHandle,options)
-
-        [solverBestX,solverBestObjective,exitFlag,solverOutput, ...
-            finalPopulation,finalScores] = ga( ...
-                objectiveFunctionHandle, ...
-                numberOfVariables, ...
-                A,b,[],[], ...
-                lowerBounds,upperBounds, ...
-                [],integerVariables,options);
-    end
-
-    function [state,options,optChanged] = ...
-            gaOutputFunction(options,state,flag)
-        % Record exact callback FE and the cumulative best feasible
-        % individual. With EliteCount=0, MATLAB's final-generation result is
-        % not necessarily the best individual seen during the run.
-
-        optChanged = false;
-
-        if ~(strcmp(flag,"init") || strcmp(flag,"iter"))
-            return
-        end
-
-        values = state.Score(:);
-        if isfield(state,"Fitness")
-            values = state.Fitness(:);
-        end
-        values(~isfinite(values)) = Inf;
-
-        [generationBest,generationBestIndex] = min(values);
-
-        if ~isempty(generationBest) && generationBest < incumbentJ
-            incumbentJ = generationBest;
-            incumbentX = state.Population(generationBestIndex,:);
-        end
-
-        if isfield(state,"FunEval") && isfinite(state.FunEval)
-            currentFe = min(state.FunEval,functionEvaluationBudget);
-        else
-            currentFe = min((state.Generation+1)*populationSize, ...
-                functionEvaluationBudget);
-        end
-
-        if isempty(historyFe) || currentFe > historyFe(end)
-            historyFe(end+1,1) = currentFe;
-            historyBestJ(end+1,1) = incumbentJ;
-            historyGeneration(end+1,1) = state.Generation;
-        elseif currentFe == historyFe(end)
-            historyBestJ(end) = min(historyBestJ(end),incumbentJ);
         end
     end
 
