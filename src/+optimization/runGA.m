@@ -1,5 +1,5 @@
 function result = runGA(objectiveFcn,problem,config)
-% RUNGA Preserve the production integer-GA behavior and exact FE accounting.
+% RUNGA Preserve the production integer-GA behavior and actual FE accounting.
 % This adapter was extracted from scripts/runGlobalOptimization.m.
 % Input/output contract: docs/optimizer_adapter_guide.md.
 
@@ -42,16 +42,37 @@ gaOptions = optimoptions( ...
 
 assert(~isempty(incumbentX) && isfinite(incumbentJ), ...
     "GA did not record a finite best-so-far incumbent.");
+% Mixed-integer GA can reuse scores for duplicate feasible individuals.
+% Consequently, the nominal generation-based FE budget is an upper bound,
+% not a guarantee of that many actual calls for small discrete domains.
+% Keep the solver's real funccount rather than inventing missing evaluations.
+actualFe = double(solverOutput.funccount);
+assert(isfinite(actualFe) && actualFe > 0 && ...
+    actualFe == round(actualFe) && ...
+    actualFe <= functionEvaluationBudget, ...
+    "GA reported an invalid FE count or exceeded the requested FE budget.");
 assert(~isempty(historyFe) && ...
-    historyFe(end) == functionEvaluationBudget, ...
-    "GA callback history did not reach the requested FE budget.");
+    historyFe(end) <= actualFe, ...
+    "GA callback history is empty or exceeds the solver FE count.");
+
+% Solver output is authoritative if its final count differs from the last
+% callback checkpoint (e.g., an internal final objective evaluation).
+if actualFe > historyFe(end)
+    if isfinite(solverBestObjective) && solverBestObjective < incumbentJ
+        incumbentJ = solverBestObjective;
+        incumbentX = solverBestX;
+    end
+    historyFe(end+1,1) = actualFe;
+    historyBestJ(end+1,1) = incumbentJ;
+    historyGeneration(end+1,1) = solverOutput.generations;
+end
 
 result = struct();
 result.x = incumbentX(:);
 result.fval = incumbentJ;
 result.exitflag = exitFlag;
 result.output = solverOutput;
-result.functionEvaluations = historyFe(end);
+result.functionEvaluations = actualFe;
 result.solverFunctionEvaluations = solverOutput.funccount;
 result.history = struct("fe",historyFe,"bestJ",historyBestJ, ...
     "generation",historyGeneration);

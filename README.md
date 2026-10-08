@@ -201,3 +201,9 @@ choices are reserved for separate adapter functions; these have not yet
 been implemented. See [the optimizer adapter guide](docs/optimizer_adapter_guide.md)
 for inputs, required outputs, equal-FE accounting, round-and-penalize PSO
 behavior, tests, and Ava's branch workflow.
+
+GA FE accounting note: `config.functionEvaluationBudget` is the requested
+search cap. When GA reuses scores for duplicate discrete individuals, actual
+search evaluations (`runState.searchFunctionEvaluations`) can be less than
+that cap. Optimizer comparisons must use recorded actual FE, not assume the
+population size multiplied by the number of generations.

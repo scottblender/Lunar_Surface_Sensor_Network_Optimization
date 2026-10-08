@@ -115,9 +115,12 @@ by your callback.
 
 - Compare GA, SURROGATE, and PSO with matched requested FE budgets and
   comparable seeds, network sizes, objectives, and frozen databases.
-- Save/report **actual** completed FE, not iterations. Different solvers can
-  stop early or exceed a requested cap. Never label an early-stopped result
-  as having consumed the entire requested budget.
+- Save/report **actual** completed FE, not iterations. MATLAB GA can reuse
+  scores for duplicate individuals, especially on small discrete domains;
+  a 120-FE budget is a **cap**, not a promise that 120 unique objective calls
+  occur. `output.funccount` is authoritative for GA. Other solvers may stop
+  early or exceed a requested cap. Never label an early-stopped result as
+  having consumed the entire requested budget.
 - For fair best-at-B comparisons, use the incumbent through B admitted FE;
   document any evaluations past B explicitly.
 - The production manuscript loader intentionally accepts only GA studies;
