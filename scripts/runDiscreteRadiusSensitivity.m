@@ -27,10 +27,13 @@ function study = runDiscreteRadiusSensitivity(userConfig)
 %                            default 2*config.candidates.spacingKm (or 30 km
 %                            if spacing is unavailable)
 %   radiiKm               - increasing radii in km (default [10 20 30 40 50 60])
-%   maximumCombinations   - raw Cartesian limit per radius (default 50000)
+%   maximumCombinations   - raw Cartesian limit per radius (default 50000);
+%                           Inf explicitly opts in to uncapped enumeration
 %   skipOversized         - skip limit-exceeding radii (default true)
 %   improvementTolerance  - absolute J tolerance (default 1e-10)
 %   captureFraction       - fraction of largest OBSERVED gain (default .95)
+%   marginalThresholdPct   - elbow criterion for marginal % J reduction
+%                           vs previous radius (default 1 percent)
 %   outputDirectory       - directory for CSV/MAT/figures (default timestamped)
 %   saveResults           - write MAT and CSV (default true)
 %   makePlots             - write objective/radius and objective/FE PNGs
@@ -69,6 +72,7 @@ config.maximumCombinations = 50000;
 config.skipOversized = true;
 config.improvementTolerance = 1e-10;
 config.captureFraction = 0.95;
+config.marginalThresholdPct = 1;
 config.outputDirectory = "";
 config.saveResults = true;
 config.makePlots = true;
@@ -91,12 +95,21 @@ validateattributes(radiiKm,{'double'}, ...
 assert(all(diff(radiiKm) > 0), ...
     "runDiscreteRadiusSensitivity:RadiiNotIncreasing", ...
     "radiiKm must be strictly increasing with no repeated values.");
-validateattributes(config.maximumCombinations,{'numeric'}, ...
-    {'scalar','integer','positive','finite'});
+assert(isnumeric(config.maximumCombinations) && ...
+    isscalar(config.maximumCombinations) && ...
+    isreal(config.maximumCombinations) && ...
+    config.maximumCombinations > 0 && ...
+    (isinf(config.maximumCombinations) || ...
+    (isfinite(config.maximumCombinations) && ...
+     config.maximumCombinations == floor(config.maximumCombinations))), ...
+    "runDiscreteRadiusSensitivity:InvalidCombinationLimit", ...
+    'maximumCombinations must be a positive integer or Inf.');
 validateattributes(config.improvementTolerance,{'numeric'}, ...
     {'scalar','real','finite','nonnegative'});
 validateattributes(config.captureFraction,{'numeric'}, ...
     {'scalar','real','finite','>',0,'<=',1});
+validateattributes(config.marginalThresholdPct,{'numeric'}, ...
+    {'scalar','real','finite','nonnegative'});
 assert(islogical(config.skipOversized) && isscalar(config.skipOversized));
 assert(islogical(config.saveResults) && isscalar(config.saveResults));
 assert(islogical(config.makePlots) && isscalar(config.makePlots));
@@ -438,13 +451,42 @@ lastIndex = completedIndices(end);
 
 gain = NaN(numberOfRadii,1);
 marginalGain = NaN(numberOfRadii,1);
+relativeImprovementPct = NaN(numberOfRadii,1);
+marginalRelativeImprovementPct = NaN(numberOfRadii,1);
+bestScore = NaN(numberOfRadii,1);
 capturedPct = NaN(numberOfRadii,1);
 previousBest = originalObjective;
 for k = completedIndices(:).'
-    gain(k) = originalObjective-bestObjectiveByRadius(k);
-    marginalGain(k) = previousBest-bestObjectiveByRadius(k);
-    previousBest = bestObjectiveByRadius(k);
+    currentBest = bestObjectiveByRadius(k);
+    gain(k) = originalObjective-currentBest;
+    marginalGain(k) = previousBest-currentBest;
+    bestScore(k) = -currentBest; % maximized information/coverage score
+    if abs(originalObjective) > eps
+        relativeImprovementPct(k) = 100*gain(k)/abs(originalObjective);
+    elseif abs(gain(k)) <= eps
+        relativeImprovementPct(k) = 0;
+    end
+    if abs(previousBest) > eps
+        marginalRelativeImprovementPct(k) = ...
+            100*marginalGain(k)/abs(previousBest);
+    elseif abs(marginalGain(k)) <= eps
+        marginalRelativeImprovementPct(k) = 0;
+    end
+    previousBest = currentBest;
 end
+
+% Heuristic elbow: the LAST tested radius producing a marginal relative
+% improvement >= threshold, provided a larger radius was actually tested
+% and no later radius produced another material improvement. That radius
+% keeps the improvements worth the additional search effort; the largest
+% radius still has the best absolute objective. Not an optimality proof.
+tradeoffRadiusKm = NaN;
+material = find(completed & isfinite(marginalRelativeImprovementPct) & ...
+    marginalRelativeImprovementPct >= config.marginalThresholdPct);
+if ~isempty(material) && material(end) < lastIndex
+    tradeoffRadiusKm = radiiKm(material(end));
+end
+tradeoffProvisional = any(~completed);
 
 maximumObservedGain = max(0,originalObjective- ...
     bestObjectiveByRadius(lastIndex));
@@ -460,12 +502,14 @@ else
 end
 
 summaryTable = table( ...
-    radiiKm,status,combinationCounts,bestObjectiveByRadius, ...
-    gain,marginalGain,capturedPct,independentNetworkCounts, ...
-    newObjectiveEvaluations,cumulativeObjectiveEvaluations, ...
-    runTimesSeconds, ...
+    radiiKm,status,combinationCounts,bestObjectiveByRadius,bestScore, ...
+    gain,relativeImprovementPct,marginalGain, ...
+    marginalRelativeImprovementPct,capturedPct, ...
+    independentNetworkCounts,newObjectiveEvaluations, ...
+    cumulativeObjectiveEvaluations,runTimesSeconds, ...
     'VariableNames',{'RadiusKm','Status','CartesianCombinations', ...
-    'BestJ','Improvement','MarginalImprovement', ...
+    'BestJ','BestScore','Improvement','RelativeImprovementPct', ...
+    'MarginalImprovement','MarginalRelativeImprovementPct', ...
     'CapturedImprovementPct','UniqueNetworksWithinRadius', ...
     'NewObjectiveEvaluations','CumulativeObjectiveEvaluations', ...
     'RuntimeSeconds'});
@@ -491,6 +535,9 @@ study.refinementResults = refinementResults;
 study.summaryTable = summaryTable;
 study.captureFraction = config.captureFraction;
 study.radiusAtCaptureKm = radiusAtCaptureKm;
+study.marginalThresholdPct = config.marginalThresholdPct;
+study.tradeoffRadiusKm = tradeoffRadiusKm;
+study.tradeoffProvisional = tradeoffProvisional;
 study.largestCompletedRadiusKm = radiiKm(lastIndex);
 study.maximumObservedImprovement = maximumObservedGain;
 study.bestSensorIndices = bestResult.bestSensorIndices;
@@ -503,6 +550,8 @@ study.summaryCsvFile = "";
 study.studyMatFile = "";
 study.objectiveRadiusFigureFile = "";
 study.objectiveFeFigureFile = "";
+study.relativeRadiusFigureFile = "";
+study.relativeSearchSpaceFigureFile = "";
 
 %% Save independent post-processing products.
 if config.saveResults || config.makePlots
@@ -532,6 +581,16 @@ if config.saveResults || config.makePlots
             objectiveMode,objectiveRadiusFigureFile,objectiveFeFigureFile);
         study.objectiveRadiusFigureFile = objectiveRadiusFigureFile;
         study.objectiveFeFigureFile = objectiveFeFigureFile;
+        relativeRadiusFigureFile = fullfile( ...
+            outputDirectory,"relative_improvement_vs_radius.png");
+        relativeSpaceFigureFile = fullfile( ...
+            outputDirectory,"relative_improvement_vs_search_space.png");
+        saveRelativePlots(radiiKm,completed,combinationCounts, ...
+            relativeImprovementPct,marginalRelativeImprovementPct, ...
+            tradeoffRadiusKm,config.marginalThresholdPct, ...
+            relativeRadiusFigureFile,relativeSpaceFigureFile);
+        study.relativeRadiusFigureFile = relativeRadiusFigureFile;
+        study.relativeSearchSpaceFigureFile = relativeSpaceFigureFile;
     end
 
     if config.saveResults
@@ -549,6 +608,16 @@ end
 fprintf("\nRadius sensitivity summary:\n");
 disp(summaryTable);
 fprintf("Best discrete objective: %.12g\n",study.bestObjective);
+fprintf("Best positive score: %.12g\n",-study.bestObjective);
+if isfinite(tradeoffRadiusKm)
+    fprintf("Relative-gain elbow: %.2f km (threshold %.3g%%/step)\n", ...
+        tradeoffRadiusKm,config.marginalThresholdPct);
+    if tradeoffProvisional
+        fprintf("NOTE: Elbow is provisional because some radii were skipped.\n");
+    end
+else
+    fprintf("No relative-gain plateau identified at completed radii.\n");
+end
 fprintf("Total distinct objective evaluations: %.0f\n", ...
     study.totalUniqueObjectiveEvaluations);
 if isfinite(radiusAtCaptureKm)
@@ -606,6 +675,50 @@ fileName = char(fileName);
 yes = startsWith(fileName,filesep) || ...
     ~isempty(regexp(fileName,'^[A-Za-z]:[\\/]','once')) || ...
     startsWith(fileName,'\\');
+end
+
+function saveRelativePlots(radii,completed,combinations, ...
+    relativePct,marginalPct,tradeoffRadiusKm,thresholdPct, ...
+    radiusFile,spaceFile)
+% Benefits are relative to |J|, including for negative minimization J.
+% The x-axis on the search-space plot uses raw Cartesian combinations.
+f = figure("Visible","off","Color","w");
+hold on;
+plot(radii(completed),relativePct(completed),"-o", ...
+    "LineWidth",1.5,"DisplayName","Cumulative relative improvement");
+plot(radii(completed),marginalPct(completed),"-s", ...
+    "LineWidth",1.5,"DisplayName","Marginal relative improvement");
+yline(thresholdPct,"--","Threshold", ...
+    "HandleVisibility","off");
+if isfinite(tradeoffRadiusKm)
+    xline(tradeoffRadiusKm,":","Elbow radius", ...
+        "HandleVisibility","off");
+end
+xlabel("Search radius (km)");
+ylabel("Relative improvement (%)");
+title("Refinement relative improvement versus radius");
+legend("Location","best");
+grid on;
+exportgraphics(f,radiusFile,"Resolution",200);
+close(f);
+
+f = figure("Visible","off","Color","w");
+hold on;
+good = completed & isfinite(combinations) & combinations > 0;
+plot(combinations(good),relativePct(good),"-o", ...
+    "LineWidth",1.5,"DisplayName","Cumulative relative improvement");
+plot(combinations(good),marginalPct(good),"-s", ...
+    "LineWidth",1.5,"DisplayName","Marginal relative improvement");
+set(gca,"XScale","log");
+yline(thresholdPct,"--","Threshold", ...
+    "HandleVisibility","off");
+xlabel("Raw Cartesian search-space combinations (log scale)");
+ylabel("Relative improvement (%)");
+title("Refinement returns versus discrete search-space size");
+legend("Location","best");
+grid on;
+exportgraphics(f,spaceFile,"Resolution",200);
+close(f);
 end
 
 function saveComparisonPlots(radii,completed,J0,bestJ,fe,mode, ...
