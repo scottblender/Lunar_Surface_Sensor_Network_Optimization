@@ -5,26 +5,45 @@ produced a saved study_summary.mat. This post-processing study does not rerun
 the global optimizer. It calls optimization.refineDiscreteNetwork with the
 same **original global best candidate IDs** for every radius.
 
-## Quick standalone runner (recommended)
+## Standalone runner: selected saved optimization study (default)
 
-For the current database and the same starting network used in a successful
-`refineDiscreteNetwork` call, use the complete script
-`scripts/runDiscreteRadiusStudy.m`. Edit its USER SETTINGS section if
-needed, then run from the project root:
+The complete script `scripts/runDiscreteRadiusStudy.m` now loads a named
+`results/optimization_runs/<folder>/study_summary.mat` by default. Edit
+the USER SETTINGS block:
 
-    git pull origin main
-    % In MATLAB, with a workspace variable refined from the previous run:
+    radiusStudySource = "saved_study";
+    radiusStudyStudyFolder = "ga_coverage_n3_20260915_121933";
+    radiusStudySummaryFile = "";  % uses folder above
+    radiusStudyDatabaseFile = ""; % override for archived matching database
+
+Then run from the repository root:
+
     run("scripts/runDiscreteRadiusStudy.m")
 
-The script uses `refined.initialSensorIndices` if present. For a fresh
-session, manually set `radiusStudyInitialIndices` to the original IDs
-inside the script. Do not supply the best *refined* indices as the starting
-network or change the centers between radii. This runner deliberately
-does **not** load historical study summaries, preventing accidental
-cross-version comparisons with the current production database.
+This reads the saved best indices and objective mode directly from
+`studyState`; no workspace variable named `refined` or manually entered
+indices are needed. All radii use the original network as their fixed center.
 
-Outputs are in `radiusStudy` in the MATLAB workspace as well as saved
-under `results/local_refinement/` (when saving is enabled).
+**Database provenance is essential:** the example historical GA study reports
+database v2_fixed_p0 while the current optimization_database.mat can hold
+v5_chunked_candidate_data. Reusing the v2 candidate indices against the v5
+candidate grid as if they were the same study is invalid. Supply an archived
+matching database via `radiusStudyDatabaseFile` and its associated chunk
+files. If no matching database remains, use the distinct direct-index
+workflow below, re-evaluating the starting network entirely on v5, and
+do not interpret its objectives as improvements over the historical v2
+values.
+
+To run an exploratory sweep on the current database without a study
+summary instead, set:
+
+    radiusStudySource = "direct_indices";
+    radiusStudyInitialIndices = [31 104 587]; % replace with your IDs
+    radiusStudyObjectiveMode = "information";
+
+The script will then ignore the saved study and use the current database.
+Results remain in `radiusStudy` and under `results/local_refinement/` when
+saving is enabled.
 
 ## Run (MATLAB, from the repository root)
 
