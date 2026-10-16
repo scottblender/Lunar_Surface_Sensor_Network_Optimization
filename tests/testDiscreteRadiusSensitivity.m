@@ -182,6 +182,7 @@ end
 function testDirectIndicesRequireMode(testCase)
 config = makeTestConfig();
 config.initialSensorIndices = [1;4];
+config.objectiveMode = "";
 config.studyState = struct();
 verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
     "runDiscreteRadiusSensitivity:DirectModeRequired");
