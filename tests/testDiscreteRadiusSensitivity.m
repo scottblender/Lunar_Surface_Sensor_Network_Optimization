@@ -210,6 +210,52 @@ verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
     "runDiscreteRadiusSensitivity:NoCompletedRadii");
 end
 
+function testUncappedSweepSelects30KmElbow(testCase)
+% Score rises 185 -> 190.5 -> 191 at radii 20,30,40 km.
+% The maximum score is at 40; the best marginal-gain tradeoff is 30.
+config = makeTestConfig();
+config.initialSensorIndices = 1;
+config.database.candidates.latitudesRad = zeros(4,1);
+config.database.candidates.longitudesRad = [0;0.2;0.3;0.4];
+config.database.meta.numberOfCandidates = 4;
+config.maximumCombinations = Inf;
+config.skipOversized = false;
+config.radiiKm = [10 20 30 40];
+config.marginalThresholdPct = 1;
+config.objectiveFcn = @negativeRadiusScore;
+study = runDiscreteRadiusSensitivity(config);
+
+verifyEqual(testCase,study.summaryTable.Status, ...
+    repmat("completed",4,1));
+verifyEqual(testCase,study.summaryTable.BestScore, ...
+    [180;185;190.5;191],"AbsTol",1e-10);
+verifyEqual(testCase,study.summaryTable.BestJ, ...
+    -[180;185;190.5;191],"AbsTol",1e-10);
+verifyEqual(testCase,study.summaryTable.RelativeImprovementPct(4), ...
+    100*11/180,"AbsTol",1e-9);
+verifyEqual(testCase,study.summaryTable.MarginalRelativeImprovementPct(3), ...
+    100*5.5/185,"AbsTol",1e-9);
+verifyEqual(testCase,study.summaryTable.MarginalRelativeImprovementPct(4), ...
+    100*0.5/190.5,"AbsTol",1e-9);
+verifyEqual(testCase,study.tradeoffRadiusKm,30);
+verifyFalse(testCase,study.tradeoffProvisional);
+verifyEqual(testCase,study.bestObjective,-191);
+verifyEqual(testCase,study.totalUniqueObjectiveEvaluations,4);
+end
+
+function testNoPlateauWhenLargestRadiusStillImproving(testCase)
+config = makeTestConfig();
+config.initialSensorIndices = 1;
+config.database.candidates.latitudesRad = zeros(4,1);
+config.database.candidates.longitudesRad = [0;0.2;0.3;0.4];
+config.database.meta.numberOfCandidates = 4;
+config.maximumCombinations = Inf;
+config.radiiKm = [10 20 30];
+config.objectiveFcn = @negativeRadiusScore;
+study = runDiscreteRadiusSensitivity(config);
+verifyTrue(testCase,isnan(study.tradeoffRadiusKm));
+end
+
 function config = makeTestConfig()
 config = struct();
 % Ordinary radius-sweep tests use direct current-grid indices. The saved
@@ -247,4 +293,9 @@ elseif isequal(ids,[1;4])
 else
     J = 12;
 end
+end
+
+function value = negativeRadiusScore(indices)
+scores = [180 185 190.5 191];
+value = -scores(indices(1));
 end
