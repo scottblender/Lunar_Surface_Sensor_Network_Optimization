@@ -27,6 +27,27 @@ reproducibility. The runner loads the frozen database from the study
 configuration, falling back to results/optimization_database.mat.
 The associated chunk files must also be present.
 
+## Database provenance check
+
+The winning sensor IDs in a saved study are meaningful only with the
+database that generated them. Before running the sweep, the script checks
+the winning run's recorded database version against the loaded MAT file,
+and (where saved) compares the winner's candidate coordinates.
+
+If you receive `runDiscreteRadiusSensitivity:DatabaseVersionMismatch`,
+the error now displays the saved run's database version and original file
+path alongside the loaded version/path. Find the original matching database
+and pass its path explicitly:
+
+    cfg.databaseFile = "path/to/matching/optimization_database.mat";
+
+If that database is unavailable, regenerate it consistently and rerun
+the global optimizer. Do not simply bypass the guard: improvements
+computed from two different candidate/visibility databases are not a
+valid post-processing comparison. An explicitly supplied database path
+that does not exist is now reported as missing, instead of silently
+falling back to the default results database.
+
 ## Outputs
 
 Under a timestamped results/local_refinement/radius_sensitivity_* folder:
