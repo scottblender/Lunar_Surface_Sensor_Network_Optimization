@@ -1,126 +1,191 @@
 %% runDiscreteRadiusStudy
-% RUNDISCRETERADIUSSTUDY  Run a post-processing lunar discrete-radius sweep.
+% RUNDISCRETERADIUSSTUDY Post-process one saved lunar sensor optimization.
 %
-% From the repository root, in MATLAB:
-%   run("scripts/runDiscreteRadiusStudy.m")
+% Preferred usage, from the MATLAB project root:
+%   run("scripts/runDiscreteRadiusStudy.m");
 %
-% This runner uses the CURRENT results/optimization_database.mat and the
-% ORIGINAL sensor IDs from your successful refineDiscreteNetwork call.
-% It does NOT load a historical study_summary.mat, so it avoids the v2/v5
-% database-version mismatch. All radii stay centered on the SAME original
-% network; previous refined solutions are NOT used as new centers.
+% DEFAULT MODE: reads a saved optimization study_summary.mat, including its
+% best sensor indices and objective mode (GA, PSO or surrogateopt results).
+% All radius searches remain anchored to that SAME original network.
+% The radius sweep calls runDiscreteRadiusSensitivity, which reuses a shared
+% objective cache across radii and saves summaries/figures. No global
+% optimizer is rerun and no production study files are overwritten.
 %
-% Choose the original sensor IDs in USER SETTINGS below, or keep them empty
-% and run in a workspace containing the prior "refined" result struct.
-% IMPORTANT: use refined.initialSensorIndices, NOT refined.bestSensorIndices.
+% DATABASE COMPATIBILITY IS REQUIRED. Historical saved studies may use a
+% different database from results/optimization_database.mat. For example,
+% the 20260915 GA campaign reports a v2 database, while your current file
+% may contain v5. Specify a preserved v2 database in the setting below.
+% Do not bypass the version/candidate-coordinate check: indices alone do
+% not identify the same physical network across different databases.
 %
-% The sweep caches expensive objective evaluations across radii and saves:
-%   radius_sensitivity_summary.csv
-%   radius_sensitivity_study.mat
-%   best_objective_vs_radius.png
-%   best_objective_vs_unique_fe.png
-% under results/local_refinement/radius_sensitivity_<timestamp>/.
-% All objective evaluations are additional post-processing evaluations;
-% the original GA/PSO/surrogateopt FE budget remains unchanged.
+% ALTERNATIVE MODE: to repeat the direct-index workflow used successfully
+% with optimization.refineDiscreteNetwork, set radiusStudySource to
+% "direct_indices", specify radiusStudyInitialIndices and the objective
+% mode, and use the current database as a new baseline. That is NOT a
+% quantitative comparison to the saved historical study's objective.
 
 %% ========================================================================
-%  USER SETTINGS -- edit these as needed
-%  ========================================================================
+% USER SETTINGS
+% ========================================================================
 
-radiusStudyObjectiveMode = "information";       % "information" or "coverage"
-radiusStudyRadiiKm = [10 20 30 40 50 60];       % strictly increasing radii
-radiusStudyMaximumCombinations = 50000;          % RAW combinations per radius
-radiusStudySkipOversized = true;                 % skip instead of error
-radiusStudyCaptureFraction = 0.95;               % observed r95 threshold
+radiusStudySource = "saved_study";  % "saved_study" or "direct_indices"
+
+% A folder name inside results/optimization_runs (not the MAT filename):
+radiusStudyStudyFolder = "ga_coverage_n3_20260915_121933";
+
+% Optional explicit .mat path to study summary, instead of the folder.
+% Leave empty to use the directory above.
+radiusStudySummaryFile = "";
+
+% Optional database MAT-file override; blank chooses the saved study's
+% databaseFile path, with existing runner's default-path fallback.
+% If the historical v2 file was replaced by v5, specify the preserved v2
+% MAT file here. Use the matching candidate chunk files as well.
+radiusStudyDatabaseFile = "";
+
+% Used ONLY for "direct_indices" (no historical study summary).
+% Use the exact original IDs from your successful standalone refinement:
+radiusStudyInitialIndices = [];
+radiusStudyObjectiveMode = "information"; % "coverage" or "information"
+
+% Radius sensitivity settings. Raw Cartesian combinations grow quickly.
+radiusStudyRadiiKm = [10 20 30 40 50 60];
+radiusStudyMaximumCombinations = 50000;
+radiusStudySkipOversized = true;
+radiusStudyCaptureFraction = 0.95;
 radiusStudyMakePlots = true;
 radiusStudySaveResults = true;
 
-% PREFERRED for reproducibility: enter your ORIGINAL candidate indices here,
-% e.g. [31 104 587]. If left empty, use refined.initialSensorIndices from
-% the MATLAB base workspace when this script is run interactively.
-radiusStudyInitialIndices = [];
-
-% No saved optimization-study path is needed for this workflow.
-
 %% ========================================================================
-%  Project paths and starting network
-%  ========================================================================
+% PATHS
+% ========================================================================
 
 radiusStudyScriptPath = mfilename("fullpath");
 assert(~isempty(radiusStudyScriptPath), ...
     "runDiscreteRadiusStudy:ScriptPath", ...
-    "Run this file as a MATLAB script, not by pasting sections individually.");
+    "Run this file as a script, not by pasting sections individually.");
 
 radiusStudyProjectRoot = fileparts(fileparts(radiusStudyScriptPath));
 addpath(fullfile(radiusStudyProjectRoot,"src"));
 addpath(fullfile(radiusStudyProjectRoot,"scripts"));
 
-radiusStudyDatabaseFile = fullfile( ...
-    radiusStudyProjectRoot,"results","optimization_database.mat");
-
-assert(isfile(radiusStudyDatabaseFile), ...
-    "runDiscreteRadiusStudy:DatabaseNotFound", ...
-    "Current optimization database not found: %s",radiusStudyDatabaseFile);
-
-if isempty(radiusStudyInitialIndices)
-    if exist("refined","var") == 1 && isstruct(refined) && ...
-            isfield(refined,"initialSensorIndices") && ...
-            ~isempty(refined.initialSensorIndices)
-        radiusStudyInitialIndices = double(refined.initialSensorIndices(:));
-        fprintf("Using refined.initialSensorIndices from workspace.\n");
-    else
-        error("runDiscreteRadiusStudy:MissingInitialIndices", ...
-            ['Set radiusStudyInitialIndices to the ORIGINAL candidate ' ...
-             'IDs you previously passed to refineDiscreteNetwork, ' ...
-             'or run this script with the prior refined result in ' ...
-             'the workspace. Do NOT use refined.bestSensorIndices.']);
-    end
-end
-
-radiusStudyInitialIndices = sort(double(radiusStudyInitialIndices(:)));
-validateattributes(radiusStudyInitialIndices,{'double'}, ...
-    {'vector','nonempty','finite','real','positive','integer'});
-assert(numel(unique(radiusStudyInitialIndices)) == ...
-    numel(radiusStudyInitialIndices), ...
-    "runDiscreteRadiusStudy:DuplicateSensors", ...
-    "Original sensor indices must be distinct.");
-
-fprintf("\n============================================================\n");
-fprintf("Lunar discrete refinement radius sensitivity\n");
-fprintf("============================================================\n");
-fprintf("Database:  %s\n",radiusStudyDatabaseFile);
-fprintf("Objective: %s\n",radiusStudyObjectiveMode);
-fprintf("Original:  %s\n",mat2str(radiusStudyInitialIndices.'));
-fprintf("Radii km:  %s\n",mat2str(radiusStudyRadiiKm));
-fprintf("Raw combination limit per radius: %.0f\n", ...
-    radiusStudyMaximumCombinations);
-
-%% ========================================================================
-%  Run the existing cached sensitivity function
-%  ========================================================================
-
 radiusStudyConfig = struct();
-radiusStudyConfig.databaseFile = string(radiusStudyDatabaseFile);
-radiusStudyConfig.initialSensorIndices = radiusStudyInitialIndices;
-radiusStudyConfig.objectiveMode = radiusStudyObjectiveMode;
 radiusStudyConfig.radiiKm = radiusStudyRadiiKm;
 radiusStudyConfig.maximumCombinations = radiusStudyMaximumCombinations;
 radiusStudyConfig.skipOversized = radiusStudySkipOversized;
 radiusStudyConfig.captureFraction = radiusStudyCaptureFraction;
-radiusStudyConfig.saveResults = radiusStudySaveResults;
 radiusStudyConfig.makePlots = radiusStudyMakePlots;
+radiusStudyConfig.saveResults = radiusStudySaveResults;
+
+if strlength(string(radiusStudyDatabaseFile)) > 0
+    radiusStudyConfig.databaseFile = string(radiusStudyDatabaseFile);
+end
+
+%% ========================================================================
+% SELECT STUDY OR DIRECT INITIAL INDICES
+% ========================================================================
+
+switch lower(string(radiusStudySource))
+    case "saved_study"
+        radiusStudySummaryPath = string(radiusStudySummaryFile);
+
+        if strlength(radiusStudySummaryPath) == 0
+            assert(strlength(string(radiusStudyStudyFolder)) > 0, ...
+                "runDiscreteRadiusStudy:MissingStudyFolder", ...
+                "Set radiusStudyStudyFolder or radiusStudySummaryFile.");
+            radiusStudySummaryPath = fullfile( ...
+                radiusStudyProjectRoot,"results","optimization_runs", ...
+                string(radiusStudyStudyFolder),"study_summary.mat");
+        elseif ~isfile(radiusStudySummaryPath)
+            radiusStudySummaryPath = fullfile( ...
+                radiusStudyProjectRoot,radiusStudySummaryPath);
+        end
+
+        assert(isfile(radiusStudySummaryPath), ...
+            "runDiscreteRadiusStudy:MissingStudySummary", ...
+            "Study summary MAT file not found: %s", ...
+            radiusStudySummaryPath);
+
+        % Load once here for an explicit, readable preview. The underlying
+        % sensitivity function loads it again and checks DB compatibility.
+        radiusStudyLoaded = load(radiusStudySummaryPath,"studyState");
+        assert(isfield(radiusStudyLoaded,"studyState"), ...
+            "runDiscreteRadiusStudy:InvalidStudySummary", ...
+            "Study summary must contain a studyState variable.");
+
+        radiusStudySaved = radiusStudyLoaded.studyState;
+        assert(isfield(radiusStudySaved,"overallBestSensorIndices") && ...
+            isfield(radiusStudySaved,"config") && ...
+            isfield(radiusStudySaved.config,"objectiveMode"), ...
+            "runDiscreteRadiusStudy:InvalidStudySummary", ...
+            "Study summary must contain best indices and objective mode.");
+
+        radiusStudyConfig.studySummaryFile = radiusStudySummaryPath;
+
+        fprintf("\nUsing saved study summary:\n  %s\n",radiusStudySummaryPath);
+        fprintf("  Objective: %s\n", ...
+            string(radiusStudySaved.config.objectiveMode));
+        fprintf("  Original candidate IDs: %s\n", ...
+            mat2str(double(radiusStudySaved.overallBestSensorIndices(:).')));
+        if isfield(radiusStudySaved.config,"optimizer")
+            fprintf("  Optimizer: %s\n", ...
+                string(radiusStudySaved.config.optimizer));
+        end
+
+    case "direct_indices"
+        % Direct current-database sweep, intentionally independent of the
+        % historical optimization studies (and their database versions).
+        assert(~isempty(radiusStudyInitialIndices), ...
+            "runDiscreteRadiusStudy:MissingInitialIndices", ...
+            ["Enter the original candidate indices used by your " ...
+             "successful refineDiscreteNetwork call."]);
+
+        radiusStudyIndices = sort(double(radiusStudyInitialIndices(:)));
+        validateattributes(radiusStudyIndices,{'double'}, ...
+            {'vector','nonempty','finite','real','integer','positive'});
+        assert(numel(unique(radiusStudyIndices)) == ...
+            numel(radiusStudyIndices), ...
+            "runDiscreteRadiusStudy:DuplicateSensors", ...
+            "Original candidate indices must be distinct.");
+
+        radiusStudyConfig.initialSensorIndices = radiusStudyIndices;
+        radiusStudyConfig.objectiveMode = ...
+            lower(string(radiusStudyObjectiveMode));
+
+        % Use current production file unless caller names another one.
+        if ~isfield(radiusStudyConfig,"databaseFile")
+            radiusStudyConfig.databaseFile = fullfile( ...
+                radiusStudyProjectRoot,"results", ...
+                "optimization_database.mat");
+        end
+
+        fprintf("\nUsing direct candidate-index inputs.\n");
+        fprintf("  Objective: %s\n",radiusStudyConfig.objectiveMode);
+        fprintf("  Original candidate IDs: %s\n", ...
+            mat2str(radiusStudyIndices.'));
+
+    otherwise
+        error("runDiscreteRadiusStudy:InvalidSource", ...
+            "radiusStudySource must be saved_study or direct_indices.");
+end
+
+%% ========================================================================
+% RUN AND REPORT
+% ========================================================================
+
+fprintf("\n============================================================\n");
+fprintf("Lunar discrete refinement radius sensitivity\n");
+fprintf("============================================================\n");
+fprintf("Radii (km): %s\n",mat2str(radiusStudyRadiiKm));
+fprintf("Max raw combinations / radius: %.0f\n", ...
+    radiusStudyMaximumCombinations);
 
 radiusStudy = runDiscreteRadiusSensitivity(radiusStudyConfig);
 
-%% ========================================================================
-%  Final interpretation / result locations
-%  ========================================================================
-
 fprintf("\n============================================================\n");
-fprintf("Radius study completed\n");
+fprintf("Radius sensitivity completed\n");
 fprintf("============================================================\n");
 disp(radiusStudy.summaryTable);
-
 fprintf("Original objective: %.12g\n",radiusStudy.originalObjective);
 fprintf("Best discrete objective: %.12g\n",radiusStudy.bestObjective);
 fprintf("Best refined candidate IDs: %s\n", ...
@@ -131,16 +196,14 @@ fprintf("Additional unique objective evaluations: %.0f\n", ...
     radiusStudy.totalUniqueObjectiveEvaluations);
 
 if isfinite(radiusStudy.radiusAtCaptureKm)
-    fprintf("Observed r%.0f: %.2f km (relative to largest completed radius)\n", ...
+    fprintf("Observed r%.0f: %.2f km (largest completed radius reference)\n", ...
         100*radiusStudy.captureFraction,radiusStudy.radiusAtCaptureKm);
 else
-    fprintf("Observed r95 unavailable: no improvement at completed radii.\n");
+    fprintf("Observed r95 unavailable (no improvement at completed radii).\n");
 end
-
 if any(radiusStudy.summaryTable.Status == "skipped_limit")
-    fprintf("NOTE: Some radii exceeded maximumCombinations and were skipped.\n");
+    fprintf("NOTE: Some radii exceeded the combination limit and were skipped.\n");
 end
-
 if strlength(radiusStudy.outputDirectory) > 0
     fprintf("Results folder: %s\n",radiusStudy.outputDirectory);
     if strlength(radiusStudy.summaryCsvFile) > 0
@@ -148,4 +211,4 @@ if strlength(radiusStudy.outputDirectory) > 0
     end
 end
 
-% The radiusStudy struct remains in the MATLAB workspace for inspection.
+% The radiusStudy struct remains in your MATLAB workspace.
