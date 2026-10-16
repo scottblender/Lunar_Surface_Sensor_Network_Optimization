@@ -11,18 +11,16 @@
 % objective cache across radii and saves summaries/figures. No global
 % optimizer is rerun and no production study files are overwritten.
 %
-% DATABASE COMPATIBILITY IS REQUIRED. Historical saved studies may use a
-% different database from results/optimization_database.mat. For example,
-% the 20260915 GA campaign reports a v2 database, while your current file
-% may contain v5. Specify a preserved v2 database in the setting below.
-% Do not bypass the version/candidate-coordinate check: indices alone do
-% not identify the same physical network across different databases.
+% The CURRENT database at results/optimization_database.mat is always
+% authoritative by default, even when the saved study lists an old version.
+% The saved study supplies observation-site coordinates and objective mode;
+% the sensitivity function maps the original physical locations onto the
+% current candidate grid and recomputes the starting objective on that DB.
+% This means updated databases do not require updating historical studies.
+% Old saved objective values are NOT compared to objectives from a new DB.
 %
-% ALTERNATIVE MODE: to repeat the direct-index workflow used successfully
-% with optimization.refineDiscreteNetwork, set radiusStudySource to
-% "direct_indices", specify radiusStudyInitialIndices and the objective
-% mode, and use the current database as a new baseline. That is NOT a
-% quantitative comparison to the saved historical study's objective.
+% ALTERNATIVE MODE: set radiusStudySource="direct_indices" to use
+% explicit current-grid IDs (instead of coordinates from a saved study).
 
 %% ========================================================================
 % USER SETTINGS
@@ -37,11 +35,14 @@ radiusStudyStudyFolder = "ga_coverage_n3_20260915_121933";
 % Leave empty to use the directory above.
 radiusStudySummaryFile = "";
 
-% Optional database MAT-file override; blank chooses the saved study's
-% databaseFile path, with existing runner's default-path fallback.
-% If the historical v2 file was replaced by v5, specify the preserved v2
-% MAT file here. Use the matching candidate chunk files as well.
+% Blank = the CURRENT canonical database at results/optimization_database.mat.
+% Override only if a newer database is stored at a different path.
 radiusStudyDatabaseFile = "";
+
+% For saved studies, allow at most this much movement when mapping each
+% old physical location to the CURRENT candidate grid (km). Empty uses
+% twice the grid spacing recorded in the current DB (fallback 30 km).
+radiusStudyMaximumRemapDistanceKm = [];
 
 % Used ONLY for "direct_indices" (no historical study summary).
 % Use the exact original IDs from your successful standalone refinement:
@@ -76,10 +77,20 @@ radiusStudyConfig.skipOversized = radiusStudySkipOversized;
 radiusStudyConfig.captureFraction = radiusStudyCaptureFraction;
 radiusStudyConfig.makePlots = radiusStudyMakePlots;
 radiusStudyConfig.saveResults = radiusStudySaveResults;
+radiusStudyConfig.maximumRemapDistanceKm = ...
+    radiusStudyMaximumRemapDistanceKm;
 
+% Always use the current DB. Never inherit the study's historical DB path.
 if strlength(string(radiusStudyDatabaseFile)) > 0
     radiusStudyConfig.databaseFile = string(radiusStudyDatabaseFile);
+else
+    radiusStudyConfig.databaseFile = fullfile( ...
+        radiusStudyProjectRoot,"results","optimization_database.mat");
 end
+assert(isfile(radiusStudyConfig.databaseFile), ...
+    "runDiscreteRadiusStudy:MissingCurrentDatabase", ...
+    "Current optimization database not found: %s", ...
+    radiusStudyConfig.databaseFile);
 
 %% ========================================================================
 % SELECT STUDY OR DIRECT INITIAL INDICES
@@ -106,8 +117,8 @@ switch lower(string(radiusStudySource))
             "Study summary MAT file not found: %s", ...
             radiusStudySummaryPath);
 
-        % Load once here for an explicit, readable preview. The underlying
-        % sensitivity function loads it again and checks DB compatibility.
+        % Load once here for an explicit, readable preview. The sensitivity
+        % function maps saved site coordinates onto the current DB as needed.
         radiusStudyLoaded = load(radiusStudySummaryPath,"studyState");
         assert(isfield(radiusStudyLoaded,"studyState"), ...
             "runDiscreteRadiusStudy:InvalidStudySummary", ...
@@ -133,8 +144,7 @@ switch lower(string(radiusStudySource))
         end
 
     case "direct_indices"
-        % Direct current-database sweep, intentionally independent of the
-        % historical optimization studies (and their database versions).
+        % Direct current-database sweep, without a saved study.
         assert(~isempty(radiusStudyInitialIndices), ...
             "runDiscreteRadiusStudy:MissingInitialIndices", ...
             ["Enter the original candidate indices used by your " ...
@@ -151,13 +161,6 @@ switch lower(string(radiusStudySource))
         radiusStudyConfig.initialSensorIndices = radiusStudyIndices;
         radiusStudyConfig.objectiveMode = ...
             lower(string(radiusStudyObjectiveMode));
-
-        % Use current production file unless caller names another one.
-        if ~isfield(radiusStudyConfig,"databaseFile")
-            radiusStudyConfig.databaseFile = fullfile( ...
-                radiusStudyProjectRoot,"results", ...
-                "optimization_database.mat");
-        end
 
         fprintf("\nUsing direct candidate-index inputs.\n");
         fprintf("  Objective: %s\n",radiusStudyConfig.objectiveMode);
@@ -179,6 +182,7 @@ fprintf("============================================================\n");
 fprintf("Radii (km): %s\n",mat2str(radiusStudyRadiiKm));
 fprintf("Max raw combinations / radius: %.0f\n", ...
     radiusStudyMaximumCombinations);
+fprintf("Current DB: %s\n",radiusStudyConfig.databaseFile);
 
 radiusStudy = runDiscreteRadiusSensitivity(radiusStudyConfig);
 
@@ -194,6 +198,13 @@ fprintf("Maximum observed improvement: %.12g\n", ...
     radiusStudy.maximumObservedImprovement);
 fprintf("Additional unique objective evaluations: %.0f\n", ...
     radiusStudy.totalUniqueObjectiveEvaluations);
+fprintf("Current DB version: %s\n",radiusStudy.currentDatabaseVersion);
+if radiusStudy.mappingApplied
+    fprintf("Saved sites were matched to current-grid IDs: %s\n", ...
+        mat2str(radiusStudy.originalSensorIndices(:).'));
+    fprintf("Max remapping distance: %.6f km\n", ...
+        max(radiusStudy.mappingDistancesKm));
+end
 
 if isfinite(radiusStudy.radiusAtCaptureKm)
     fprintf("Observed r%.0f: %.2f km (largest completed radius reference)\n", ...
