@@ -27,6 +27,35 @@ reproducibility. The runner loads the frozen database from the study
 configuration, falling back to results/optimization_database.mat.
 The associated chunk files must also be present.
 
+## Direct candidate-index mode (recommended for exploratory sweeps)
+
+If `optimization.refineDiscreteNetwork` already worked with your
+current database, pass its original input sensor indices directly instead
+of loading a possibly historical `study_summary.mat`. The current
+database becomes the authoritative source, and the initial objective is
+recomputed on that database. For example:
+
+    addpath("src");
+    addpath("scripts");
+    cfg = struct();
+    cfg.databaseFile = "results/optimization_database.mat";
+    cfg.initialSensorIndices = refined.initialSensorIndices;
+    cfg.objectiveMode = "information";   % or "coverage"
+    cfg.radiiKm = [10 20 30 40 50 60];
+    cfg.maximumCombinations = 50000;
+    study = runDiscreteRadiusSensitivity(cfg);
+
+Do not set `studySummaryFile` or `studyState` when using
+`initialSensorIndices`; mixing sources produces a clear error.
+Set `initialSensorIndices` to the SAME original starting network for
+every radius, not to the result at the previous radius.
+
+If you instead want to verify local refinement of a historically saved
+GA/PSO/surrogateopt result, use a matching saved study AND its original
+database. The two paths are intentionally distinct: a v2 optimization
+objective cannot be compared directly with results evaluated on a v5
+database even if their filenames are identical.
+
 ## Database provenance check
 
 The winning sensor IDs in a saved study are meaningful only with the
