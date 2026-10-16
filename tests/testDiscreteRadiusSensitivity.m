@@ -92,7 +92,7 @@ end
 function testOldDatabaseVersionUsesCurrentCoordinates(testCase)
 % Even when the saved version differs, re-evaluate the original sites
 % entirely on the current candidate grid and objective function.
-config = makeTestConfig();
+config = makeSavedStudyConfig();
 config.studyState.overallBestRunIndex = 1;
 config.studyState.overallBestObjective = 999;
 config.studyState.runStates = {struct( ...
@@ -112,7 +112,7 @@ verifyFalse(testCase,study.mappingApplied);
 end
 
 function testChangedCandidateIndicesRemapFromPhysicalLocations(testCase)
-config = makeTestConfig();
+config = makeSavedStudyConfig();
 config.studyState.overallBestRunIndex = 1;
 config.studyState.runStates = {struct( ...
     "databaseVersion","old_database_version", ...
@@ -129,7 +129,7 @@ verifyEqual(testCase,study.mappingDistancesKm,[0;0],"AbsTol",1e-10);
 end
 
 function testLargeRemapRequiresReview(testCase)
-config = makeTestConfig();
+config = makeSavedStudyConfig();
 config.studyState.overallBestRunIndex = 1;
 config.studyState.runStates = {struct( ...
     "databaseVersion","old_database_version", ...
@@ -143,7 +143,7 @@ verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
 end
 
 function testMissingSavedLocationsCannotReuseOldIndices(testCase)
-config = makeTestConfig();
+config = makeSavedStudyConfig();
 config.studyState.overallBestRunIndex = 1;
 config.studyState.runStates = {struct( ...
     "databaseVersion","old_database_version")};
@@ -187,11 +187,35 @@ verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
     "runDiscreteRadiusSensitivity:DirectModeRequired");
 end
 
+function testRemapCollisionRequiresReview(testCase)
+config = makeSavedStudyConfig();
+config.studyState.overallBestRunIndex = 1;
+config.studyState.runStates = {struct( ...
+    "databaseVersion","old_database_version", ...
+    "bestSensorLatitudesRad",[0;0], ...
+    "bestSensorLongitudesRad",[0;0.001])};
+config.database.meta.version = "new_database_version";
+config.radiiKm = 0;
+verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
+    "runDiscreteRadiusSensitivity:RemapCollision");
+end
+
+function testAllOversizedRadiiFailClearly(testCase)
+config = makeTestConfig();
+config.radiiKm = 1.01;
+config.maximumCombinations = 5;
+config.skipOversized = true;
+verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
+    "runDiscreteRadiusSensitivity:NoCompletedRadii");
+end
+
 function config = makeTestConfig()
 config = struct();
-config.studyState = struct( ...
-    "overallBestSensorIndices",[1;4], ...
-    "config",struct("objectiveMode","information"));
+% Ordinary radius-sweep tests use direct current-grid indices. The saved
+% study tests below explicitly opt in to historical-coordinate remapping.
+config.initialSensorIndices = [1;4];
+config.objectiveMode = "information";
+config.studyState = struct();
 database = struct();
 database.candidates.latitudesRad = zeros(5,1);
 database.candidates.longitudesRad = (0:0.01:0.04).';
@@ -202,6 +226,15 @@ config.objectiveFcn = @jointOnlyObjective;
 config.saveResults = false;
 config.makePlots = false;
 config.maximumCombinations = 100;
+end
+
+function config = makeSavedStudyConfig()
+config = makeTestConfig();
+config.initialSensorIndices = [];
+config.objectiveMode = "";
+config.studyState = struct( ...
+    "overallBestSensorIndices",[1;4], ...
+    "config",struct("objectiveMode","information"));
 end
 
 function J = jointOnlyObjective(indices)
