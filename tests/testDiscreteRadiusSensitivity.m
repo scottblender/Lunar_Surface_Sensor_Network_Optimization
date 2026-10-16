@@ -89,6 +89,31 @@ verifyEqual(testCase,study.summaryTable.CapturedImprovementPct,[0;0]);
 verifyEqual(testCase,study.bestSensorIndices,[1;4]);
 end
 
+function testRejectsDifferentDatabaseVersion(testCase)
+config = makeTestConfig();
+config.studyState.overallBestRunIndex = 1;
+config.studyState.runStates = {struct( ...
+    "databaseVersion","old_database_version", ...
+    "databaseFile","original_database.mat")};
+config.database.meta.version = "new_database_version";
+config.radiiKm = 0;
+verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
+    "runDiscreteRadiusSensitivity:DatabaseVersionMismatch");
+end
+
+function testRejectsDifferentCandidateCoordinates(testCase)
+config = makeTestConfig();
+config.studyState.overallBestRunIndex = 1;
+config.studyState.runStates = {struct( ...
+    "databaseVersion","same_database_version", ...
+    "bestSensorLatitudesRad",[0;0], ...
+    "bestSensorLongitudesRad",[0;0.25])};
+config.database.meta.version = "same_database_version";
+config.radiiKm = 0;
+verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
+    "runDiscreteRadiusSensitivity:CandidateGridMismatch");
+end
+
 function config = makeTestConfig()
 config = struct();
 config.studyState = struct( ...
