@@ -49,11 +49,15 @@ radiusStudyMaximumRemapDistanceKm = [];
 radiusStudyInitialIndices = [];
 radiusStudyObjectiveMode = "information"; % "coverage" or "information"
 
-% Radius sensitivity settings. Raw Cartesian combinations grow quickly.
-radiusStudyRadiiKm = [10 20 30 40 50 60];
-radiusStudyMaximumCombinations = 50000;
-radiusStudySkipOversized = true;
+% Search 10 to 100 km. Inf explicitly REMOVES the combinatorial cap.
+% This is exhaustive and can require substantial time and RAM. Each
+% radius still enumerates all combinations; unique objective calls are cached
+% across radii. Leave skipOversized=false so no radius is silently omitted.
+radiusStudyRadiiKm = 10:10:100;
+radiusStudyMaximumCombinations = Inf;
+radiusStudySkipOversized = false;
 radiusStudyCaptureFraction = 0.95;
+radiusStudyMarginalThresholdPct = 1; % marginal gain below 1% = diminishing returns
 radiusStudyMakePlots = true;
 radiusStudySaveResults = true;
 
@@ -75,6 +79,7 @@ radiusStudyConfig.radiiKm = radiusStudyRadiiKm;
 radiusStudyConfig.maximumCombinations = radiusStudyMaximumCombinations;
 radiusStudyConfig.skipOversized = radiusStudySkipOversized;
 radiusStudyConfig.captureFraction = radiusStudyCaptureFraction;
+radiusStudyConfig.marginalThresholdPct = radiusStudyMarginalThresholdPct;
 radiusStudyConfig.makePlots = radiusStudyMakePlots;
 radiusStudyConfig.saveResults = radiusStudySaveResults;
 radiusStudyConfig.maximumRemapDistanceKm = ...
@@ -196,6 +201,17 @@ fprintf("Best refined candidate IDs: %s\n", ...
     mat2str(radiusStudy.bestSensorIndices.'));
 fprintf("Maximum observed improvement: %.12g\n", ...
     radiusStudy.maximumObservedImprovement);
+fprintf("Best positive score (-J): %.12g\n", ...
+    -radiusStudy.bestObjective);
+if isfinite(radiusStudy.tradeoffRadiusKm)
+    fprintf("Diminishing-returns radius: %.2f km (%.3g%% marginal threshold)\n", ...
+        radiusStudy.tradeoffRadiusKm,radiusStudy.marginalThresholdPct);
+    if radiusStudy.tradeoffProvisional
+        fprintf("NOTE: This recommendation is provisional; radii were skipped.\n");
+    end
+else
+    fprintf("No diminishing-returns elbow found in the tested radii.\n");
+end
 fprintf("Additional unique objective evaluations: %.0f\n", ...
     radiusStudy.totalUniqueObjectiveEvaluations);
 fprintf("Current DB version: %s\n",radiusStudy.currentDatabaseVersion);
