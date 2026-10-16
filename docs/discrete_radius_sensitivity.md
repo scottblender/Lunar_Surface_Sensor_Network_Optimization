@@ -1,121 +1,83 @@
 # Discrete refinement radius-sensitivity study
 
-Use scripts/runDiscreteRadiusSensitivity.m after GA, PSO, or surrogateopt has
-produced a saved study_summary.mat. This post-processing study does not rerun
-the global optimizer. It calls optimization.refineDiscreteNetwork with the
-same **original global best candidate IDs** for every radius.
+Use `scripts/runDiscreteRadiusStudy.m` to perform a post-processing
+radius sweep of any saved lunar surface network, without rerunning its
+global optimizer. The **current canonical database**
+(`results/optimization_database.mat`) is authoritative, regardless
+of the version recorded in the saved study.
 
-## Standalone runner: selected saved optimization study (default)
+## Start from a saved study (default)
 
-The complete script `scripts/runDiscreteRadiusStudy.m` now loads a named
-`results/optimization_runs/<folder>/study_summary.mat` by default. Edit
-the USER SETTINGS block:
+Select the directory under `results/optimization_runs`:
 
     radiusStudySource = "saved_study";
     radiusStudyStudyFolder = "ga_coverage_n3_20260915_121933";
-    radiusStudySummaryFile = "";  % uses folder above
-    radiusStudyDatabaseFile = ""; % override for archived matching database
+    radiusStudySummaryFile = "";
+    radiusStudyDatabaseFile = "";  % current canonical database
 
 Then run from the repository root:
 
     run("scripts/runDiscreteRadiusStudy.m")
 
-This reads the saved best indices and objective mode directly from
-`studyState`; no workspace variable named `refined` or manually entered
-indices are needed. All radii use the original network as their fixed center.
+The runner loads `study_summary.mat`, recovers the saved objective mode
+and best original observer coordinates, and matches those coordinates
+to the closest candidates in the CURRENT optimization database. If the
+candidate IDs or database model have changed, the starting objective
+is recomputed on the current database. The historical saved objective
+is retained as metadata only and is **never** used to calculate the
+reported improvements.
 
-**Database provenance is essential:** the example historical GA study reports
-database v2_fixed_p0 while the current optimization_database.mat can hold
-v5_chunked_candidate_data. Reusing the v2 candidate indices against the v5
-candidate grid as if they were the same study is invalid. Supply an archived
-matching database via `radiusStudyDatabaseFile` and its associated chunk
-files. If no matching database remains, use the distinct direct-index
-workflow below, re-evaluating the starting network entirely on v5, and
-do not interpret its objectives as improvements over the historical v2
-values.
+Mapping distances are recorded as
+`study.mappingDistancesKm`. If the nearest current candidate is too
+far away or two original sites map to the same current candidate, the
+study stops for review rather than silently using unrelated sites.
+The default maximum remap distance is two times the current database's
+recorded candidate spacing (30 km fallback); override by setting
+`radiusStudyMaximumRemapDistanceKm`.
 
-To run an exploratory sweep on the current database without a study
-summary instead, set:
+All radii are centered on the SAME mapped baseline network. A future
+database update does not require rewriting the script if it replaces
+`results/optimization_database.mat` as the canonical current file.
+If a newer database is saved somewhere else, set its path using
+`radiusStudyDatabaseFile` and ensure its chunk files are available.
+
+## Direct current-grid candidate indices (alternative)
+
+If you prefer not to load a saved summary, set in the runner:
 
     radiusStudySource = "direct_indices";
-    radiusStudyInitialIndices = [31 104 587]; % replace with your IDs
+    radiusStudyInitialIndices = [31 104 587]; % replace
     radiusStudyObjectiveMode = "information";
 
-The script will then ignore the saved study and use the current database.
-Results remain in `radiusStudy` and under `results/local_refinement/` when
-saving is enabled.
-
-## Run (MATLAB, from the repository root)
-
-    addpath("src");
-    addpath("scripts");
-
-    cfg = struct();
-    cfg.studySummaryFile = ...
-        "results/optimization_runs/YOUR_STUDY_FOLDER/study_summary.mat";
-    cfg.radiiKm = [10 20 30 40 50 60];
-    cfg.maximumCombinations = 50000;
-    cfg.skipOversized = true;
-
-    study = runDiscreteRadiusSensitivity(cfg);
-    disp(study.summaryTable);
-    fprintf("Observed r95 = %.2f km\n",study.radiusAtCaptureKm);
-
-If studySummaryFile is omitted, the newest study_summary.mat found in
-results/optimization_runs is used. Specify the path explicitly for
-reproducibility. The runner loads the frozen database from the study
-configuration, falling back to results/optimization_database.mat.
-The associated chunk files must also be present.
-
-## Direct candidate-index mode (recommended for exploratory sweeps)
-
-If `optimization.refineDiscreteNetwork` already worked with your
-current database, pass its original input sensor indices directly instead
-of loading a possibly historical `study_summary.mat`. The current
-database becomes the authoritative source, and the initial objective is
-recomputed on that database. For example:
+Or call the study function directly:
 
     addpath("src");
     addpath("scripts");
     cfg = struct();
-    cfg.databaseFile = "results/optimization_database.mat";
-    cfg.initialSensorIndices = refined.initialSensorIndices;
-    cfg.objectiveMode = "information";   % or "coverage"
+    cfg.initialSensorIndices = [31 104 587]; % replace
+    cfg.objectiveMode = "information";
     cfg.radiiKm = [10 20 30 40 50 60];
     cfg.maximumCombinations = 50000;
     study = runDiscreteRadiusSensitivity(cfg);
 
-Do not set `studySummaryFile` or `studyState` when using
-`initialSensorIndices`; mixing sources produces a clear error.
-Set `initialSensorIndices` to the SAME original starting network for
-every radius, not to the result at the previous radius.
+Both workflows recompute the baseline and every candidate-network
+objective entirely on the same current database. Never compare absolute
+objective values across different database versions as though they use
+the same geometry, measurement model, and prior covariance.
 
-If you instead want to verify local refinement of a historically saved
-GA/PSO/surrogateopt result, use a matching saved study AND its original
-database. The two paths are intentionally distinct: a v2 optimization
-objective cannot be compared directly with results evaluated on a v5
-database even if their filenames are identical.
+## Interpretation and future database changes
 
-## Database provenance check
+`study.savedDatabaseVersion` and `study.currentDatabaseVersion` record
+provenance; unlike the previous implementation, a version mismatch
+does not block a sweep if the physical observer coordinates can be
+mapped reliably. `study.savedOriginalSensorIndices` preserves the
+old IDs, while `study.originalSensorIndices` contains the current
+grid IDs actually evaluated.
 
-The winning sensor IDs in a saved study are meaningful only with the
-database that generated them. Before running the sweep, the script checks
-the winning run's recorded database version against the loaded MAT file,
-and (where saved) compares the winner's candidate coordinates.
-
-If you receive `runDiscreteRadiusSensitivity:DatabaseVersionMismatch`,
-the error now displays the saved run's database version and original file
-path alongside the loaded version/path. Find the original matching database
-and pass its path explicitly:
-
-    cfg.databaseFile = "path/to/matching/optimization_database.mat";
-
-If that database is unavailable, regenerate it consistently and rerun
-the global optimizer. Do not simply bypass the guard: improvements
-computed from two different candidate/visibility databases are not a
-valid post-processing comparison. An explicitly supplied database path
-that does not exist is now reported as missing, instead of silently
-falling back to the default results database.
+If a historical summary contains no saved sensor coordinates and its
+database version differs, the runner cannot safely infer what its
+old indices mean. Supply current-grid sensor indices explicitly.
+This is the one case in which automatic remapping cannot be trusted.
 
 ## Outputs
 
