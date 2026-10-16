@@ -14,6 +14,10 @@ Select the directory under `results/optimization_runs`:
     radiusStudyStudyFolder = "ga_coverage_n3_20260915_121933";
     radiusStudySummaryFile = "";
     radiusStudyDatabaseFile = "";  % current canonical database
+    radiusStudyRadiiKm = 10:10:100;
+    radiusStudyMaximumCombinations = Inf;
+    radiusStudySkipOversized = false;
+    radiusStudyMarginalThresholdPct = 1;
 
 Then run from the repository root:
 
@@ -56,8 +60,10 @@ Or call the study function directly:
     cfg = struct();
     cfg.initialSensorIndices = [31 104 587]; % replace
     cfg.objectiveMode = "information";
-    cfg.radiiKm = [10 20 30 40 50 60];
-    cfg.maximumCombinations = 50000;
+    cfg.radiiKm = 10:10:100;
+    cfg.maximumCombinations = Inf;
+    cfg.skipOversized = false;
+    cfg.marginalThresholdPct = 1;
     study = runDiscreteRadiusSensitivity(cfg);
 
 Both workflows recompute the baseline and every candidate-network
@@ -87,6 +93,8 @@ Under a timestamped results/local_refinement/radius_sensitivity_* folder:
     radius_sensitivity_study.mat
     best_objective_vs_radius.png
     best_objective_vs_unique_fe.png
+    relative_improvement_vs_radius.png
+    relative_improvement_vs_search_space.png
 
 Neither the optimizer study nor production database is modified.
 The MAT includes per-radius search results; the CSV summarizes:
@@ -94,8 +102,14 @@ The MAT includes per-radius search results; the CSV summarizes:
 - CartesianCombinations: all raw combinations before duplicate filtering,
   and the quantity governed by maximumCombinations.
 - BestJ: best minimization objective within the given fixed-radius region.
-- Improvement: original global objective minus BestJ.
+- BestScore: negative BestJ; higher is better for information and coverage.
+- Improvement: original CURRENT-database objective minus BestJ.
+- RelativeImprovementPct: 100*(J0 - BestJ)/abs(J0); improvement relative
+  to the original network, independent of the sign of J.
 - MarginalImprovement: improvement since the preceding completed radius.
+- MarginalRelativeImprovementPct: 100*(previous BestJ - current BestJ)/
+  abs(previous BestJ); percent benefit from expanding the radius by one
+  step, used by the diminishing-returns heuristic.
 - CapturedImprovementPct: observed fraction relative to the largest
   COMPLETED radius, not the unknown global optimum.
 - UniqueNetworksWithinRadius: distinct valid networks searched by the
@@ -114,15 +128,34 @@ The r95 value (study.radiusAtCaptureKm, with default captureFraction=.95)
 is the *smallest tested completed radius* obtaining at least 95% of the
 largest **observed** improvement. It does not prove a global optimum.
 
+The relative-improvement "elbow" is saved as
+study.tradeoffRadiusKm (default marginalThresholdPct=1). It is the last
+completed radius giving at least 1% marginal improvement, provided at
+least one larger radius was also evaluated and had less than 1% gain.
+If later tested radii produce new >=1% increments, the elbow moves.
+This is a tradeoff heuristic, not the radius with the best absolute score.
+For example, score 185 at 20 km, 190.5 at 30 km, and 191 at 40 km gives
++2.97% at 30 km and +0.26% at 40 km; the tradeoff recommendation is 30 km.
+If no plateau occurs, the recommendation is NaN. If radii were skipped,
+study.tradeoffProvisional is true.
+
+Both relative improvement figures compare improvement with the radius and
+with raw combinatorial search-space size, respectively. The search-space
+plot uses a logarithmic x-axis.
+
 ## Safety and scope
 
 Each observer remains within the selected radius around its ORIGINAL
-global-optimizer site. All tested regions are nested. Duplicate-site
-networks are excluded. A radius exceeding 50,000 raw Cartesian combinations
-(default) is SKIPPED, unless you explicitly raise maximumCombinations.
-Skipped radii report NaNs for objective-dependent metrics. Set
-cfg.skipOversized = false to error instead of skip. A larger cap can be
-very expensive for information objectives; scale up cautiously.
+global-optimizer site. All tested regions are nested and duplicates are
+excluded. The study FUNCTION defaults to a finite 50,000 raw-combination
+limit; the STANDALONE runner is explicitly configured for 10:10:100 km
+with maximumCombinations=Inf and skipOversized=false. This disables the
+radius-skipping safety cap, but DOES NOT make a combinatorially enormous
+search tractable. A very large search can take substantial compute time
+and consume significant RAM for the objective cache; it is not
+parallelized or checkpointed. Only use the uncapped setting intentionally.
+If a raw combination count overflows double (Inf), the refiner stops
+rather than claiming that the search was exhaustive.
 
 To avoid creating any result files during a quick check:
 
