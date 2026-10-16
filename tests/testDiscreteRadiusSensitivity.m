@@ -89,29 +89,68 @@ verifyEqual(testCase,study.summaryTable.CapturedImprovementPct,[0;0]);
 verifyEqual(testCase,study.bestSensorIndices,[1;4]);
 end
 
-function testRejectsDifferentDatabaseVersion(testCase)
+function testOldDatabaseVersionUsesCurrentCoordinates(testCase)
+% Even when the saved version differs, re-evaluate the original sites
+% entirely on the current candidate grid and objective function.
+config = makeTestConfig();
+config.studyState.overallBestRunIndex = 1;
+config.studyState.overallBestObjective = 999;
+config.studyState.runStates = {struct( ...
+    "databaseVersion","old_database_version", ...
+    "bestSensorLatitudesRad",[0;0], ...
+    "bestSensorLongitudesRad",[0;0.03])};
+config.database.meta.version = "new_database_version";
+config.radiiKm = [0 1.01];
+study = runDiscreteRadiusSensitivity(config);
+verifyEqual(testCase,study.savedDatabaseVersion,"old_database_version");
+verifyEqual(testCase,study.currentDatabaseVersion,"new_database_version");
+verifyEqual(testCase,study.savedObjectiveNotCompared,999);
+verifyEqual(testCase,study.originalObjective,10);
+verifyEqual(testCase,study.bestObjective,0);
+verifyEqual(testCase,study.originalSensorIndices,[1;4]);
+verifyFalse(testCase,study.mappingApplied);
+end
+
+function testChangedCandidateIndicesRemapFromPhysicalLocations(testCase)
 config = makeTestConfig();
 config.studyState.overallBestRunIndex = 1;
 config.studyState.runStates = {struct( ...
     "databaseVersion","old_database_version", ...
-    "databaseFile","original_database.mat")};
+    "bestSensorLatitudesRad",[0;0], ...
+    "bestSensorLongitudesRad",[0.01;0.04])};
 config.database.meta.version = "new_database_version";
 config.radiiKm = 0;
-verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
-    "runDiscreteRadiusSensitivity:DatabaseVersionMismatch");
+study = runDiscreteRadiusSensitivity(config);
+verifyTrue(testCase,study.mappingApplied);
+verifyEqual(testCase,study.savedOriginalSensorIndices,[1;4]);
+verifyEqual(testCase,study.originalSensorIndices,[2;5]);
+verifyEqual(testCase,study.originalObjective,0);
+verifyEqual(testCase,study.mappingDistancesKm,[0;0],"AbsTol",1e-10);
 end
 
-function testRejectsDifferentCandidateCoordinates(testCase)
+function testLargeRemapRequiresReview(testCase)
 config = makeTestConfig();
 config.studyState.overallBestRunIndex = 1;
 config.studyState.runStates = {struct( ...
-    "databaseVersion","same_database_version", ...
+    "databaseVersion","old_database_version", ...
     "bestSensorLatitudesRad",[0;0], ...
-    "bestSensorLongitudesRad",[0;0.25])};
-config.database.meta.version = "same_database_version";
+    "bestSensorLongitudesRad",[0;0.5])};
+config.database.meta.version = "new_database_version";
+config.radiiKm = 0;
+config.maximumRemapDistanceKm = 1;
+verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
+    "runDiscreteRadiusSensitivity:RemapTooFar");
+end
+
+function testMissingSavedLocationsCannotReuseOldIndices(testCase)
+config = makeTestConfig();
+config.studyState.overallBestRunIndex = 1;
+config.studyState.runStates = {struct( ...
+    "databaseVersion","old_database_version")};
+config.database.meta.version = "new_database_version";
 config.radiiKm = 0;
 verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
-    "runDiscreteRadiusSensitivity:CandidateGridMismatch");
+    "runDiscreteRadiusSensitivity:MissingSavedCoordinates");
 end
 
 function testDirectIndicesReproduceStandaloneRefinement(testCase)
