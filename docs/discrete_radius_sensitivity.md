@@ -5,6 +5,27 @@ produced a saved study_summary.mat. This post-processing study does not rerun
 the global optimizer. It calls optimization.refineDiscreteNetwork with the
 same **original global best candidate IDs** for every radius.
 
+## Quick standalone runner (recommended)
+
+For the current database and the same starting network used in a successful
+`refineDiscreteNetwork` call, use the complete script
+`scripts/runDiscreteRadiusStudy.m`. Edit its USER SETTINGS section if
+needed, then run from the project root:
+
+    git pull origin main
+    % In MATLAB, with a workspace variable refined from the previous run:
+    run("scripts/runDiscreteRadiusStudy.m")
+
+The script uses `refined.initialSensorIndices` if present. For a fresh
+session, manually set `radiusStudyInitialIndices` to the original IDs
+inside the script. Do not supply the best *refined* indices as the starting
+network or change the centers between radii. This runner deliberately
+does **not** load historical study summaries, preventing accidental
+cross-version comparisons with the current production database.
+
+Outputs are in `radiusStudy` in the MATLAB workspace as well as saved
+under `results/local_refinement/` (when saving is enabled).
+
 ## Run (MATLAB, from the repository root)
 
     addpath("src");
