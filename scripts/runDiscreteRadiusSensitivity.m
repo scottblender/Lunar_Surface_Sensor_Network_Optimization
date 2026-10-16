@@ -17,7 +17,11 @@ function study = runDiscreteRadiusSensitivity(userConfig)
 % results/optimization_runs. Specify it for reproducible publications.
 %
 % Optional userConfig fields:
+%   initialSensorIndices  - direct starting candidate IDs on CURRENT database
+%                           (bypasses saved-study lookup when nonempty)
+%   objectiveMode         - "information"/"coverage"; required for direct IDs
 %   studySummaryFile      - saved study_summary.mat (default latest)
+%                           do not combine with initialSensorIndices
 %   databaseFile          - database MAT (default study config or results)
 %   radiiKm               - increasing radii in km (default [10 20 30 40 50 60])
 %   maximumCombinations   - raw Cartesian limit per radius (default 50000)
@@ -54,6 +58,8 @@ addpath(fullfile(projectRoot,"src"));
 config = struct();
 config.studySummaryFile = "";
 config.databaseFile = "";
+config.initialSensorIndices = [];
+config.objectiveMode = "";
 config.radiiKm = [10 20 30 40 50 60];
 config.maximumCombinations = 50000;
 config.skipOversized = true;
@@ -91,26 +97,53 @@ assert(islogical(config.skipOversized) && isscalar(config.skipOversized));
 assert(islogical(config.saveResults) && isscalar(config.saveResults));
 assert(islogical(config.makePlots) && isscalar(config.makePlots));
 
-%% Retrieve the original global optimization result.
-
+%% Determine the fixed starting network (no global optimizer rerun).
+% A direct index vector lets this radius sweep use EXACTLY the same
+% current-database starting point as refineDiscreteNetwork. This avoids
+% accidentally selecting a historical study for a different database.
 summaryFile = "";
-if ~isempty(fieldnames(config.studyState))
-    studyState = config.studyState;
+if ~isempty(config.initialSensorIndices)
+    assert(strlength(string(config.studySummaryFile)) == 0 && ...
+        isempty(fieldnames(config.studyState)), ...
+        "runDiscreteRadiusSensitivity:AmbiguousNetworkSource", ...
+        ["Specify either initialSensorIndices/objectiveMode or a saved " ...
+         "study, not both."]);
+    validateattributes(config.initialSensorIndices,{'numeric'}, ...
+        {'vector','nonempty','real','finite','integer','positive'});
+    requestedMode = lower(string(config.objectiveMode));
+    assert(isscalar(requestedMode) && ...
+        ismember(requestedMode,["coverage","information"]), ...
+        "runDiscreteRadiusSensitivity:DirectModeRequired", ...
+        ["With initialSensorIndices, set config.objectiveMode to " ...
+         """coverage"" or ""information""."]);
+    studyState = struct();
+    studyState.overallBestSensorIndices = ...
+        double(config.initialSensorIndices(:));
+    studyState.config = struct("objectiveMode",requestedMode);
+    startingNetworkSource = "explicit_indices";
 else
-    summaryFile = string(config.studySummaryFile);
-    if strlength(summaryFile) == 0
-        summaryFile = findLatestStudySummary(projectRoot);
+    assert(strlength(string(config.objectiveMode)) == 0, ...
+        "runDiscreteRadiusSensitivity:AmbiguousNetworkSource", ...
+        "objectiveMode may be specified directly only with initialSensorIndices.");
+    startingNetworkSource = "saved_study";
+    if ~isempty(fieldnames(config.studyState))
+        studyState = config.studyState;
     else
-        summaryFile = resolveRelativeFile(summaryFile,projectRoot);
+        summaryFile = string(config.studySummaryFile);
+        if strlength(summaryFile) == 0
+            summaryFile = findLatestStudySummary(projectRoot);
+        else
+            summaryFile = resolveRelativeFile(summaryFile,projectRoot);
+        end
+        assert(isfile(summaryFile), ...
+            "runDiscreteRadiusSensitivity:StudyNotFound", ...
+            "Study summary not found: %s",summaryFile);
+        D = load(summaryFile,"studyState");
+        assert(isfield(D,"studyState"), ...
+            "runDiscreteRadiusSensitivity:InvalidStudy", ...
+            "The summary MAT file does not contain studyState.");
+        studyState = D.studyState;
     end
-    assert(isfile(summaryFile), ...
-        "runDiscreteRadiusSensitivity:StudyNotFound", ...
-        "Study summary not found: %s",summaryFile);
-    D = load(summaryFile,"studyState");
-    assert(isfield(D,"studyState"), ...
-        "runDiscreteRadiusSensitivity:InvalidStudy", ...
-        "The summary MAT file does not contain studyState.");
-    studyState = D.studyState;
 end
 
 assert(isfield(studyState,"overallBestSensorIndices") && ...
@@ -272,6 +305,7 @@ fprintf("============================================================\n");
 fprintf("Mode:          %s\n",objectiveMode);
 fprintf("Sensor count:  %d\n",numel(originalIndices));
 fprintf("Original IDs:  %s\n",mat2str(originalIndices(:).'));
+fprintf("Starting source: %s\n",startingNetworkSource);
 fprintf("Combination limit: %.0f\n",config.maximumCombinations);
 
 for k = 1:numberOfRadii
@@ -377,6 +411,7 @@ study = struct();
 study.version = "discrete_radius_sensitivity_v1";
 study.created = string(datetime("now"));
 study.studySummaryFile = string(summaryFile);
+study.startingNetworkSource = startingNetworkSource;
 study.databaseFile = string(databaseFile);
 study.objectiveMode = objectiveMode;
 study.originalSensorIndices = originalIndices;
