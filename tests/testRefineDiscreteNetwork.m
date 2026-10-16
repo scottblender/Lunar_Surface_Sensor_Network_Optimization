@@ -83,6 +83,17 @@ verifyError(testCase,@()optimization.refineDiscreteNetwork( ...
     "refineDiscreteNetwork:TooManyCombinations");
 end
 
+function testInfiniteLimitAllowsExplicitExhaustiveSearch(testCase)
+database = makeDatabase(zeros(5,1),(0:0.01:0.04).',100);
+options = struct("maximumCombinations",Inf, ...
+    "objectiveFcn",@jointOnlyObjective);
+result = optimization.refineDiscreteNetwork( ...
+    [1;4],database,"coverage",1.01,options);
+verifyEqual(testCase,result.bestSensorIndices,[2;5]);
+verifyEqual(testCase,result.numberOfCombinations,6);
+verifyEqual(testCase,result.numberOfObjectiveEvaluations,6);
+end
+
 function testInvalidInitialNetworkRejected(testCase)
 database = makeDatabase(zeros(3,1),[0;0.01;0.02],100);
 verifyError(testCase,@()optimization.refineDiscreteNetwork( ...
