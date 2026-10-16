@@ -114,6 +114,40 @@ verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
     "runDiscreteRadiusSensitivity:CandidateGridMismatch");
 end
 
+function testDirectIndicesReproduceStandaloneRefinement(testCase)
+config = makeTestConfig();
+config.initialSensorIndices = [1;4];
+config.objectiveMode = "information";
+config.studyState = struct();
+config.radiiKm = [0 1.01];
+study = runDiscreteRadiusSensitivity(config);
+
+verifyEqual(testCase,study.startingNetworkSource,"explicit_indices");
+verifyEqual(testCase,study.studySummaryFile,"");
+verifyEqual(testCase,study.originalSensorIndices,[1;4]);
+verifyEqual(testCase,study.originalObjective,10);
+verifyEqual(testCase,study.bestSensorIndices,[2;5]);
+verifyEqual(testCase,study.bestObjective,0);
+verifyEqual(testCase,study.radiusAtCaptureKm,1.01);
+end
+
+function testDirectIndicesRejectAmbiguousStudy(testCase)
+config = makeTestConfig();
+config.initialSensorIndices = [1;4];
+config.objectiveMode = "information";
+config.studySummaryFile = "old_study_summary.mat";
+verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
+    "runDiscreteRadiusSensitivity:AmbiguousNetworkSource");
+end
+
+function testDirectIndicesRequireMode(testCase)
+config = makeTestConfig();
+config.initialSensorIndices = [1;4];
+config.studyState = struct();
+verifyError(testCase,@()runDiscreteRadiusSensitivity(config), ...
+    "runDiscreteRadiusSensitivity:DirectModeRequired");
+end
+
 function config = makeTestConfig()
 config = struct();
 config.studyState = struct( ...
