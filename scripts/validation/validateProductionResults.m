@@ -1,5 +1,5 @@
-function report = testProductionOptimizationResults(userConfig)
-% TESTPRODUCTIONOPTIMIZATIONRESULTS - Verify the completed production campaign.
+function report = validateProductionResults(userConfig)
+% VALIDATEPRODUCTIONRESULTS - Verify the completed production campaign.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -34,7 +34,7 @@ defaultConfig.relativeTolerance = 1e-10;
 defaultConfig.coordinateToleranceRad = 1e-12;
 defaultConfig.maximumCampaignSpanHours = 168;
 
-config = overrideAnalysisConfig(defaultConfig,userConfig);
+config = utilities.overrideConfig(defaultConfig,userConfig);
 config.resultsDirectory = string(config.resultsDirectory);
 config.databaseFile = string(config.databaseFile);
 config.networkSizes = double(config.networkSizes(:).');

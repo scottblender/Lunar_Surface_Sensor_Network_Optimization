@@ -19,7 +19,7 @@ assert(numel(sensorLatitudesRad) == numel(sensorLongitudesRad), ...
     "buildFilteredVisibilityAtLocations:CoordinateSizeMismatch", ...
     "Sensor latitude and longitude arrays must have equal length.");
 
-[candidateIndices,exactMatch] = matchCandidateLocations( ...
+[candidateIndices,exactMatch] = optimization.matchCandidateLocations( ...
     database,sensorLatitudesRad,sensorLongitudesRad);
 
 if exactMatch
@@ -52,7 +52,7 @@ fprintf(['  Recomputing filtered visibility for %d off-grid optimized ' ...
 
 trackingTimes = double(database.tracking.times(:));
 truthStateHistories = double(database.truth.optimizationStateHistories);
-[earthPositionsMci,sunPositionsMci] = selectEphemerides( ...
+[earthPositionsMci,sunPositionsMci] = optimization.selectEphemerides( ...
     database,trackingTimes);
 
 filteredAvailability = optimization.buildFilteredVisibilityDatabase( ...
@@ -68,43 +68,6 @@ filteredAvailability = optimization.buildFilteredVisibilityDatabase( ...
     moonRadiusKm,database.config.moon.theta0Rad, ...
     2*pi/database.config.moon.siderealPeriodSeconds, ...
     database.config.visibility.earthMinimumAngularSeparationRad);
-end
-
-function [indices,exactMatch] = matchCandidateLocations( ...
-    database,latitudesRad,longitudesRad)
-
-candidateLatitudesRad = double(database.candidates.latitudesRad(:));
-candidateLongitudesRad = mod( ...
-    double(database.candidates.longitudesRad(:)),2*pi);
-
-indices = zeros(numel(latitudesRad),1);
-exactMatch = true;
-for sensorIndex = 1:numel(latitudesRad)
-    latitudeDifference = candidateLatitudesRad-latitudesRad(sensorIndex);
-    longitudeDifference = atan2( ...
-        sin(candidateLongitudesRad-longitudesRad(sensorIndex)), ...
-        cos(candidateLongitudesRad-longitudesRad(sensorIndex)));
-    [distance,index] = min(hypot(latitudeDifference,longitudeDifference));
-    indices(sensorIndex) = index;
-    exactMatch = exactMatch && distance < 1e-10;
-end
-end
-
-function [earthPositionsMci,sunPositionsMci] = ...
-    selectEphemerides(database,trackingTimes)
-
-fullTimes = double(database.truth.times(:));
-indices = zeros(numel(trackingTimes),1);
-for timeIndex = 1:numel(trackingTimes)
-    [difference,index] = min(abs(fullTimes-trackingTimes(timeIndex)));
-    assert(difference < 1e-8, ...
-        sprintf('Could not align ephemerides with tracking time %.6f s.', ...
-        trackingTimes(timeIndex)));
-    indices(timeIndex) = index;
-end
-
-earthPositionsMci = double(database.ephemeris.earthPositionsMci(:,indices));
-sunPositionsMci = double(database.ephemeris.sunPositionsMci(:,indices));
 end
 
 function demFile = resolveDemFile(database,userConfig)

@@ -31,7 +31,7 @@ defaults.candidateDisplayLatitudeBinDeg = 5;
 defaults.candidateDisplayLongitudeBinDeg = 10;
 defaults.rasterResolutionDpi = 300;
 defaults.figure13SizeInches = [12.4 8.2];
-config = overrideAnalysisConfig(defaults,userConfig);
+config = utilities.overrideConfig(defaults,userConfig);
 
 config.outputDirectory = string(config.outputDirectory);
 config.productionCampaignDates = string(config.productionCampaignDates(:));

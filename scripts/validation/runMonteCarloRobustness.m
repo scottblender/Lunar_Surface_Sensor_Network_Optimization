@@ -33,7 +33,7 @@ config.includeOperationalSpacecraft = false;
 config.useParallel = true;
 config.runPlotsAfterStudy = true;
 config.studyName = "lunar_surface_monte_carlo_robustness";
-config = overrideAnalysisConfig(config,userConfig);
+config = utilities.overrideConfig(config,userConfig);
 
 config.databaseFile = string(config.databaseFile);
 config.demFile = string(config.demFile);

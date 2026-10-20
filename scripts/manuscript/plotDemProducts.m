@@ -14,7 +14,7 @@ defaults.outputDirectory = fullfile(projectRoot,"results","manuscript_artifacts"
 defaults.fullDemFile = fullfile(dataDirectory,"Full_Resolution_DEM.mat");
 defaults.syntheticDemFile = fullfile(dataDirectory,"Synthetic_Lunar_DEM.mat");
 defaults.moonRadiusKm = 1737.4;
-config = overrideAnalysisConfig(defaults,userConfig);
+config = utilities.overrideConfig(defaults,userConfig);
 
 style = publicationPlotStyle();
 files = [string(config.fullDemFile),string(config.syntheticDemFile)];

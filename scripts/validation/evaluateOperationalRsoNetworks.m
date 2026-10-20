@@ -28,7 +28,7 @@ config.campaignDates = ["20260918","20260919"];
 config.measurementNoiseSeed = 5000;
 config.reuseCache = true;
 config.forceRecompute = false;
-config = mergeAnalysisConfig(config,userConfig);
+config = utilities.mergeConfig(config,userConfig);
 
 config.resultsDirectory = string(config.resultsDirectory);
 config.databaseFile = string(config.databaseFile);
@@ -259,7 +259,7 @@ fprintf("============================================================\n");
 disp(summaryTable);
 
 %% Combined manuscript figure is generated separately by
-% plotOperationalRsoTrackingHeatmaps so this evaluator remains data-only.
+% plotTrackingResults so this evaluator remains data-only.
 
 %% Return products
 results = operationalResults;
@@ -297,7 +297,7 @@ for objectIndex = 1:numberOfObjects
     truthStateHistories(:,:,objectIndex) = returnedStates(2:end,:).';
 end
 
-[earthPositions,sunPositions] = selectEphemerides(sourceDatabase,trackingTimes);
+[earthPositions,sunPositions] = optimization.selectEphemerides(sourceDatabase,trackingTimes);
 latitudes = sourceDatabase.candidates.latitudesRad(originalIndices);
 longitudes = sourceDatabase.candidates.longitudesRad(originalIndices);
 horizonAzimuths = sourceDatabase.terrain.horizonAzimuthsRad;
@@ -365,21 +365,6 @@ operationalDatabase.rso.catalog = rsoCatalog;
 operationalDatabase.rso.initialStatesMoonInertial = initialStates;
 end
 
-function [earthPositions,sunPositions] = selectEphemerides(database,trackingTimes)
-fullTimes = database.truth.times(:);
-indices = zeros(numel(trackingTimes),1);
-for timeIndex = 1:numel(trackingTimes)
-    [difference,matchIndex] = min(abs(fullTimes-trackingTimes(timeIndex)));
-    assert(difference < 1e-8, ...
-        "Could not align production ephemerides with tracking time %.6f s.", ...
-        trackingTimes(timeIndex));
-    indices(timeIndex) = matchIndex;
-end
-earthPositions = database.ephemeris.earthPositionsMci(:,indices);
-sunPositions = database.ephemeris.sunPositionsMci(:,indices);
-end
-
-%% Local functions
 function summaryTable = buildSummaryTable( ...
     config,spacecraftNames,rmsPositionErrorKm,rmsVelocityErrorKmS, ...
     observabilityPercent,measurementUpdates)

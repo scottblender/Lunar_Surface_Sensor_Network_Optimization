@@ -16,7 +16,7 @@ defaultConfig.initialPerturbationDirection = [1;-1;0.5;0.25;-0.25;0.125];
 defaultConfig.demFile = "";
 defaultConfig.saveIndividualValidations = true;
 
-config = mergeAnalysisConfig(defaultConfig,userConfig);
+config = utilities.mergeConfig(defaultConfig,userConfig);
 
 validateattributes(config.measurementNoiseSeed,{'numeric'}, ...
     {'scalar','integer','nonnegative'});
