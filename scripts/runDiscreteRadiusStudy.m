@@ -21,6 +21,14 @@
 %
 % ALTERNATIVE MODE: set radiusStudySource="direct_indices" to use
 % explicit current-grid IDs (instead of coordinates from a saved study).
+%
+% If a COMPATIBLE saved radius_sensitivity_study.mat exists, this runner
+% automatically reuses it: no expensive objective evaluations are repeated.
+% It then recalculates computational-efficiency eta, per-sensor movement,
+% and figures/CSVs using analyzeSavedDiscreteRadiusStudy. The single entry
+% point for both workflows remains THIS script. An incompatible MAT is
+% never reused silently. Set radiusStudyReuseExistingResults=false to
+% deliberately rerun the complete radius refinement.
 
 %% ========================================================================
 % USER SETTINGS
@@ -60,6 +68,18 @@ radiusStudyCaptureFraction = 0.95;
 radiusStudyMarginalThresholdPct = 1; % marginal gain below 1% = diminishing returns
 radiusStudyMakePlots = true;
 radiusStudySaveResults = true;
+
+% Reuse a compatible previously completed radius sweep, then recompute
+% eta and sensor displacements WITHOUT any objective-function evaluations.
+radiusStudyReuseExistingResults = true;
+
+% Optional explicit path to an existing radius_sensitivity_study.mat.
+% Empty searches newest-to-oldest under results/local_refinement.
+radiusStudyExistingMatFile = "";
+
+% The movement/boundary diagnostic marks a sensor as near the edge
+% when its displacement >= this fraction of the selected search radius.
+radiusStudyBoundaryFraction = 0.90;
 
 %% ========================================================================
 % PATHS
@@ -152,8 +172,7 @@ switch lower(string(radiusStudySource))
         % Direct current-database sweep, without a saved study.
         assert(~isempty(radiusStudyInitialIndices), ...
             "runDiscreteRadiusStudy:MissingInitialIndices", ...
-            ["Enter the original candidate indices used by your " ...
-             "successful refineDiscreteNetwork call."]);
+            "Enter the original candidate indices from refineDiscreteNetwork.");
 
         radiusStudyIndices = sort(double(radiusStudyInitialIndices(:)));
         validateattributes(radiusStudyIndices,{'double'}, ...
@@ -189,7 +208,111 @@ fprintf("Max raw combinations / radius: %.0f\n", ...
     radiusStudyMaximumCombinations);
 fprintf("Current DB: %s\n",radiusStudyConfig.databaseFile);
 
-radiusStudy = runDiscreteRadiusSensitivity(radiusStudyConfig);
+%% ========================================================================
+% RECOVER SAVED SWEEP OR PERFORM REFINEMENT
+% ========================================================================
+
+radiusStudy = struct();
+radiusStudyReusedMatFile = "";
+if radiusStudyReuseExistingResults
+    radiusStudyCandidates = struct('folder',{},'name',{},'datenum',{});
+    if strlength(string(radiusStudyExistingMatFile)) > 0
+        radiusStudyRequestedMat = string(radiusStudyExistingMatFile);
+        if ~isfile(radiusStudyRequestedMat)
+            radiusStudyRequestedMat = fullfile( ...
+                radiusStudyProjectRoot,radiusStudyRequestedMat);
+        end
+        assert(isfile(radiusStudyRequestedMat), ...
+            "runDiscreteRadiusStudy:SavedResultNotFound", ...
+            "Saved radius MAT not found: %s",radiusStudyRequestedMat);
+        radiusStudyCandidates = dir(radiusStudyRequestedMat);
+    else
+        radiusStudyCandidates = dir(fullfile( ...
+            radiusStudyProjectRoot,"results","local_refinement", ...
+            "radius_sensitivity_*","radius_sensitivity_study.mat"));
+        if ~isempty(radiusStudyCandidates)
+            [~,radiusStudyOrder] = sort( ...
+                [radiusStudyCandidates.datenum],"descend");
+            radiusStudyCandidates = radiusStudyCandidates(radiusStudyOrder);
+        end
+    end
+    for radiusStudyCandidate = radiusStudyCandidates(:).'
+        radiusStudyPossibleMat = fullfile( ...
+            radiusStudyCandidate.folder,radiusStudyCandidate.name);
+        try
+            radiusStudySavedMat = load(radiusStudyPossibleMat,"study");
+            if ~isfield(radiusStudySavedMat,"study")
+                continue
+            end
+            radiusStudyCandidateResult = radiusStudySavedMat.study;
+            if isReusableRadiusStudy(radiusStudyCandidateResult, ...
+                    radiusStudyConfig,radiusStudySource, ...
+                    radiusStudyProjectRoot,radiusStudyCandidate.datenum)
+                radiusStudy = radiusStudyCandidateResult;
+                radiusStudyReusedMatFile = string(radiusStudyPossibleMat);
+                fprintf("\nReusing saved radius sweep (NO objective FEs):\n  %s\n", ...
+                    radiusStudyReusedMatFile);
+                break
+            end
+        catch ME
+            fprintf("Saved result not reusable (%s): %s\n", ...
+                radiusStudyPossibleMat,ME.message);
+        end
+    end
+    if strlength(string(radiusStudyExistingMatFile)) > 0 && ...
+            strlength(radiusStudyReusedMatFile) == 0
+        error("runDiscreteRadiusStudy:IncompatibleSavedResult", ...
+            ['The explicitly selected MAT is not compatible with the ' ...
+             'selected study, current database, or radii. ' ...
+             'Do not silently reuse it.']);
+    end
+end
+
+if strlength(radiusStudyReusedMatFile) == 0
+    fprintf("\nNo compatible completed MAT found; starting refinement.\n");
+    radiusStudy = runDiscreteRadiusSensitivity(radiusStudyConfig);
+else
+    fprintf("Using existing J and FE counts; only metrics are recalculated.\n");
+end
+
+% This post-processing step NEVER calls networkObjective or the optimizer.
+% The helper is invoked internally: one script runs/reuses everything.
+radiusStudyAnalysisConfig = struct();
+radiusStudyAnalysisConfig.study = radiusStudy;
+radiusStudyAnalysisConfig.databaseFile = ...
+    string(radiusStudyConfig.databaseFile);
+radiusStudyAnalysisConfig.boundaryFraction = ...
+    radiusStudyBoundaryFraction;
+radiusStudyAnalysisConfig.saveResults = radiusStudySaveResults;
+radiusStudyAnalysisConfig.makePlots = radiusStudyMakePlots;
+if strlength(radiusStudyReusedMatFile) > 0
+    radiusStudyAnalysisConfig.studyMatFile = radiusStudyReusedMatFile;
+elseif isfield(radiusStudy,"studyMatFile") && ...
+        strlength(string(radiusStudy.studyMatFile)) > 0
+    radiusStudyAnalysisConfig.studyMatFile = radiusStudy.studyMatFile;
+end
+
+radiusStudyAnalysis = analyzeSavedDiscreteRadiusStudy( ...
+    radiusStudyAnalysisConfig);
+
+% Metrics and suggested elbow can be recomputed with a changed threshold
+% even if objective evaluations came from a saved study.
+radiusStudy.marginalThresholdPct = radiusStudyMarginalThresholdPct;
+radiusStudy.tradeoffRadiusKm = NaN;
+radiusStudyComplete = ...
+    string(radiusStudyAnalysis.summaryTable.Status) == "completed";
+radiusStudyMarginal = ...
+    radiusStudyAnalysis.summaryTable.MarginalRelativeImprovementPct;
+radiusStudyMaterial = find(radiusStudyComplete & ...
+    isfinite(radiusStudyMarginal) & ...
+    radiusStudyMarginal >= radiusStudyMarginalThresholdPct);
+radiusStudyCompletedIdx = find(radiusStudyComplete);
+if ~isempty(radiusStudyMaterial) && ~isempty(radiusStudyCompletedIdx) && ...
+        radiusStudyMaterial(end) < radiusStudyCompletedIdx(end)
+    radiusStudy.tradeoffRadiusKm = ...
+        radiusStudyAnalysis.summaryTable.RadiusKm(radiusStudyMaterial(end));
+end
+radiusStudy.tradeoffProvisional = any(~radiusStudyComplete);
 
 fprintf("\n============================================================\n");
 fprintf("Radius sensitivity completed\n");
@@ -212,8 +335,13 @@ if isfinite(radiusStudy.tradeoffRadiusKm)
 else
     fprintf("No diminishing-returns elbow found in the tested radii.\n");
 end
-fprintf("Additional unique objective evaluations: %.0f\n", ...
+fprintf("Unique objective evaluations in original sweep: %.0f\n", ...
     radiusStudy.totalUniqueObjectiveEvaluations);
+if strlength(radiusStudyReusedMatFile) > 0
+    fprintf("New objective evaluations in this run: 0 (cached MAT reused)\n");
+end
+fprintf("Per-sensor displacement and efficiency tables are in " + ...
+    "radiusStudyAnalysis.\n");
 fprintf("Current DB version: %s\n",radiusStudy.currentDatabaseVersion);
 if radiusStudy.mappingApplied
     fprintf("Saved sites were matched to current-grid IDs: %s\n", ...
@@ -238,4 +366,106 @@ if strlength(radiusStudy.outputDirectory) > 0
     end
 end
 
-% The radiusStudy struct remains in your MATLAB workspace.
+% Workspace outputs: radiusStudy (sweep) and radiusStudyAnalysis (metrics).
+% The original saved sweep MAT is never overwritten by post-processing.
+
+%% ========================================================================
+% LOCAL HELPER: REUSE ONLY COMPATIBLE SAVED SWEEPS
+% ========================================================================
+
+function tf = isReusableRadiusStudy(saved,config,source,root,matDatenum)
+tf = false;
+if ~isstruct(saved) || ...
+        ~all(isfield(saved,{'summaryTable','refinementResults', ...
+        'studySummaryFile','originalSensorIndices', ...
+        'objectiveMode','databaseFile','currentDatabaseVersion'}))
+    return
+end
+T = saved.summaryTable;
+if ~istable(T) || ...
+        ~all(ismember({'RadiusKm','Status'},T.Properties.VariableNames))
+    return
+end
+expectedRadii = double(config.radiiKm(:));
+if numel(T.RadiusKm) ~= numel(expectedRadii) || ...
+        any(abs(double(T.RadiusKm(:))-expectedRadii)>1e-9) || ...
+        any(string(T.Status(:)) ~= "completed")
+    return
+end
+if numel(saved.refinementResults) ~= numel(expectedRadii)
+    return
+end
+
+if string(source)=="saved_study"
+    if ~isfield(config,"studySummaryFile") || ...
+            ~strcmpi(normalizePath(saved.studySummaryFile), ...
+            normalizePath(config.studySummaryFile))
+        return
+    end
+else
+    if ~isfield(config,"initialSensorIndices") || ...
+            ~isequal(sort(double(saved.originalSensorIndices(:))), ...
+            sort(double(config.initialSensorIndices(:)))) || ...
+            string(saved.objectiveMode) ~= string(config.objectiveMode)
+        return
+    end
+end
+if ~strcmpi(normalizePath(saved.databaseFile), ...
+        normalizePath(config.databaseFile))
+    return
+end
+
+% A rebuilt canonical database must not inherit the cached J values.
+% Reject a database file changed after the study's MAT was saved.
+dbStat = dir(string(config.databaseFile));
+if isempty(dbStat) || dbStat.datenum > matDatenum+1e-7
+    return
+end
+
+% Check the saved database version and all winning coordinates against
+% the current candidate list. Matching a version string alone is unsafe.
+D = load(config.databaseFile,"database");
+if ~isfield(D,"database") || ~isfield(D.database,"candidates")
+    return
+end
+db = D.database;
+version = "";
+if isfield(db,"meta") && isfield(db.meta,"version")
+    version = string(db.meta.version);
+end
+if string(saved.currentDatabaseVersion)~=version
+    return
+end
+if ~isfield(db.candidates,"latitudesRad") || ...
+        ~isfield(db.candidates,"longitudesRad")
+    return
+end
+lat = double(db.candidates.latitudesRad(:));
+lon = double(db.candidates.longitudesRad(:));
+for k = 1:numel(expectedRadii)
+    r = saved.refinementResults{k};
+    if ~isstruct(r) || ~isfield(r,"bestSensorIndices") || ...
+            ~isfield(r,"bestLatitudesRad") || ...
+            ~isfield(r,"bestLongitudesRad")
+        return
+    end
+    ids = double(r.bestSensorIndices(:));
+    if isempty(ids) || any(ids<1) || any(ids>numel(lat)) || ...
+            any(ids~=floor(ids)) || ...
+            numel(ids)~=numel(r.bestLatitudesRad)
+        return
+    end
+    dLon = atan2( ...
+        sin(lon(ids)-double(r.bestLongitudesRad(:))), ...
+        cos(lon(ids)-double(r.bestLongitudesRad(:))));
+    if any(abs(lat(ids)-double(r.bestLatitudesRad(:)))>1e-8) || ...
+            any(abs(dLon)>1e-8)
+        return
+    end
+end
+tf = true;
+end
+
+function p = normalizePath(value)
+p = lower(strrep(char(string(value)),char(92),'/'));
+end
