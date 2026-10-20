@@ -121,6 +121,7 @@ assert(isfile(radiusStudyConfig.databaseFile), ...
 % SELECT STUDY OR DIRECT INITIAL INDICES
 % ========================================================================
 
+radiusStudyExpectedSavedIndices = [];
 switch lower(string(radiusStudySource))
     case "saved_study"
         radiusStudySummaryPath = string(radiusStudySummaryFile);
@@ -157,6 +158,8 @@ switch lower(string(radiusStudySource))
             "Study summary must contain best indices and objective mode.");
 
         radiusStudyConfig.studySummaryFile = radiusStudySummaryPath;
+        radiusStudyExpectedSavedIndices = ...
+            sort(double(radiusStudySaved.overallBestSensorIndices(:)));
 
         fprintf("\nUsing saved study summary:\n  %s\n",radiusStudySummaryPath);
         fprintf("  Objective: %s\n", ...
@@ -249,7 +252,8 @@ if radiusStudyReuseExistingResults
             radiusStudyCandidateResult = radiusStudySavedMat.study;
             if isReusableRadiusStudy(radiusStudyCandidateResult, ...
                     radiusStudyConfig,radiusStudySource, ...
-                    radiusStudyProjectRoot,radiusStudyCandidate.datenum)
+                    radiusStudyProjectRoot,radiusStudyCandidate.datenum, ...
+                    radiusStudyExpectedSavedIndices)
                 radiusStudy = radiusStudyCandidateResult;
                 radiusStudyReusedMatFile = string(radiusStudyPossibleMat);
                 fprintf("\nReusing saved radius sweep (NO objective FEs):\n  %s\n", ...
@@ -296,6 +300,10 @@ end
 
 radiusStudyAnalysis = analyzeSavedDiscreteRadiusStudy( ...
     radiusStudyAnalysisConfig);
+
+% Include refreshed eta and displacement columns in the displayed
+% workspace summary without overwriting the saved original MAT/CSV.
+radiusStudy.summaryTable = radiusStudyAnalysis.summaryTable;
 
 % Metrics and suggested elbow can be recomputed with a changed threshold
 % even if objective evaluations came from a saved study.
@@ -374,7 +382,8 @@ end
 % LOCAL HELPER: REUSE ONLY COMPATIBLE SAVED SWEEPS
 % ========================================================================
 
-function tf = isReusableRadiusStudy(saved,config,source,root,matDatenum)
+function tf = isReusableRadiusStudy( ...
+    saved,config,source,root,matDatenum,expectedSavedIndices)
 tf = false;
 if ~isstruct(saved) || ...
         ~all(isfield(saved,{'summaryTable','refinementResults', ...
@@ -400,7 +409,10 @@ end
 if string(source)=="saved_study"
     if ~isfield(config,"studySummaryFile") || ...
             ~strcmpi(normalizePath(saved.studySummaryFile), ...
-            normalizePath(config.studySummaryFile))
+            normalizePath(config.studySummaryFile)) || ...
+            ~isfield(saved,"savedOriginalSensorIndices") || ...
+            ~isequal(sort(double(saved.savedOriginalSensorIndices(:))), ...
+            expectedSavedIndices)
         return
     end
 else
