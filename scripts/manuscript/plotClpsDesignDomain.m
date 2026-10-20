@@ -19,7 +19,7 @@ defaults = struct();
 defaults.outputDirectory = fullfile(projectRoot,"results","manuscript_artifacts");
 defaults.demFile = fullfile(dataDirectory,"Full_Resolution_DEM.mat");
 defaults.moonRadiusKm = 1737.4;
-config = overrideAnalysisConfig(defaults,userConfig);
+config = utilities.overrideConfig(defaults,userConfig);
 style = publicationPlotStyle();
 
 assert(isfile(config.demFile), ...

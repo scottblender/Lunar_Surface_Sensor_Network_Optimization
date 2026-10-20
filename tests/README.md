@@ -1,89 +1,86 @@
-# Tests by analysis
+# Test suites
 
-From the repository root, run the same data-free function suite as GitHub Actions:
+Run from the repository root:
 
 ```matlab
 addpath("tests");
 results = runSmokeTests;
 ```
 
-"Data-free" means no local DEM, optimization database, or saved study is needed.
-The suite includes graphics and a process-pool check when the toolbox is installed.
-Graphics checks need a display large enough for the full figure canvas; CI uses
-an explicit 2560-by-1600 virtual display.
-GA, PSO, and surrogate tests require Global Optimization Toolbox.
+The five data-free suites run in GitHub Actions. They use synthetic inputs,
+restore the RNG, and keep assertions together by behavior rather than by the
+change that originally introduced them.
 
-## Folders
+| Suite | Purpose |
+| --- | --- |
+| `setup/testAnalysisUtilities.m` | Configuration overrides, frozen ephemeris alignment, wrapped coordinate matching |
+| `optimization/testOptimizers.m` | Common four-solver contract, ABC budgets/scouts/reproducibility, index penalties, candidate sampling |
+| `refinement/testDiscreteRefinement.m` | Discrete search, shared radius caches, remapping, saved-study efficiency and displacement |
+| `models/testScientificModels.m` | Celestial exclusions, analytic terrain horizons, covariance objectives, orbit catalogs, three-day tracking |
+| `manuscript/testManuscriptPlots.m` | Numerical plotting APIs, label bounds, typography, EPS export, geographic bins, artifact handling |
 
-| Folder | What it checks | Additional inputs |
-| --- | --- | --- |
-| `setup/` | Analysis paths and configuration helpers | None |
-| `optimization/` | ABC and adapter contracts, sampling, parallel campaigns, saved results | None for smoke files; real database or saved studies for campaign checks |
-| `refinement/` | Discrete neighborhoods, radius sweeps, and saved-study metrics | None; synthetic fixtures |
-| `manuscript/` | Plot geometry, typography, exports, geographic bins, and artifact inventory | None; synthetic graphics/data |
-| `database/` | DEM compatibility, database construction/scalability, and production chunks | Local DEMs; production database for post-build checks |
-| `visibility/` | Body exclusion, terrain horizons, ray clearance, and network screening | Synthetic fixtures for basic geometry; local DEMs/database for integration checks |
-| `estimation/` | Covariance propagation, angles-only IOD/EKF, three-day tracking | Synthetic fixtures for covariance/propagation; legacy DEM for LRO IOD/EKF |
-| `rsoGeneration/` | Target catalogs, element spacing, and orbital propagation | No local data; creates figures |
+Global Optimization Toolbox is needed for GA/PSO/SURROGATE. The ABC parallel
+check uses Parallel Computing Toolbox when installed. Graphics require a full
+canvas; CI provides a 2560-by-1600 virtual display. The model suite does not
+create figures; the plotting suite closes its own figures and restores defaults.
 
-## Individual checks
-
-Function-based tests return a test suite and run with `runtests`:
+Run a suite or select one behavior with the usual MATLAB test API:
 
 ```matlab
-results = runtests("tests/refinement/testRefineDiscreteNetwork.m");
+results = runtests("tests/refinement/testDiscreteRefinement.m");
+assertSuccess(results);
+suite = testsuite("tests/manuscript/testManuscriptPlots.m");
+results = run(suite(endsWith(string({suite.Name}),"/testCalloutsAndLeadersFitCanvas")));
 assertSuccess(results);
 ```
 
-Legacy scripts contain sequential setup, assertions, and plots. Run the complete
-script with `run`; their sections depend on earlier sections:
+## Integration checks
+
+These suites require local input products and are deliberately excluded from
+smoke testing. They assert numerical behavior without generating diagnostic plots.
+
+```matlab
+addpath("tests");
+results = runIntegrationTests(["dem","database"]);
+```
+
+| Group | Suite | Required input / work |
+| --- | --- | --- |
+| `dem` | `database/testDemCompatibility.m` | Full and synthetic DEMs under `data/`; checks both source formats |
+| `database` | `database/testOptimizationDatabase.m` | Synthetic DEM, saved production database and chunks; reduced and 20-target scalability rebuilds |
+| `terrain` | `visibility/testTerrainIntegration.m` | Synthetic DEM by default; multi-target screening, direct ray safety, objective monotonicity, final EKFs |
+| `estimation` | `estimation/testAnglesOnlyEstimation.m` | Synthetic DEM by default; noisy angles-only IOD/EKF and independent finite-difference Jacobians |
+| `campaign` | Observer comparison and shared-pool suites in `optimization/` | Production database and solver toolboxes; runs and saves actual optimization campaigns |
+
+`runIntegrationTests` defaults to the first four groups. Set
+`LUNAR_TEST_DEM_FILE` to use another DEM for terrain/estimation checks. The loader
+accepts current raster DEMs and legacy interpolants. Missing required inputs fail
+clearly; integration checks do not silently substitute synthetic geometry.
+
+After rebuilding a database, validate just its saved production chunks:
+
+```matlab
+run("tests/database/runPostBuildProductionDatabaseTests.m");
+```
+
+Set `runScalabilityRegression = true` before that command to include the
+scalability rebuild. All `test*.m` files are now function-based suites. Running
+`runtests("tests","IncludeSubfolders",true)` also runs expensive integration
+campaigns, so use the two explicit runners for routine work.
+
+## Saved-result analysis
+
+Reports and figures from real campaigns are analysis entry points, not tests:
 
 ```matlab
 setupProject;
-run("tests/estimation/testThreeDayTrackingPropagation.m");
-run("tests/visibility/testCelestialVisibility.m");
-run("tests/visibility/testTerrainHorizonGeometry.m");
-run("tests/estimation/testNetworkCovariance.m");
+report = validateProductionResults;
+convergence = analyzeProductionConvergence;
+figures = plotOptimizationPilotResults;
 ```
 
-Do not use `runtests("tests","IncludeSubfolders",true)` for this mixed tree:
-it would also discover data-dependent campaigns and sequential script sections.
-
-## Production checks
-
-After building the local database:
-
-```matlab
-run("tests/database/runPostBuildProductionDatabaseTests.m");
-```
-
-To include the reduced-candidate scalability rebuild:
-
-```matlab
-runScalabilityRegression = true;
-run("tests/database/runPostBuildProductionDatabaseTests.m");
-```
-
-The runner isolates validator workspaces so their `clear` statements cannot reset
-the selected option. Local DEM/database files stay in `data/` and `results/`.
-
-After a production campaign, the saved-result validator is a normal function
-returning a report, rather than a `functiontests` suite:
-
-```matlab
-addpath("tests/optimization");
-report = testProductionOptimizationResults;
-run("tests/optimization/testProductionConvergence12000Fe.m");
-```
-
-The expensive four-optimizer real-database trial runs with:
-
-```matlab
-results = runtests("tests/optimization/testLunarSurfaceObserver1200Fe.m");
-assertSuccess(results);
-```
-
-The reference-frame visualization is now
-`scripts/validation/plotLroReferenceFrames.m`; it is a plotting diagnostic,
-not an automated accuracy test. The two adapter test files were consolidated;
-their unique GA, PSO, and surrogate checks remain in `testOptimizerAdapters.m`.
+`validateProductionResults` rechecks saved objectives against the frozen database.
+`analyzeProductionConvergence` accepts configuration overrides for campaign sizes,
+FE budget, directories, and diagnostic thresholds. The pilot plotter loads the
+latest completed pilot when no study is supplied; pilot EKF validation already
+runs inside `runOptimizationPilot`.

@@ -24,7 +24,7 @@ defaults.campaignDate = "";
 defaults.campaignDates = strings(0,1);
 defaults.requireDatabaseMatch = true;
 defaults.maximumCampaignSpanHours = 168;
-config = overrideAnalysisConfig(defaults,userConfig);
+config = utilities.overrideConfig(defaults,userConfig);
 
 config.resultsDirectory = string(config.resultsDirectory);
 config.databaseFile = string(config.databaseFile);

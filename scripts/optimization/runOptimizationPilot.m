@@ -34,7 +34,7 @@ defaultConfig.validation.initialPerturbationDirection = ...
 defaultConfig.validation.demFile = "";
 defaultConfig.validation.saveIndividualValidations = true;
 
-config = mergeAnalysisConfig(defaultConfig,userConfig);
+config = utilities.mergeConfig(defaultConfig,userConfig);
 
 assert(config.numberOfRuns == 10, ...
     "runOptimizationPilot is intended for exactly 10 independent runs.");
@@ -94,7 +94,7 @@ summaryFile = fullfile(string(studyState.studyDirectory),"study_summary.mat");
 save(summaryFile,"studyState","-v7.3");
 
 fprintf("\nPilot complete.\n");
-fprintf("Run the result/visualization test with:\n");
-fprintf('  run("tests/optimization/testOptimizationPilotResults.m")\n');
+fprintf("Plot the completed pilot with:\n");
+fprintf('  plotOptimizationPilotResults\n');
 
 end

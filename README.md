@@ -23,14 +23,14 @@ are not distributed in Git.
 | `scripts/optimization/` | Global search, pilot studies, and optimizer comparisons | `runGlobalOptimization`, `runOptimizationPilot`, `runOptimizerComparisonTrial` |
 | `scripts/refinement/` | Post-process saved networks and study geographic neighborhoods | `runDiscreteRadiusStudy.m`, `runDiscreteRadiusSensitivity`, `analyzeSavedDiscreteRadiusStudy`, `evaluateDiscreteNeighborRobustness` |
 | `scripts/validation/` | EKF, Monte Carlo, operational RSO, and DEM checks | `validateOptimizationStudy`, `runMonteCarloRobustness`, `evaluateOperationalRsoNetworks`, `evaluateDemResolutionValidation` |
-| `scripts/manuscript/` | Figures, tables, schematics, and export validation | `generateManuscriptArtifacts`, `exportQuadChartFigures` |
+| `scripts/manuscript/` | Figures, tables, schematics, and export validation | `generateManuscriptArtifacts`, `generateStudyDefinitionFigures`, `plotProductionResults`, `exportQuadChartFigures` |
 | `scripts/domain_comparison/` | Existing full/restricted-domain result products | `generateDomainComparisonProducts`, `loadRestrictedCampaign` |
-| `scripts/shared/` | Campaign loading, plotting styles/layout, and configuration helpers | `loadProductionCampaign`, `publicationPlotStyle` |
+| `scripts/shared/` | Campaign loading and reusable numerical plotting/style/layout | `loadProductionCampaign`, `publicationPlotStyle` |
 | `scripts/batch/` | PowerShell campaign launcher and MATLAB batch entry | `run_full_optimization_study.ps1` |
 | `tests/` | Tests grouped by analysis, plus a smoke-suite runner | [Test guide](tests/README.md) |
 | `docs/` | Workflow details, adapter contract, and figure audit | [Repository guide](docs/repository_guide.md) |
 
-Function names are unchanged. Direct script paths have moved; for example:
+Run script entry points by path; call function entry points after setup:
 
 ```matlab
 run("scripts/database/buildProductionOptimizationDatabase.m");
@@ -49,6 +49,7 @@ run("scripts/refinement/runDiscreteRadiusStudy.m");
 | `+rsoGeneration` | Operational and element-distributed target populations |
 | `+iod` | Gauss angles-only IOD and optional nonlinear refinement |
 | `+estimation` | EKF and covariance propagation |
+| `+utilities` | Shallow overrides and recursive scalar-struct configuration merging |
 | `+optimization` | Frozen databases, terrain-aware visibility, network objectives, solver adapters, and discrete refinement |
 
 These packages support multiple analyses, so they remain shared rather than
@@ -103,14 +104,19 @@ results = runSmokeTests;
 ```
 
 This is the same suite used by GitHub Actions. It includes optimizer, refinement,
-sampling, setup, and manuscript regressions. Global Optimization Toolbox is needed
+scientific-model, utility, and manuscript regressions. Global Optimization Toolbox is needed
 for GA/PSO/SURROGATE; the ABC parallel case needs Parallel Computing Toolbox.
 
-Tests are grouped under `tests/optimization/`, `refinement/`, `database/`,
-`visibility/`, `estimation/`, `rsoGeneration/`, `manuscript/`, and `setup/`.
-See [the test guide](tests/README.md) for individual commands and required inputs.
-Legacy script-based checks run with `run`, in their own workspace; do not run
-the entire tests tree recursively with `runtests`.
+Five data-free suites group related behaviors rather than individual plotting
+changes. Local DEM/database checks have a separate runner:
+
+```matlab
+results = runIntegrationTests(["dem","database","terrain","estimation"]);
+```
+
+See [the test guide](tests/README.md) for purpose, inputs, and selection commands.
+Saved campaign checks are analysis functions: `validateProductionResults` and
+`analyzeProductionConvergence`. No diagnostic plots run during numerical testing.
 
 The four-optimizer real-database trial is
 `tests/optimization/testLunarSurfaceObserver1200Fe.m`. It requires the local
@@ -132,3 +138,14 @@ selection remains full southern hemisphere `20260918`/`20260919` and restricted
 south pole `20260915`. Rerun Monte Carlo whenever nominal networks change.
 See [the figure/table audit](docs/FIGURE_TABLE_AUDIT.md) and
 [the discrete radius guide](docs/discrete_radius_sensitivity.md).
+
+Plot a subset without regenerating all manuscript products:
+
+```matlab
+campaign = loadProductionCampaign;
+plots = plotProductionResults(campaign,struct("productionPlots",["convergence","selection"]));
+```
+
+Use `plotTrackingPerformance` for numerical tracking metrics from any population.
+See the [repository guide](docs/repository_guide.md) for plotting groups and the
+migration table for retired test/plot names.

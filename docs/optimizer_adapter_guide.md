@@ -77,10 +77,10 @@ campaign discovery intentionally remains GA-only.
 
 ## Tests
 
-`testABCOptimizer.m` covers exact admitted objective calls and histories,
+`tests/optimization/testOptimizers.m` covers exact admitted objective calls and histories,
 partial batches, odd/single-sensor networks, full candidate sets, scout
 incumbent preservation, seed reproducibility, invalid settings, penalty/nonfinite
 failure, and serial/parallel equivalence when the toolbox is available.
-`tests/optimization/testOptimizerAdapters.m` covers GA, PSO, and surrogate methods.
+The same suite checks the shared result contract across all four methods.
 `testLunarSurfaceObserver1200Fe.m` is a real-database integration test for all
 four methods; it needs the local production database and solver toolboxes.

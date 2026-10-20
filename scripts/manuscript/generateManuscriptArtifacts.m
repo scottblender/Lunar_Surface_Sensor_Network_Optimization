@@ -38,7 +38,7 @@ defaults.comparisonNetworkSize=10;
 defaults.comparisonObjective="information";
 defaults.operationalTableObjective="information";
 defaults.operationalTableNetworkSize=10;
-config=overrideAnalysisConfig(defaults,userConfig);
+config=utilities.overrideConfig(defaults,userConfig);
 config.outputDirectory=string(config.outputDirectory);
 config.productionCampaignDates=string(config.productionCampaignDates(:));
 config.restrictedCampaignDate=string(config.restrictedCampaignDate);
@@ -106,30 +106,24 @@ if strlength(config.restrictedCampaignDate)>0 || ...
     products.restrictedCampaign=restrictedCampaign;
 end
 
-%% Representative design-RSO geometry
-
+%% Production plots share the same loaded campaign and output configuration
+plotConfig = config;
+plotConfig.productionPlots = strings(1,0);
 if config.generateRsoFamilyFigure
-    products.rsoFamily=runJob("design-RSO MCRF family figure", ...
-        @()plotDesignRsoFamilyMcrf(campaign,config),true);
+    plotConfig.productionPlots(end+1) = "population";
 end
-
-%% Main production-result figures
-
 if config.generateProductionResults
-    products.convergence=runJob("convergence figures", ...
-        @()plotProductionConvergence(campaign,config),true);
+    plotConfig.productionPlots = [plotConfig.productionPlots, ...
+        "convergence","selection","tracking"];
+end
+productionPlots = runJob("production figures", ...
+    @()plotProductionResults(campaign,plotConfig),true);
+fields = fieldnames(productionPlots);
+for k=1:numel(fields), products.(fields{k})=productionPlots.(fields{k}); end
 
-    products.networkLocations=runJob("sensor-selection frequency figures", ...
-        @()plotProductionNetworkLocations(campaign,config),true);
-
-    if config.generateScreeningBreakdown
-        products.screeningBreakdown=runJob("all-RSO constraint-screening figure", ...
-            @()plotMeasurementScreeningBreakdown( ...
-                campaign,restrictedCampaign,config),true);
-    end
-
-    products.designTracking=runJob("design-RSO tracking figure", ...
-        @()plotDesignRsoTrackingHeatmaps(campaign,config),true);
+if config.generateProductionResults && config.generateScreeningBreakdown
+    products.screeningBreakdown = runJob("all-RSO constraint-screening figure", ...
+        @()plotMeasurementScreeningBreakdown(campaign,restrictedCampaign,config),true);
 end
 
 products.tables=runJob("manuscript tables", ...
@@ -164,8 +158,12 @@ if config.generateOperationalValidation
     products.operational=operational;
 
     if isstruct(operational) && isfield(operational,"spacecraftNames")
+        operationalPlotConfig=config;
+        operationalPlotConfig.outputName="operational_rso_tracking_heatmaps.eps";
+        operationalPlotConfig.figureName="Operational RSO tracking performance";
+        operationalPlotConfig.layout="named";
         products.operationalFigure=runJob("operational-RSO tracking figure", ...
-            @()plotOperationalRsoTrackingHeatmaps(operational,config),false);
+            @()plotTrackingResults(operational,operationalPlotConfig),false);
         products.operationalTable=runJob("operational-RSO manuscript table", ...
             @()buildOperationalManuscriptTable(operational,config),false);
     end

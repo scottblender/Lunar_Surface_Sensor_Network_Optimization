@@ -12,7 +12,7 @@ defaultConfig.measurementNoiseSeed = 5000;
 defaultConfig.initialPerturbationScale = 1;
 defaultConfig.initialPerturbationDirection = [1;-1;0.5;0.25;-0.25;0.125];
 defaultConfig.demFile = "";
-config = mergeStruct(defaultConfig,userConfig);
+config = utilities.mergeConfig(defaultConfig,userConfig);
 
 validateattributes(config.measurementNoiseSeed,{'numeric'}, ...
     {'scalar','integer','nonnegative'});
@@ -263,20 +263,4 @@ assert(strlength(demFile) > 0, ...
     "validateNetworkEkf:MissingDemSource", ...
     ["The database does not identify its DEM source. Supply " ...
     "userConfig.demFile explicitly."]);
-end
-
-function output = mergeStruct(defaults,override)
-output = defaults;
-fields = fieldnames(override);
-for fieldIndex = 1:numel(fields)
-    fieldName = fields{fieldIndex};
-    overrideValue = override.(fieldName);
-    if isfield(output,fieldName) && ...
-            isstruct(output.(fieldName)) && isscalar(output.(fieldName)) && ...
-            isstruct(overrideValue) && isscalar(overrideValue)
-        output.(fieldName) = mergeStruct(output.(fieldName),overrideValue);
-    else
-        output.(fieldName) = overrideValue;
-    end
-end
 end

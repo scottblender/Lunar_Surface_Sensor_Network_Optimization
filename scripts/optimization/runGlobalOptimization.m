@@ -53,7 +53,7 @@ defaultConfig.useParallelDatabaseConstant = true;
 defaultConfig.display = "iter";
 defaultConfig.studyName = "lunar_surface_global_optimization";
 
-config = mergeAnalysisConfig(defaultConfig,userConfig);
+config = utilities.mergeConfig(defaultConfig,userConfig);
 config.optimizer = upper(string(config.optimizer));
 config.objectiveMode = lower(string(config.objectiveMode));
 

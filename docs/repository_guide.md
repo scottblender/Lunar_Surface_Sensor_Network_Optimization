@@ -1,130 +1,107 @@
-# Repository organization and cleanup
+# Repository guide
 
-Run `setupProject` from the repository root before calling analysis functions.
-The setup function adds `src/` and all `scripts/` subfolders, excluding data and
-results. Existing MATLAB package names and scientific APIs are preserved.
+Run `setupProject` from the repository root. It adds `src/` and the analysis
+folders under `scripts/`, excluding data, results, and tests.
 
-## Workflow ownership
+## Analysis ownership
 
-1. Build input products in `scripts/database/`. The production builder writes
-   the same `results/optimization_database.mat` and chunk products as before.
-2. Search using `scripts/optimization/`. GA, SURROGATE, PSO, and ABC all call the
-   same `optimization.networkObjective` through the common driver.
-3. Refine saved networks using `scripts/refinement/`. Radius sweeps, saved-study
-   analysis, and discrete-neighbor robustness belong together. These remain
-   post-processing workflows; they do not rerun global optimization.
-4. Validate networks using `scripts/validation/`: EKF, Monte Carlo, operational
-   target populations, and DEM-resolution sensitivity.
-5. Generate paper figures/tables using `scripts/manuscript/`. Common plotting
-   style, layout, export, configuration, and campaign loaders are in
-   `scripts/shared/` because several analyses depend on them.
-6. Existing full/restricted-domain product generation is isolated in
-   `scripts/domain_comparison/`. Its analysis choices and campaign-selection
-   behavior are preserved; a new restricted-domain methodology is deferred.
-
-`src/` remains organized by scientific responsibility. In `+optimization`,
-`build*`, `createCandidateChunkPlan`, `precomputeTrackingData`, and `loadChunked*`
-serve database construction/access; `networkObjective`, `coverageObjective`, and
-`informationObjective` serve search and evaluation; `run*` files are solvers;
-`refineDiscreteNetwork` serves refinement; and `validateNetworkEkf*` plus
-`evaluatePerturbedNetwork` serve post-search validation. Shared functions remain
-single implementations across analyses.
-
-Tests are grouped by analysis under `tests/`; see [the test guide](../tests/README.md).
-Use `addpath("tests"); results = runSmokeTests;` for the data-free suite.
-Batch launchers remain under `scripts/batch/` and now load nested workflow paths.
-The figure/table audit moved from `scripts/FIGURE_TABLE_AUDIT.md` to `docs/`.
-
-## Cleanup decisions
-
-- Removed `optimization.loadChunkedMeasurementJacobians`, an uncalled
-  compatibility wrapper. Its operation is already available through
-  `optimization.loadChunkedCandidateData(database,indices,...
-  "measurementJacobianHistories")`.
-- Removed unreachable local operational plotting helpers `makeRmsHeatmap`,
-  `makeObservabilityHeatmap`, `styleOperationalAxes`, `styleColorbar`,
-  `chooseTicks`, and `objectiveTitle`. The current operational evaluation path
-  builds numeric results and uses the active manuscript plotting pipeline.
-- Consolidated twelve repeated configuration-merging implementations into
-  `overrideAnalysisConfig` (shallow override) and `mergeAnalysisConfig`
-  (recursive scalar-struct merge). Each caller retains its previous semantics.
-  Discrete-neighbor robustness keeps its special known-fields-only merge.
-- Removed obsolete dispatcher checks for missing SURROGATE/PSO adapters; both
-  adapters are already present. Replaced the old assignment-specific adapter
-  instructions with the current four-solver contract.
-
-Low reference counts alone were not used to delete scientific functions or
-analysis entry points. Standalone DEM, IOD, estimation, geometry, pilot, and
-production checks remain supported.
-
-## Migration
-
-After pulling, run `setupProject` from the repository root. Replace `addpath("scripts")` in local launchers with `setupProject`, or
-use `addpath(genpath(fullfile(projectRoot,"scripts")))` from outside the root.
-Calls by function name are unchanged. Update full script paths:
-
-| Previous direct script | Current path |
+| Folder | Purpose |
 | --- | --- |
-| `scripts/buildProductionOptimizationDatabase.m` | `scripts/database/buildProductionOptimizationDatabase.m` |
-| `scripts/runGlobalOptimization.m` | `scripts/optimization/runGlobalOptimization.m` |
-| `scripts/runDiscreteRadiusStudy.m` | `scripts/refinement/runDiscreteRadiusStudy.m` |
-| `scripts/runDiscreteRadiusSensitivity.m` | `scripts/refinement/runDiscreteRadiusSensitivity.m` |
-| `scripts/runMonteCarloRobustness.m` | `scripts/validation/runMonteCarloRobustness.m` |
-| `scripts/generateManuscriptArtifacts.m` | `scripts/manuscript/generateManuscriptArtifacts.m` |
+| `scripts/database` | Build frozen databases and candidate products |
+| `scripts/optimization` | Search, optimizer comparisons, saved convergence analysis, pilot plots |
+| `scripts/refinement` | Discrete neighborhoods, radius sweeps, saved-study analysis |
+| `scripts/validation` | EKF validation, Monte Carlo, operational populations, DEM checks, saved-result audits |
+| `scripts/manuscript` | Analysis-level figure families, tables, complete manuscript generation |
+| `scripts/domain_comparison` | Existing full/restricted-domain products; methodology remains deferred |
+| `scripts/shared` | Reusable numerical plotting, layout, export, and campaign loading |
+| `src` | Shared scientific implementations and configuration utilities |
 
-Saved studies, local data, database versions, and default output directories are
-not migrated or rewritten. Scientific source packages and GA/PSO/SURROGATE
-solver mechanics retain their previous behavior.
+Scientific functions stay in their MATLAB packages. Analyses call these shared
+implementations instead of redefining orbital conversion, ephemeris alignment,
+candidate-coordinate matching, or recursive configuration merging.
 
-## Comment style
+## Plotting entry points
 
-Function help starts with `FUNCTIONNAME - Short purpose.` Add compact `Inputs:`
-and `Outputs:` lists when dimensions, units, or options need explanation. Keep
-examples and longer workflow instructions in `docs/`. This is a shortened form
+```matlab
+setupProject;
+files = generateStudyDefinitionFigures(struct("definitionPlots",["frames","measurements"]));
+campaign = loadProductionCampaign;
+plots = plotProductionResults(campaign,struct("productionPlots",["convergence","selection"]));
+```
+
+| Entry point | Owns / accepts |
+| --- | --- |
+| `generateStudyDefinitionFigures` | Reference frames, RA/Dec, celestial exclusion; select groups with `definitionPlots` |
+| `plotProductionResults` | Population geometry, convergence, geographic selection, design tracking; select groups with `productionPlots` |
+| `plotTrackingPerformance` | Pure numerical heatmaps for any population; returns a figure without exporting or evaluating networks |
+| `plotTrackingResults` | Export an already evaluated population's tracking metrics; configurable output name and layout |
+| `plotMeasurementScreeningBreakdown` | Terrain/celestial screening accounting for the full and restricted campaigns |
+| `plotClpsDesignDomain`, `plotDemProducts` | Geographical context and DEM source products |
+| `plotMonteCarloConferenceFigure` | Saved Monte Carlo robustness distributions |
+| `generateManuscriptArtifacts` | Coordinate the complete manuscript figure/table workflow |
+
+Definition schematics are local functions in one generator. They receive an
+output directory and share their drawing helpers; they do not clear or execute
+in the base workspace or temporarily write EPS files into the source tree.
+Production figures share a loaded campaign. Selection bins are configurable,
+convergence supports additional network sizes, and objective limits follow the
+actual data rather than a fixed historical coverage range. Repeated-run histories
+with different FE checkpoints use step interpolation over their common measured
+interval, without extrapolation.
+
+To plot another population without duplicating a renderer:
+
+```matlab
+% rms and observable: objects x network sizes x objectives; errors in km, availability in %.
+fig = plotTrackingPerformance(rms,observable,names,networkSizes,objectiveModes);
+exportManuscriptFigure(fig,"tracking.eps",fig.Position(3),fig.Position(4));
+```
+
+The `tiled` tracking layout supports arbitrary objective columns and thins long
+label lists while retaining all rows. `struct("layout","named")` retains the
+fixed two-column spacecraft layout. Both use the same metric/colorbar code.
+
+## Tests and saved-result checks
+
+See [the test guide](../tests/README.md). `runSmokeTests` runs five data-free
+suites. `runIntegrationTests(groups)` selects local-data checks. Sequential
+assertions from the old test scripts now live in function-based suites, with
+separate workspaces and no diagnostic figures. The post-build runner selects
+production-chunk checks from the database suite.
+
+Removed redundant single-target network/LOS/ray demos in favor of the broader
+multi-target terrain suite, analytic model checks, and the saved database audit.
+Singleton array shapes remain covered by covariance and tracking-model tests.
+The duplicate fixed-size pilot result/plot audit was removed: the pilot already
+performs final EKF validation, and its plotter loads completed results directly.
+The paper inventory snapshot was replaced by a check that missing required
+artifacts are rejected. The artifact manifest remains the source of file names.
+
+## Migration from the earlier cleanup
+
+| Earlier function or test | Current entry point |
+| --- | --- |
+| `plotReferenceFrameTransformations`, `plotAnglesOnlyMeasurementModel`, `plotExclusionConstraint` | `generateStudyDefinitionFigures` |
+| `plotProductionConvergence`, `plotProductionNetworkLocations`, `plotDesignRsoFamilyMcrf`, `plotDesignRsoTrackingHeatmaps` | `plotProductionResults` with the corresponding group |
+| `plotManuscriptTrackingHeatmaps` | `plotTrackingPerformance` with a configuration struct as the final argument |
+| `plotOperationalRsoTrackingHeatmaps` | `plotTrackingResults`; set `layout="named"` and the desired `outputName` |
+| `mergeAnalysisConfig`, `overrideAnalysisConfig` | `utilities.mergeConfig`, `utilities.overrideConfig` |
+| `testProductionOptimizationResults` | `validateProductionResults` |
+| `testProductionConvergence12000Fe` | `analyzeProductionConvergence` |
+| `testOptimizationPilotResults` | `plotOptimizationPilotResults` (pilot validation runs during the pilot) |
+| Individual optimizer / radius / manuscript regression files | `testOptimizers` / `testDiscreteRefinement` / `testManuscriptPlots` |
+| DEM / database / terrain / IOD scripts | Corresponding integration suites in the test guide |
+
+Use function calls after `setupProject`, not `run`, for the new plotting and
+analysis APIs. No compatibility wrappers remain for retired entry points.
+Existing saved studies, database formats, search algorithms, and output directory
+defaults are preserved. The convergence report's column labels now describe
+configurable bands/run counts instead of embedding the old 5-degree/20-run values.
+
+## Comments
+
+Function help starts with `FUNCTIONNAME - Short purpose.` Include compact inputs,
+outputs, dimensions, or units when useful. Scripts start with a short summary;
+inline comments explain the core steps and non-obvious numerical choices.
+Long workflow examples belong in documentation. This follows a shortened form
 of the [MatNWB docstring format](https://matnwb.readthedocs.io/en/latest/pages/developer/documentation/formatting_docstrings.html).
-
-Scripts start with one summary and use short section or inline comments for
-configuration, data loading, computation, and saving. Preserve scientific units,
-non-obvious numerical choices, and evaluation-budget conventions. Script-test
-section boundaries and executable statements are unchanged by the comment pass.
-
-## Follow-up test and file audit
-
-- Grouped tests into eight analysis folders and updated their root calculations,
-  sibling-script calls, CI paths, documentation, and printed launch commands.
-- Combined `testOptimizerAdapter.m` and `testNewOptimizerAdapters.m` into
-  `tests/optimization/testOptimizerAdapters.m`. Removed the second duplicate
-  rounding/duplicate-penalty test; the common wrapper test still checks that
-  behavior, and both PSO and surrogate end-to-end adapter tests remain.
-- Moved the reference-frame visualization to
-  `scripts/validation/plotLroReferenceFrames.m`. It checked input availability
-  but did not assert frame-transform accuracy, so it belongs with diagnostics.
-- Removed an empty repeated section in the terrain-objective test; retained
-  its assertions. Reused the shared shallow configuration merge in the production
-  result validator instead of keeping another local copy.
-- Isolated scripts called by the post-build runner so their `clear` statements
-  cannot erase the runner's optional scalability setting.
-- Removed `blank_project.prj` and its `resources/project/` metadata. The project
-  registered only Git housekeeping files and default labels, with no scientific
-  file list, startup settings, or paths. `setupProject` is the supported setup.
-- Removed the unreferenced `optimization.brightBodyExclusion` limb-margin helper.
-  Current visibility uses the center-separation model in `celestialVisibility`.
-- Removed the unreferenced historical plotting change log
-  `docs/manuscript_plot_updates.md`; current figure requirements remain in the
-  figure/table audit and plotting source.
-
-The remaining scientific source files have repository callers or tests.
-Standalone analysis entry points and non-overlapping numerical, DEM, terrain,
-and saved-production checks are retained. This audit covers tracked repository
-files; it cannot identify calls in untracked local scripts or external projects.
-
-The context-layout regression now checks the current compact-callout contract:
-canvas containment, spacing, connections to targets and box corners, and
-45-degree leaders. Its obsolete outside-disk assertion was removed; normalized
-annotation coordinates use a one-screen-pixel tolerance for figure resizing.
-The plotting implementation is unchanged.
-
-The layout test creates a standalone (`WindowStyle="normal"`) figure and
-completes rendering before checking positions. CI also starts a 2560-by-1600
-Xvfb display so the screen does not shrink the requested canvas. This follows
-[the MATLAB Actions virtual-display guidance](https://github.com/matlab-actions/.github#use-virtual-display-on-linux-runner).

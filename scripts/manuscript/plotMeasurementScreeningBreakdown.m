@@ -123,7 +123,7 @@ sensorLatitudesRad = double(runState.bestSensorLatitudesRad(:));
 sensorLongitudesRad = double(runState.bestSensorLongitudesRad(:));
 
 trackingTimes = double(database.tracking.times(:));
-[earthPositions,sunPositions] = selectEphemerides(database,trackingTimes);
+[earthPositions,sunPositions] = optimization.selectEphemerides(database,trackingTimes);
 [horizonAzimuthsRad,maximumTerrainElevation] = resolveSelectedTerrain( ...
     database,sensorLatitudesRad,sensorLongitudesRad,dem,moonRadiusKm);
 
@@ -217,39 +217,11 @@ error("plotMeasurementScreeningBreakdown:DemNotFound", ...
     "No production DEM could be resolved.");
 end
 
-function [earthPositions,sunPositions] = selectEphemerides(database,trackingTimes)
-fullTimes = double(database.truth.times(:));
-indices = zeros(numel(trackingTimes),1);
-for timeIndex = 1:numel(trackingTimes)
-    [difference,matchIndex] = min(abs(fullTimes-trackingTimes(timeIndex)));
-    assert(difference < 1e-8, ...
-        "Could not align ephemerides with tracking time %.6f s.", ...
-        trackingTimes(timeIndex));
-    indices(timeIndex) = matchIndex;
-end
-earthPositions = double(database.ephemeris.earthPositionsMci(:,indices));
-sunPositions = double(database.ephemeris.sunPositionsMci(:,indices));
-end
-
 function [horizonAzimuthsRad,maximumTerrainElevationRad] = ...
     resolveSelectedTerrain(database,latitudesRad,longitudesRad,dem,moonRadiusKm)
 
-candidateLat = double(database.candidates.latitudesRad(:));
-candidateLon = mod(double(database.candidates.longitudesRad(:)),2*pi);
-latitudesRad = double(latitudesRad(:));
-longitudesRad = mod(double(longitudesRad(:)),2*pi);
-
-indices = zeros(numel(latitudesRad),1);
-exactMatch = true;
-for sensorIndex = 1:numel(latitudesRad)
-    dLat = candidateLat-latitudesRad(sensorIndex);
-    dLon = atan2( ...
-        sin(candidateLon-longitudesRad(sensorIndex)), ...
-        cos(candidateLon-longitudesRad(sensorIndex)));
-    [distance,index] = min(hypot(dLat,dLon));
-    indices(sensorIndex) = index;
-    exactMatch = exactMatch && distance < 1e-10;
-end
+[indices,exactMatch] = optimization.matchCandidateLocations( ...
+    database,latitudesRad,longitudesRad);
 
 if exactMatch
     horizonAzimuthsRad = database.terrain.horizonAzimuthsRad;

@@ -227,12 +227,9 @@ To avoid creating any result files during a quick check:
 
 ## Regression tests
 
-    results = runtests("tests/refinement/testRefineDiscreteNetwork.m");
-    results2 = runtests("tests/refinement/testDiscreteRadiusSensitivity.m");
-    results3 = runtests("tests/refinement/testAnalyzeSavedDiscreteRadiusStudy.m");
+    results = runtests("tests/refinement/testDiscreteRefinement.m");
+    assertSuccess(results);
     disp(results);
-    disp(results2);
-    disp(results3);
 
 These use small synthetic inputs and do not require a local DEM, production
 database, optimizer toolbox, or visible plots. Run the real radius sweep
