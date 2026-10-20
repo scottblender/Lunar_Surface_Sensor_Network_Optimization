@@ -1,18 +1,14 @@
 function radiusKm = triaxialEllipsoidRadius( ...
     latitudeRad,longitudeRad,centerOffsetKm,semiAxesKm)
-% TRIAXIALELLIPSOIDRADIUS Radial distance to a translated triaxial ellipsoid.
+% TRIAXIALELLIPSOIDRADIUS - Radial distance to a translated triaxial ellipsoid.
 %
-% The ellipsoid is
+% Inputs:
+%   - latitudeRad, longitudeRad - Geocentric ray direction (rad).
+%   - centerOffsetKm - Ellipsoid center [x0;y0;z0] (km).
+%   - semiAxesKm - Ellipsoid axes [a;b;c] (km).
 %
-%   ((x-x0)/a)^2 + ((y-y0)/b)^2 + ((z-z0)/c)^2 = 1
-%
-% with centerOffsetKm = [x0;y0;z0] and semiAxesKm = [a;b;c].
-% latitudeRad and longitudeRad define a geocentric radial direction from
-% the Moon-centered origin. The returned radius is the positive ray/
-% ellipsoid intersection distance along that direction.
-%
-% This implements the quadratic-form radius calculation needed when a DEM
-% stores residual height relative to a fitted triaxial reference surface.
+% Outputs:
+%   - radiusKm - Positive ray/ellipsoid intersection distance (km).
 
 arguments
     latitudeRad double
@@ -74,9 +70,7 @@ rootTwo = ...
     (-quadraticB - sqrt(discriminant)) ./ ...
     (2*quadraticA);
 
-% The Moon-centered origin is expected to lie inside the fitted reference
-% ellipsoid, in which case exactly one ray intersection is positive. Use
-% the larger root and verify that it is physically valid.
+% Choose the positive ray intersection for an origin inside the ellipsoid.
 radiusKm = max(rootOne,rootTwo);
 
 assert(all(isfinite(radiusKm),"all") && ...

@@ -4,25 +4,19 @@ function [candidateLatitudes,candidateLongitudes] = ...
         longitudeBand, ...
         candidateSpacing, ...
         moonRadius)
-% BUILDCANDIDATESENSORGRID Build an approximately equidistant lunar grid.
+% BUILDCANDIDATESENSORGRID - Build an approximately equidistant lunar grid.
 %
 % Inputs:
-%   latitudeBand    - [minimum maximum] latitude, rad
-%   longitudeBand   - [start end] unwrapped longitude, rad
-%   candidateSpacing- Desired physical spacing, km
-%   moonRadius      - Lunar reference radius, km
+%   - latitudeBand - [minimum maximum] latitude, rad
+%   - longitudeBand - [start end] unwrapped longitude, rad
+%   - candidateSpacing - Desired physical spacing, km
+%   - moonRadius - Lunar reference radius, km
 %
 % Outputs:
-%   candidateLatitudes  - Sx1 candidate latitudes, rad
-%   candidateLongitudes - Sx1 east-positive longitudes in [0,2*pi), rad
+%   - candidateLatitudes - Sx1 candidate latitudes, rad
+%   - candidateLongitudes - Sx1 east-positive longitudes in [0,2*pi), rad
 %
-% Example:
-%   latitudeBand  = deg2rad([-90,-80]);
-%   longitudeBand = deg2rad([0,360]);
-%   candidateSpacing = 15;
-%
-% Longitude points are placed independently on each latitude ring so their
-% physical along-ring spacing is approximately candidateSpacing.
+% Longitude spacing is set independently on each latitude ring.
 
 arguments
     latitudeBand (1,2) double
@@ -89,9 +83,7 @@ for latitudeIndex = 1:length(latitudeRings)
     bandArcLength = ...
         parallelRadius*longitudeSpan;
 
-    % All longitude values collapse to one location at the pole. The same
-    % treatment is used when the complete longitude band is shorter than
-    % the desired candidate spacing.
+    % Keep one longitude at a pole or on a ring shorter than the site spacing.
     if bandArcLength <= candidateSpacing
 
         longitudeValues = ...

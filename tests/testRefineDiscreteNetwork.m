@@ -1,9 +1,6 @@
 function tests = testRefineDiscreteNetwork
-% TESTREFINEDISCRETENETWORK Fast, dependency-free discrete search tests.
-% Run from repository root:
-%   runtests("tests/testRefineDiscreteNetwork.m")
-% These use synthetic candidate sites with inexpensive objectives, so they
-% do not need production DEM, database chunks, or Optimization Toolbox.
+% TESTREFINEDISCRETENETWORK - Fast, dependency-free discrete search tests.
+
 tests = functiontests(localfunctions);
 end
 

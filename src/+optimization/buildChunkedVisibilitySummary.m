@@ -1,10 +1,6 @@
 function summary = buildChunkedVisibilitySummary( ...
     chunkMetadata,numberOfCandidates,numberOfObjects)
-% BUILDCHUNKEDVISIBILITYSUMMARY Summarize final chunked availability.
-%
-% Only the final accepted-measurement masks are retained in production
-% chunks. Large intermediate geometric/terrain/celestial diagnostic masks
-% are intentionally not persisted.
+% BUILDCHUNKEDVISIBILITYSUMMARY - Summarize final chunked availability.
 
 arguments
     chunkMetadata (:,1) struct

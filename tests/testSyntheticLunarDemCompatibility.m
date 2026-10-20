@@ -1,22 +1,10 @@
-%% testSyntheticLunarDemCompatibility
-% Validate the synthetic griddedInterpolant DEM against the optimization
-% workflow without running a full production database build.
-%
-% The test verifies that the DEM can be loaded and used by:
-%   1. Surface/topographic reference-frame transformations.
-%   2. Terrain-horizon construction.
-%   3. RA/Dec measurement and measurement-Jacobian models.
-%   4. Tracking-data precomputation used by the information objective.
-%   5. Fully filtered visibility with independent Earth/Sun exclusion angles.
+%% Check the synthetic DEM against the optimization workflow.
 
 clear;
 close all;
 clc;
 
-%% ========================================================================
-%  Project paths
-%  ========================================================================
-
+%% Project paths
 testDirectory = fileparts(mfilename("fullpath"));
 projectRoot = fileparts(testDirectory);
 sourceDirectory = fullfile(projectRoot,"src");
@@ -28,10 +16,7 @@ assert(isfolder(sourceDirectory), ...
 addpath(sourceDirectory);
 rehash path;
 
-%% ========================================================================
-%  Resolve and load synthetic DEM
-%  ========================================================================
-
+%% Resolve and load synthetic DEM
 moonRadiusKm = 1737.4;
 moonMuKm3S2 = 4902.800066;
 moonAngularRate = 2*pi/(27.321661*86400);
@@ -64,10 +49,7 @@ assert(all(diff(latitudeGrid) > 0), ...
 assert(all(diff(longitudeGrid) > 0), ...
     "Synthetic DEM longitude grid is not strictly increasing.");
 
-%% ========================================================================
-%  Representative south-polar candidate locations
-%  ========================================================================
-
+%% Representative south-polar candidate locations
 candidateLatitudes = deg2rad([ ...
     -89.5
     -85.0
@@ -85,10 +67,7 @@ sampleElevationsKm = dem(candidateLatitudes,candidateLongitudes);
 assert(all(isfinite(sampleElevationsKm)), ...
     "Synthetic DEM returned nonfinite south-polar elevations.");
 
-%% ========================================================================
-%  Topographic-frame compatibility
-%  ========================================================================
-
+%% Topographic-frame compatibility
 sensorLatitude = candidateLatitudes(1);
 sensorLongitude = candidateLongitudes(1);
 
@@ -119,10 +98,7 @@ assert(abs(norm(sensorRotatingState(1:3))-expectedSensorRadiusKm) < 1e-9, ...
 assert(norm(localState) < 1e-9, ...
     "Topographic round-trip failed with the synthetic DEM.");
 
-%% ========================================================================
-%  Terrain-horizon compatibility
-%  ========================================================================
-
+%% Terrain-horizon compatibility
 [horizonAzimuths,maximumTerrainElevation] = ...
     digitalElevationModel.buildMaximumTerrainHorizonDatabase( ...
         candidateLatitudes, ...
@@ -138,10 +114,7 @@ assert(all(isfinite(maximumTerrainElevation),"all"), ...
 assert(size(maximumTerrainElevation,1) == numel(candidateLatitudes), ...
     "Terrain-horizon sensor dimension is inconsistent.");
 
-%% ========================================================================
-%  Representative target trajectory
-%  ========================================================================
-
+%% Representative target trajectory
 initialRadiusKm = moonRadiusKm + 300;
 initialState = [ ...
     initialRadiusKm
@@ -164,10 +137,7 @@ targetStateHistories = ...
         propagatedStates(2:end,:).', ...
         6,numel(trackingTimes),1);
 
-%% ========================================================================
-%  RA/Dec measurement and Jacobian compatibility
-%  ========================================================================
-
+%% RA/Dec measurement and Jacobian compatibility
 measurement = ...
     measurements.surfaceRaDecMeasurement( ...
         targetStateHistories(:,1,1), ...
@@ -195,10 +165,7 @@ assert(all(isfinite(measurement)), ...
 assert(all(isfinite(measurementJacobian),"all"), ...
     "RA/Dec Jacobian is nonfinite with the synthetic DEM.");
 
-%% ========================================================================
-%  Optimization tracking-data precompute
-%  ========================================================================
-
+%% Optimization tracking-data precompute
 [referenceStateHistory,stateTransitionHistory,processNoiseHistory, ...
     measurementJacobianHistory] = ...
     optimization.precomputeTrackingData( ...
@@ -224,10 +191,7 @@ assert(all(isfinite(processNoiseHistory),"all"), ...
 assert(all(isfinite(measurementJacobianHistory),"all"), ...
     "Tracking measurement-Jacobian history is nonfinite.");
 
-%% ========================================================================
-%  Filtered visibility and independent exclusion angles
-%  ========================================================================
-
+%% Filtered visibility and independent exclusion angles
 numberOfTimes = numel(trackingTimes);
 
 earthPositionsMci = repmat([384400;0;0],1,numberOfTimes);
@@ -271,10 +235,7 @@ assert(abs( ...
     sunMinimumAngularSeparationRad) < 1e-12, ...
     "Sun exclusion angle was not propagated correctly.");
 
-%% ========================================================================
-%  Summary
-%  ========================================================================
-
+%% Summary
 fprintf("\n");
 fprintf("Synthetic lunar DEM compatibility summary\n");
 fprintf("-----------------------------------------\n");
@@ -295,10 +256,7 @@ fprintf("Tracking precompute: passed\n");
 fprintf("Visibility filter:   passed\n");
 fprintf("\ntestSyntheticLunarDemCompatibility passed.\n");
 
-%% ========================================================================
-%  Local helper
-%  ========================================================================
-
+%% Local helper
 function demPath = resolveSyntheticDemPath(dataDirectory)
 
 candidateNames = [ ...

@@ -1,17 +1,4 @@
-%% testProductionOptimizationDatabase
-% Post-build validation of the production optimization database.
-%
-% Run immediately after scripts/database/buildProductionOptimizationDatabase.m and
-% before starting the 12000-FE production campaign. This validates:
-%   - full southern-hemisphere 15-km candidate grid;
-%   - six equal-count ORIGINAL candidate chunks created from the start;
-%   - terrain, visibility, and full 2x6 Jacobians stored by chunk;
-%   - retained global candidate -> chunk/local index mapping;
-%   - MATFILE partial indexing for visibility, terrain, and Jacobians;
-%   - analytic Jacobian agreement;
-%   - deterministic information/coverage objective evaluation.
-
-% Do not clear the caller workspace; this test is also run by the post-build wrapper.
+%% Post-build validation of the production optimization database.
 
 %% Project paths
 

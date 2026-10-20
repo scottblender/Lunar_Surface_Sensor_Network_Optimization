@@ -1,15 +1,4 @@
-%% testMultiRsoTerrainAwareCandidateNetwork
-% End-to-end terrain-aware network test for multiple independent RSOs.
-%
-% Workflow:
-%   1. Propagate truth trajectories for every RSO.
-%   2. Build one sensor/DEM terrain-horizon database.
-%   3. Perform one representative, terrain-gated IOD for each RSO.
-%   4. Propagate every IOD state and P0 to a common reference epoch.
-%   5. Hold those RSO-specific priors fixed during network evaluation.
-%   6. Build candidate-dependent Jacobian and terrain-LOS databases.
-%   7. Evaluate coverage and EKF D-optimality for candidate networks.
-%   8. Run one final state-updating EKF per RSO with the selected network.
+%% End-to-end terrain-aware network test for multiple independent RSOs.
 
 clear;
 close all;
@@ -113,8 +102,7 @@ accelerationNoiseIntensity = 1e-15; % km^2/s^3
 stateScales = [1;1;1;1e-3;1e-3;1e-3];
 
 %% Candidate surface sensors
-% A small, deliberately varied set is used so this remains a test rather
-% than a production-scale optimization.
+% Use a small varied sensor set to keep this regression test inexpensive.
 
 candidateNames = [
     "Candidate 1"
@@ -245,8 +233,7 @@ assert(all(any(truthTerrainAvailability,[1,2]),"all"), ...
     "At least one RSO has no terrain-approved observations.");
 
 %% One representative terrain-gated IOD for each RSO
-% Each object receives its own fixed state and covariance. The IOD sensor
-% may differ by object because IOD geometry is object/sensor dependent.
+% Set a fixed prior for each object using its terrain-visible IOD sensor.
 
 desiredIodObservationCount = 15;
 numberOfMonteCarloSamples = 50;
@@ -319,8 +306,7 @@ for objectIndex = 1:numberOfObjects
 end
 
 %% Move all fixed IOD priors to one common optimization epoch
-% The latest IOD reference epoch is used. Earlier priors are propagated to
-% that epoch once, before any candidate network is evaluated.
+% Propagate all IOD priors to the latest reference epoch before network evaluation.
 
 commonReferenceTime = max(iodReferenceTimes);
 

@@ -1,4 +1,5 @@
 function tests = testAnalysisSetup
+% TESTANALYSISSETUP - Test analysis paths and configuration merging.
 tests = functiontests(localfunctions);
 end
 

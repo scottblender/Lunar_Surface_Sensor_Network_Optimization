@@ -1,53 +1,11 @@
 function report = testProductionOptimizationResults(userConfig)
-% TESTPRODUCTIONOPTIMIZATIONRESULTS Verify the completed production campaign.
-%
-% This test discovers the newest complete 12000-FE, 20-run production study
-% for each requested network-size/objective case, loads every individual
-% run_###.mat result, re-processes the saved sensor network with the frozen
-% optimization database, and verifies that the stored results are internally
-% consistent and reproducible.
-%
-% Default production definition:
-%   network sizes:  [3 5 7 10]
-%   objectives:     information, coverage
-%   runs/case:      20
-%   FE/run:         12000
-%   population:     60
-%   seeds/case:     1000:1019
-%
-% The test checks, for every individual result file:
-%   - required run fields and configuration metadata;
-%   - run index and optimizer seed sequence;
-%   - exact FE completion and monotonic best-so-far convergence;
-%   - valid, unique, in-range, canonical sensor indices;
-%   - stored sensor coordinates/table against the frozen candidate database;
-%   - a fresh optimization.networkObjective evaluation of the saved network;
-%   - stored objective, information, coverage, and per-RSO diagnostics;
-%   - final-population dimensions and finite scores;
-%   - consistency between each individual run file and study_summary.mat.
-%
-% It also verifies each study-level summary and the complete campaign count.
-% With the defaults, exactly 8 study summaries and 160 run files are required.
-%
-% Usage
-%   report = testProductionOptimizationResults;
-%
-% Optional overrides
-%   config = struct();
-%   config.maximumCampaignSpanHours = 168;
-%   report = testProductionOptimizationResults(config);
-%
-% The function throws an assertion at the first failed verification. If it
-% returns normally, report.allChecksPassed is true.
+% TESTPRODUCTIONOPTIMIZATIONRESULTS - Verify the completed production campaign.
 
 arguments
     userConfig (1,1) struct = struct()
 end
 
-%% ========================================================================
-%  Project paths and configuration
-%  ========================================================================
-
+%% Project paths and configuration
 thisFile = mfilename("fullpath");
 testDirectory = fileparts(thisFile);
 projectRoot = fileparts(testDirectory);
@@ -105,10 +63,7 @@ assert(all(ismember(config.objectiveModes,["information","coverage"])), ...
 assert(mod(config.functionEvaluationBudget,config.populationSize) == 0, ...
     "functionEvaluationBudget must be divisible by populationSize.");
 
-%% ========================================================================
-%  Load frozen database
-%  ========================================================================
-
+%% Load frozen database
 assert(isfile(config.databaseFile), ...
     "Frozen optimization database was not found: %s",config.databaseFile);
 
@@ -120,10 +75,7 @@ database = databaseData.database;
 numberOfCandidates = database.meta.numberOfCandidates;
 numberOfObjects = database.meta.numberOfObjects;
 
-%% ========================================================================
-%  Expected production cases
-%  ========================================================================
-
+%% Expected production cases
 numberOfNetworkSizes = numel(config.networkSizes);
 numberOfObjectiveModes = numel(config.objectiveModes);
 numberOfCases = numberOfNetworkSizes*numberOfObjectiveModes;
@@ -163,10 +115,7 @@ else
     campaignSpanHours = NaN;
 end
 
-%% ========================================================================
-%  Allocate run and case reports
-%  ========================================================================
-
+%% Allocate run and case reports
 expectedTotalRuns = numberOfCases*config.numberOfRuns;
 
 runCase = zeros(expectedTotalRuns,1);
@@ -205,10 +154,7 @@ fprintf("Expected run files:  %d\n",expectedTotalRuns);
 fprintf("FE per run:          %d\n",config.functionEvaluationBudget);
 fprintf("\n");
 
-%% ========================================================================
-%  Process every study and every individual result file
-%  ========================================================================
-
+%% Process every study and every individual result file
 for caseIndex = 1:numberOfCases
     summaryFile = summaryFiles(caseIndex);
     studyDirectory = string(fileparts(summaryFile));
@@ -441,10 +387,7 @@ end
 assert(runCounter == expectedTotalRuns, ...
     "Processed %d run files; expected %d.",runCounter,expectedTotalRuns);
 
-%% ========================================================================
-%  Build returned verification report
-%  ========================================================================
-
+%% Build returned verification report
 runTable = table( ...
     runCase, ...
     runNetworkSize, ...
@@ -532,10 +475,7 @@ fprintf("All production optimization results were generated consistently.\n");
 
 end
 
-%% ========================================================================
-%  Local helpers
-%  ========================================================================
-
+%% Local helpers
 function [summaryFiles,campaignTimes] = resolveStudySummaries( ...
     runRoot,caseNetworkSize,caseObjectiveMode,config)
 

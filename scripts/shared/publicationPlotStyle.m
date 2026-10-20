@@ -1,11 +1,5 @@
 function style = publicationPlotStyle()
-% PUBLICATIONPLOTSTYLE Shared white-background manuscript figure styling.
-%
-% Typography is intentionally oversized for LaTeX placement. Several result
-% figures are reduced when assembled as subfigures, so 12--14 pt source text
-% becomes too small in the final manuscript. The canvas dimensions below are
-% likewise oversized so the larger type does not crowd ticks, labels, legends,
-% tiled layouts, or annotations after export.
+% PUBLICATIONPLOTSTYLE - Return shared colors, font sizes, and manuscript figure dimensions.
 
 style = struct();
 % AAS text width and side-by-side placement used in the attached manuscript.
@@ -48,7 +42,7 @@ style.lightGrayColor = [0.90 0.90 0.91];
 style.labelBackgroundColor = [1.00 1.00 1.00];
 style.labelMargin = 1.5;
 
-% Source canvases are deliberately larger than their final LaTeX placement.
+% Use larger source canvases for final LaTeX placement.
 style.exportWidthInches = 8.50;
 style.exportHeightInches = 6.25;
 style.wideFigureWidthInches = 12.0;

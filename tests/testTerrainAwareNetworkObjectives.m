@@ -1,17 +1,4 @@
-%% testTerrainAwareNetworkObjectives
-% Test terrain-aware coverage and information objectives.
-%
-% Workflow:
-%   1. Construct representative lunar surface candidates.
-%   2. Build the static terrain-horizon database.
-%   3. Precompute dynamics, STMs, process noise, RA/Dec Jacobians, and
-%      geometric LOS using optimization.precomputeTrackingData.
-%   4. Replace the geometric LOS gates with terrain-aware gates.
-%   5. Evaluate coverage and EKF D-optimality using the existing
-%      optimization objective functions.
-%
-% This test uses a fixed representative P0 for each object. It plays the
-% same role as the fixed IOD covariance in the full optimization pipeline.
+%% Test terrain-aware coverage and information objectives.
 
 clear;
 close all;

@@ -1,5 +1,6 @@
 function plotInfo = plotProductionNetworkLocations(campaign,userConfig)
-% PLOTPRODUCTIONNETWORKLOCATIONS Geographic selection-frequency heatmaps.
+% PLOTPRODUCTIONNETWORKLOCATIONS - Geographic selection-frequency heatmaps.
+
 arguments
     campaign (1,1) struct
     userConfig (1,1) struct = struct()

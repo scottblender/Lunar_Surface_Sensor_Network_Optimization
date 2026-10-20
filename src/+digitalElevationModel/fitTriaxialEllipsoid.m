@@ -1,25 +1,16 @@
 function model = fitTriaxialEllipsoid( ...
     rawElevationKm,latitudeCentersRad,longitudeCentersRad,moonRadiusKm, ...
     rowStride,columnStride)
-% FITTRIAXIALELLIPSOID Fit a translated, axis-aligned triaxial ellipsoid.
+% FITTRIAXIALELLIPSOID - Fit a translated, axis-aligned triaxial ellipsoid.
 %
-% The input DEM is interpreted as radial elevation relative to the lunar
-% reference sphere:
+% Inputs:
+%   - rawElevationKm - Radial DEM heights above the reference sphere (km).
+%   - latitudeCentersRad, longitudeCentersRad - Raster coordinate vectors (rad).
+%   - moonRadiusKm - Reference radius (km).
+%   - rowStride, columnStride - Deterministic fitting sample strides.
 %
-%   r_data = moonRadiusKm + rawElevationKm.
-%
-% DEM samples are converted to Moon-centered Cartesian coordinates and the
-% six parameters
-%
-%   p = [x0,y0,z0,a,b,c]
-%
-% are found with lsqnonlin using the implicit ellipsoid residual
-%
-%   ((x-x0)/a)^2 + ((y-y0)/b)^2 + ((z-z0)/c)^2 - 1.
-%
-% The fit is evaluated on a deterministic decimated subset of the global
-% raster so the full 2880-by-5760 DEM does not need to enter the nonlinear
-% solver directly.
+% Outputs:
+%   - model - Fitted center offset, semi-axes, and fit diagnostics.
 
 arguments
     rawElevationKm (:,:) double
@@ -44,10 +35,7 @@ assert(all(isfinite(rawElevationKm),"all"), ...
 assert(~isempty(which("lsqnonlin")), ...
     "fitTriaxialEllipsoid requires lsqnonlin from Optimization Toolbox.");
 
-%% ========================================================================
-%  Deterministic fit subset
-%  ========================================================================
-
+%% Deterministic fit subset
 sampleRows = ...
     unique([1:rowStride:numberOfLatitudes,numberOfLatitudes]);
 
@@ -84,10 +72,7 @@ xData = xData(:);
 yData = yData(:);
 zData = zData(:);
 
-%% ========================================================================
-%  Six-parameter least-squares fit
-%  ========================================================================
-
+%% Six-parameter least-squares fit
 initialParameters = [ ...
     0
     0
@@ -146,10 +131,7 @@ assert(exitFlag > 0, ...
 centerOffsetKm = parameters(1:3);
 semiAxesKm = parameters(4:6);
 
-%% ========================================================================
-%  Radial ellipsoid and residual-topography diagnostics
-%  ========================================================================
-
+%% Radial ellipsoid and residual-topography diagnostics
 sampleEllipsoidRadii = ...
     digitalElevationModel.triaxialEllipsoidRadius( ...
         latitudeGrid, ...
@@ -180,10 +162,7 @@ residualRmsKm = ...
 ellipsoidSignalRmsKm = ...
     sqrt(mean(sampleEllipsoidHeightKm.^2,"all"));
 
-%% ========================================================================
-%  Output model
-%  ========================================================================
-
+%% Output model
 model = struct();
 
 model.modelType = ...

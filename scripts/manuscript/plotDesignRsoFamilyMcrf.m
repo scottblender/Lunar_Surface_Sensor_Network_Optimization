@@ -1,10 +1,5 @@
 function plotInfo = plotDesignRsoFamilyMcrf(campaign,userConfig)
-% PLOTDESIGNRSOFAMILYMCRF Plot separated design RSO trajectories in MCRF.
-%
-% One period of each design orbit is transformed from MCI into the
-% Moon-centered rotating frame (MCRF). Each RSO is shown in its own 3D tile
-% so individual trajectory geometry remains visible instead of being obscured
-% by an overlaid 20-trajectory plot.
+% PLOTDESIGNRSOFAMILYMCRF - Plot separated design RSO trajectories in MCRF.
 
 arguments
     campaign (1,1) struct

@@ -1,9 +1,4 @@
-%% plotReferenceFrameTransformations
-% Create white-background publication figures for the lunar reference frames.
-%
-% Outputs:
-%   reference_frame_moon_centered.eps
-%   reference_frame_sensor_centered.eps
+%% Draw the Moon-centered and sensor reference frames.
 
 clear;
 clc;

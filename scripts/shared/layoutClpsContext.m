@@ -1,7 +1,6 @@
 function layoutClpsContext(fig,ax,boxes,leaders,targets,heading,cb,lgd)
-% LAYOUTCLPSCONTEXT Lay out a polar context map in physical points.
-% Measure text, then nest callouts in the four corners outside the polar disk.
-% Leaders meet the inner box corners at 45 degrees in physical coordinates.
+% LAYOUTCLPSCONTEXT - Lay out a polar context map in physical points.
+
 fontSize = boxes(1).FontSize;
 gap = fontSize/2;
 margin = fontSize/2;

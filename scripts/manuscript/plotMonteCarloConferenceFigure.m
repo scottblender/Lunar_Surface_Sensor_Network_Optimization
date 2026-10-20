@@ -1,6 +1,5 @@
 function plotInfo = plotMonteCarloConferenceFigure(userConfig)
-% PLOTMONTECARLOCONFERENCEFIGURE Compare global random networks with the GA.
-% Only v7 global-grid results are accepted; local-neighbor results must be rerun.
+% PLOTMONTECARLOCONFERENCEFIGURE - Compare global random networks with the GA.
 
 arguments
     userConfig (1,1) struct = struct()

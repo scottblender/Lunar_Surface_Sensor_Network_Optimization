@@ -1,32 +1,11 @@
 function studyState = runOptimizationPilot(userConfig)
-% RUNOPTIMIZATIONPILOT Run the standard 10 x 1200-FE GA pilot and EKF check.
+% RUNOPTIMIZATIONPILOT - Run the standard 10 x 1200-FE GA pilot and EKF check.
 %
-% The pilot defaults to the information objective, which is the primary
-% sensor-network design metric. Set objectiveMode to "coverage" to run the
-% corresponding coverage-optimized comparison study.
+% Inputs:
+%   - userConfig - Optional overrides for the standard 10-run, 1200-FE pilot.
 %
-% The pilot uses ten independent optimizer seeds while holding the final
-% EKF measurement-noise realization fixed. Optimization remains deterministic
-% with respect to the frozen database; the fixed-noise EKF validation is
-% performed after the search and is not counted in FE.
-%
-% Parallel execution mirrors the efficient workflow used by the related
-% cislunar gradient-free study: one process-based pool is created or reused
-% for all independent GA runs, and one worker-local parallel.pool.Constant
-% stores the frozen objective database for the full study. If MATLAB reports
-% a recoverable worker-dispatch failure, runGlobalOptimization restarts the
-% pool and retries only the affected run once using the same optimizer seed.
-%
-% Default pilot
-%   setupProject;
-%   studyState = runOptimizationPilot();
-%
-% Example override
-%   config = struct();
-%   config.networkSize = 5;
-%   config.objectiveMode = "information";
-%   config.useParallel = true;
-%   studyState = runOptimizationPilot(config);
+% Outputs:
+%   - studyState - Optimization results and fixed-noise EKF validation.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -66,10 +45,7 @@ assert(config.functionEvaluationBudget == 1200, ...
 
 optimizationConfig = rmfield(config,"validation");
 
-% Reuse one process pool and one frozen worker database for all ten runs.
-% This removes repeated pool startup/teardown overhead while retaining a
-% one-time automatic recovery path for the MATLAB parallel dispatch failure
-% observed during earlier pilot development.
+% Reuse one pool and worker database across runs; retry a dispatch failure once.
 optimizationConfig.parallelRestartEachRun = false;
 optimizationConfig.parallelRetryOnFailure = ...
     logical(optimizationConfig.useParallel);

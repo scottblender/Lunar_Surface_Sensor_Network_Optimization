@@ -1,7 +1,13 @@
 function result = runGA(objectiveFcn,problem,config)
-% RUNGA Preserve production integer-GA callback FE accounting and incumbent.
-% This adapter was extracted from scripts/optimization/runGlobalOptimization.m.
-% Input/output contract: docs/optimizer_adapter_guide.md.
+% RUNGA - Run integer GA and record the best network at each FE checkpoint.
+%
+% Inputs:
+%   - objectiveFcn - Scalar network objective.
+%   - problem - Integer bounds and linear constraints.
+%   - config - FE budget, population size, parallel flag, and display setting.
+%
+% Outputs:
+%   - result - Feasible incumbent, callback history, and raw solver FE count.
 
 populationSize = config.populationSize;
 functionEvaluationBudget = config.functionEvaluationBudget;
@@ -42,10 +48,7 @@ gaOptions = optimoptions( ...
 
 assert(~isempty(incumbentX) && isfinite(incumbentJ), ...
     "GA did not record a finite best-so-far incumbent.");
-% Preserve the original production accounting convention. The callback
-% supplies the FE count admitted to the comparison history, capped at the
-% requested budget. MATLAB's final output.funccount can be one (or more)
-% higher; it is retained separately and MUST NOT redefine the callback FE.
+% Record capped callback FEs and raw solver FEs separately.
 assert(~isempty(historyFe) && ...
     isfinite(historyFe(end)) && historyFe(end) > 0 && ...
     historyFe(end) <= functionEvaluationBudget, ...

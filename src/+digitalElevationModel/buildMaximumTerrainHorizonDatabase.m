@@ -12,38 +12,25 @@ function [ ...
     terrainRangeStep, ...
     horizonAzimuthStep, ...
     moonRadius)
-% BUILDMAXIMUMTERRAINHORIZONDATABASE
-% Builds a terrain-horizon profile for every candidate surface sensor.
-%
-% For each candidate sensor and azimuth, the function searches radially
-% through the DEM and identifies the terrain sample having the maximum
-% apparent elevation angle.
+% BUILDMAXIMUMTERRAINHORIZONDATABASE - Build a terrain-horizon profile for each candidate sensor.
 %
 % Inputs:
-%   candidateLatitudes       - Sx1 sensor latitudes, rad
-%   candidateLongitudes      - Sx1 sensor longitudes, rad
-%   dem                      - griddedInterpolant, queried using rad
-%   maximumTerrainRange      - maximum surface search distance, km
-%   terrainRangeStep         - radial terrain sampling distance, km
-%   horizonAzimuthStep       - requested azimuth spacing, rad
-%   moonRadius               - lunar reference radius, km
+%   - candidateLatitudes - Sx1 sensor latitudes, rad
+%   - candidateLongitudes - Sx1 sensor longitudes, rad
+%   - dem - griddedInterpolant, queried using rad
+%   - maximumTerrainRange - maximum surface search distance, km
+%   - terrainRangeStep - radial terrain sampling distance, km
+%   - horizonAzimuthStep - requested azimuth spacing, rad
+%   - moonRadius - lunar reference radius, km
 %
 % Outputs:
-%   horizonAzimuths          - Ax1 azimuth grid, rad
-%   maximumTerrainElevation  - SxA maximum apparent terrain angle, rad
-%   maximumFeatureRange      - SxA range to horizon-defining feature, km
-%   sensorElevations         - Sx1 candidate DEM elevations, km
-%   maximumFeatureElevations - SxA DEM elevation of horizon-defining
-%                              feature, km
+%   - horizonAzimuths - Ax1 azimuth grid, rad
+%   - maximumTerrainElevation - SxA maximum apparent terrain angle, rad
+%   - maximumFeatureRange - SxA range to horizon-defining feature, km
+%   - sensorElevations - Sx1 candidate DEM elevations, km
+%   - maximumFeatureElevations - SxA DEM elevation of horizon-defining feature, km
 %
-% The output maximumTerrainElevation is an angle despite the historical
-% variable name. It represents
-%
-%   max_d atan2(vertical terrain displacement,
-%               horizontal terrain displacement).
-%
-% The first and last azimuth columns correspond to 0 and 2*pi and are
-% identical, providing a periodic interpolation boundary.
+% The 0 and 2*pi azimuth columns match for periodic interpolation.
 
 arguments
     candidateLatitudes (:,1) double
@@ -197,9 +184,7 @@ for sensorIndex = 1:numberOfCandidates
     sinSensorLatitude = sin(sensorLatitude);
     cosSensorLatitude = cos(sensorLatitude);
 
-    % Destination latitude along every range and azimuth.
-    %
-    % Each resulting array is numberOfRanges-by-numberOfActiveAzimuths.
+    % Compute destination latitudes on the range-by-azimuth grid.
 
     sinTerrainLatitudes = ...
         sinSensorLatitude .* cosCentralAngles + ...
@@ -247,15 +232,7 @@ for sensorIndex = 1:numberOfCandidates
     terrainRadii = ...
         moonRadius + terrainElevations;
 
-    % Exact local topographic geometry on a spherical reference body.
-    %
-    % Horizontal component:
-    %
-    %   rhoHorizontal = rTerrain sin(delta)
-    %
-    % Vertical component:
-    %
-    %   rhoUp = rTerrain cos(delta) - rSensor
+    % Use rhoHorizontal = rTerrain*sin(delta) and rhoUp = rTerrain*cos(delta)-rSensor.
 
     terrainHorizontalDistance = ...
         terrainRadii .* sinCentralAngles;

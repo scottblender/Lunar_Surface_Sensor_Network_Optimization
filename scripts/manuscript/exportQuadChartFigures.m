@@ -1,25 +1,7 @@
 function products = exportQuadChartFigures(userConfig)
-% EXPORTQUADCHARTFIGURES Export a raw Figure 10 summary table and Figure 13 for a quad chart.
-%
-% This script reuses the same production results and screening calculations as
-% the manuscript. Figure 10 is condensed to a presentation-ready table of the
-% most frequently selected geographic bins, while Figure 13 is retained as a
-% presentation-format constraint-screening figure.
+% EXPORTQUADCHARTFIGURES - Export the summary table and tracking figures for a quad chart.
 %
 % Outputs:
-%   quadchart_figure10_selection_table.xlsx
-%   quadchart_synthetic_dem.png
-%   quadchart_sensor_selection_distribution.png
-%   quadchart_candidate_discretization.png
-%   quadchart_clps_design_domain.png
-%   quadchart_figure13_constraint_screening.pdf
-%
-% Example:
-%   products = exportQuadChartFigures();
-%
-%   cfg = struct();
-%   cfg.outputDirectory = "C:\\Users\\me\\Desktop\\quadchart";
-%   products = exportQuadChartFigures(cfg);
 
 arguments
     userConfig (1,1) struct = struct()
@@ -99,9 +81,7 @@ rawConfig.comparisonNetworkSize = config.comparisonNetworkSize;
 rawConfig.comparisonObjective = config.comparisonObjective;
 rawConfig.exportDiagnosticTables = false;
 
-% Figure 10 data: compute the same information-driven geographic-bin
-% selection frequencies used by the manuscript, but without creating the
-% four polar-map preview figures.
+% Compute the manuscript selection frequencies without creating preview maps.
 selectionData = computeInformationSelectionFrequency(fullCampaign);
 
 % Figure 13 data: exact screening percentages used in the manuscript.
@@ -176,10 +156,7 @@ clpsInfo = plotClpsDesignDomain(clpsConfig);
 clpsBase = fullfile(config.outputDirectory, ...
     "quadchart_clps_design_domain");
 
-% plotClpsDesignDomain lays out its callout boxes, leaders, legend, colorbar,
-% and polar map in physical points and then resizes the figure to the exact
-% content bounds. Preserve that computed size here; forcing it back to a
-% fixed 12 x 7.6 in canvas distorts the annotation layout and clips callouts.
+% Keep the map dimensions computed from its labels, leaders, and callouts.
 clpsInfo.figure.Units = "inches";
 clpsFigureSize = clpsInfo.figure.Position(3:4);
 clpsFiles = exportPowerPointImage( ...
@@ -485,11 +462,7 @@ end
 
 function fig = buildCandidateDiscretizationFigure( ...
     campaign,style,figureSize,latitudeBinDeg,longitudeBinDeg)
-% Illustrate the lunar-surface candidate-site discretization on the DEM.
-%
-% The actual optimization candidate database is used. For presentation
-% clarity, one real candidate is displayed per coarse latitude/longitude bin;
-% this changes only the visualization density, not the optimization database.
+% Display one actual candidate per coarse geographic bin; retain the full search grid.
 
 validateattributes(latitudeBinDeg,{'numeric'}, ...
     {'scalar','positive','finite'});
@@ -609,10 +582,7 @@ end
 
 function fig = buildConstraintScreeningFigure( ...
     fullPercent,polarPercent,style,figureSize)
-% Presentation layout for manuscript Figure 13.
-%
-% The figure is intentionally taller than the manuscript version so the 20
-% RSO rows remain distinct after insertion into a PowerPoint quad chart.
+% Use a taller presentation layout so the 20 target rows remain readable.
 
 categoryNames = [ ...
     "Below local horizon", ...
@@ -706,9 +676,7 @@ drawnow;
 end
 
 function files = exportPowerPointImage(fig,baseFile,figureSize,resolutionDpi)
-% Export DEM-heavy figures as high-resolution raster PNGs for PowerPoint.
-% Raster export is much faster than converting dense surface/patch graphics
-% into thousands of vector primitives.
+% Rasterize dense DEM figures for faster PowerPoint export.
 
 fig.Color = "white";
 fig.InvertHardcopy = "off";

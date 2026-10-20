@@ -1,28 +1,5 @@
 function result = evaluateDiscreteNeighborRobustness(productionInfo,userConfig)
-% EVALUATEDISCRETENEIGHBORROBUSTNESS Test local optimality on the candidate grid.
-%
-% This study is intentionally separate from the continuous placement-error
-% Monte Carlo study. It asks whether the best discrete network selected by
-% the optimizer is locally superior to geographically neighboring candidate
-% sites already contained in the frozen optimization database.
-%
-% For every best production network and objective:
-%   1) Exhaustively replace one selected sensor at a time by each of its K
-%      nearest eligible candidate sites and re-evaluate the same objective.
-%   2) Draw joint discrete-neighbor perturbations in which every selected
-%      sensor independently chooses either its nominal site or one of those
-%      K neighbors. Duplicate-site networks are rejected and regenerated.
-%
-% Positive improvement means a lower minimization objective was found:
-%
-%   improvement = J_nominal - J_perturbed.
-%
-% Therefore, no positive one-site improvement means the nominal network is
-% locally optimal with respect to all tested single-site substitutions.
-%
-% No paper figure is generated. A compact summary and detailed diagnostics
-% are written under production_figures/tables/diagnostics, while the full
-% sampled study is cached as a MAT file for later analysis.
+% EVALUATEDISCRETENEIGHBORROBUSTNESS - Test local optimality on the candidate grid.
 
 arguments
     productionInfo (1,1) struct
@@ -198,9 +175,7 @@ for objectiveIndex = 1:numberOfObjectives
             'JointBetterFraction','BestJointObjective','MaximumJointImprovement', ...
             'BestJointSensorIndices'});
 
-        % The detail tables already contain a numeric variable named Objective.
-        % Store the optimization mode separately as ObjectiveMode to avoid a
-        % duplicate table-variable name when prepending case metadata.
+        % Use ObjectiveMode for metadata; Objective already holds numeric scores.
         singleTable = addvars(singleTable, ...
             repmat(objectiveMode,height(singleTable),1), ...
             repmat(networkSize,height(singleTable),1), ...
@@ -258,7 +233,7 @@ save(cacheFile,"studyCache","-v7.3");
 printCompactSummary(summaryTable);
 end
 
-%% ========================================================================
+%% Local functions
 function [tableOut,result,objectiveCache] = evaluateSingleSubstitutions( ...
     nominalIndices,neighborIndices,neighborDistancesKm,nominalObjective, ...
     database,objectiveMode,tolerance,objectiveCache)
@@ -323,7 +298,7 @@ tableOut = table( ...
     'Improvement','BetterThanNominal','SensorIndices'});
 end
 
-%% ========================================================================
+%% Local functions
 function [tableOut,result,objectiveCache] = evaluateJointSamples( ...
     nominalIndices,neighborIndices,nominalObjective,database,objectiveMode, ...
     numberSamples,seed,maximumAttempts,tolerance,objectiveCache)
@@ -385,7 +360,7 @@ tableOut = table(sampleColumn,objectiveValues,improvements,isBetter, ...
 clear rngCleanup
 end
 
-%% ========================================================================
+%% Local functions
 function [indices,distancesKm] = nearestEligibleCandidates( ...
     centerIndex,nominalIndices,latitudesRad,longitudesRad,moonRadiusKm,k)
 
@@ -406,7 +381,7 @@ indices = sortedIndices(1:k).';
 distancesKm = sortedDistances(1:k).';
 end
 
-%% ========================================================================
+%% Local functions
 function [objectiveValue,objectiveCache] = cachedObjective( ...
     sensorIndices,database,objectiveMode,objectiveCache)
 key = networkKey(sensorIndices);
@@ -422,7 +397,7 @@ function key = networkKey(sensorIndices)
 key = sprintf('%d_',sort(sensorIndices));
 end
 
-%% ========================================================================
+%% Local functions
 function signature = buildSignature( ...
     databaseFile,summaryFiles,networkSizes,objectiveModes,config)
 signature = struct();
@@ -449,7 +424,7 @@ assert(~isempty(info),"File not found while building cache signature: %s",fileNa
 stamp = [double(info.bytes),double(info.datenum)];
 end
 
-%% ========================================================================
+%% Local functions
 function writeOutputs(result,summaryFile,singleDetailFile,jointDetailFile)
 writetable(result.summaryTable,summaryFile);
 writetable(result.singleDetailTable,singleDetailFile);

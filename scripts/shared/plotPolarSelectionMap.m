@@ -1,6 +1,6 @@
 function terrainLimits = plotPolarSelectionMap(ax,frequency,latitudeEdges,longitudeEdges,dem,style)
-% South-pole azimuthal map: radius = colatitude, east longitude clockwise.
-% Truecolor DEM and truecolor frequency sectors keep their scales independent.
+% PLOTPOLARSELECTIONMAP - Plot terrain and selection frequency on a south-pole map.
+
 hold(ax,"on");
 [lon,lat] = meshgrid(linspace(0,360,361),linspace(-90,0,181));
 r = (lat+90)/90;

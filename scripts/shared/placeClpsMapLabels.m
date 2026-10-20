@@ -1,6 +1,6 @@
 function placeClpsMapLabels(ax,leaders)
-% Place short geographic labels clear of leaders and other map labels.
-% All collision checks use points in the axes coordinate system.
+% PLACECLPSMAPLABELS - Place geographic labels clear of map leaders and other labels.
+
 fig = ancestor(ax,"figure");
 originalUnits = fig.Units; fig.Units = "points";
 canvas = fig.Position(3:4); fig.Units = originalUnits;

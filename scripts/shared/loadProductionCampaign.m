@@ -1,8 +1,5 @@
 function campaign = loadProductionCampaign(userConfig)
-% LOADPRODUCTIONCAMPAIGN Load the frozen database and completed GA campaign.
-%
-% This function contains the result-discovery logic shared by all manuscript
-% figure/table generators. It does not create figures or modify study data.
+% LOADPRODUCTIONCAMPAIGN - Load the frozen database and completed GA campaign.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -168,10 +165,7 @@ tf = studyState.numberOfRuns == config.numberOfRuns && ...
     isfield(cfg,"optimizer") && ...
     upper(string(cfg.optimizer)) == "GA";
 
-% When the study summary records the frozen database path, require it to
-% match the requested campaign database. This prevents full-domain and
-% restricted-domain studies stored under the same results root from being
-% mixed by the manuscript loader.
+% Match saved database paths to avoid mixing full and restricted campaigns.
 if tf && config.requireDatabaseMatch && isfield(cfg,"databaseFile")
     tf = normalizePath(string(cfg.databaseFile)) == ...
         normalizePath(string(config.databaseFile));

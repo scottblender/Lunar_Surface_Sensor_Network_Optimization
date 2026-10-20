@@ -1,10 +1,5 @@
 function plotInfo = plotOperationalRsoTrackingHeatmaps(operationalResults,userConfig)
-% PLOTOPERATIONALRSOTRACKINGHEATMAPS Create one combined operational-RSO figure.
-%
-% The figure contains RMS position error and epoch observability for the
-% information- and coverage-optimized networks. Epoch observability is the
-% percentage of tracking epochs during which at least one selected sensor has
-% an accepted measurement.
+% PLOTOPERATIONALRSOTRACKINGHEATMAPS - Create one combined operational-RSO figure.
 
 arguments
     operationalResults (1,1) struct
@@ -75,9 +70,7 @@ numberOfModes = numel(modes);
 assert(numberOfModes==2, ...
     "Operational manuscript layout expects information and coverage columns.");
 
-% Use fixed axes positions rather than nested tiled layouts. The geometry is
-% deliberately compact, but the left margin is wide enough for the complete
-% spacecraft names and the right margin is reserved for the two colorbars.
+% Reserve fixed margins for spacecraft names and colorbars.
 figureWidth = style.heatmapWidthInches;
 figureHeight = 9.5;
 fig = figure("Name","Operational RSO tracking performance", ...
@@ -92,9 +85,7 @@ if rmsLimits(2)<=rmsLimits(1)
     rmsLimits(2)=rmsLimits(1)+1;
 end
 
-% Explicit normalized positions prevent MATLAB from reflowing labels at EPS
-% print time. The x limits place the first and last sensor-count ticks well
-% inside the axes box rather than directly on its boundary.
+% Fix axes positions and inset endpoint ticks to prevent EPS reflow.
 xPositions = [0.22 0.53];
 axesWidth = 0.23;
 rowBottom = [0.58 0.20];

@@ -1,15 +1,15 @@
 function [stateMiddle, diagnostics] = gaussAnglesOnly(times, observerPositionsMci, lineOfSightMci, moonMu)
-% GAUSSANGLESONLY Perform three-observation Gauss IOD.
+% GAUSSANGLESONLY - Perform three-observation Gauss IOD.
 %
 % Inputs:
-%   times                - 3x1 observation times, s
-%   observerPositionsMci - 3x3 observer positions in MCI, km
-%   lineOfSightMci       - 3x3 inertial LOS unit vectors
-%   moonMu               - Lunar gravitational parameter, km^3/s^2
+%   - times - 3x1 observation times, s
+%   - observerPositionsMci - 3x3 observer positions in MCI, km
+%   - lineOfSightMci - 3x3 inertial LOS unit vectors
+%   - moonMu - Lunar gravitational parameter, km^3/s^2
 %
 % Outputs:
-%   stateMiddle - 6x1 MCI state at times(2), km and km/s
-%   diagnostics - Gauss root, ranges, and position information
+%   - stateMiddle - 6x1 MCI state at times(2), km and km/s
+%   - diagnostics - Gauss root, ranges, and position information
 
 arguments
     times (3,1) double

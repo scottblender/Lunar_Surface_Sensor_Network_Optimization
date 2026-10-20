@@ -18,12 +18,7 @@ function [filteredAvailability,geometricAvailability] = ...
         theta0, ...
         angularRate, ...
         earthMinimumAngularSeparation)
-% BUILDFILTEREDVISIBILITYMASKS Memory-lean terrain/celestial visibility.
-%
-% This production helper computes only the logical masks required by the
-% candidate prefilter and optimization database. Unlike the diagnostic
-% visibility builder, it does not retain large azimuth, elevation, range,
-% terrain-limit, or angular-separation histories.
+% BUILDFILTEREDVISIBILITYMASKS - Memory-lean terrain/celestial visibility.
 
 arguments
     times (:,1) double

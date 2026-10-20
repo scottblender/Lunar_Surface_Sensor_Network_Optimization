@@ -1,4 +1,5 @@
 function tests = testManuscriptPlotUpdates
+% TESTMANUSCRIPTPLOTUPDATES - Test figure typography, export bounds, and shared labels.
 tests = functiontests(localfunctions);
 end
 

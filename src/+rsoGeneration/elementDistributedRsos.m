@@ -6,23 +6,19 @@ function [initialStatesMoonInertial,rsoCatalog] = ...
         eccentricityLimits, ...
         moonRadius, ...
         moonMu)
-% ELEMENTDISTRIBUTEDRSOS Generate an orbital-element-distributed RSO set.
+% ELEMENTDISTRIBUTEDRSOS - Generate an orbital-element-distributed RSO set.
 %
 % Inputs:
-%   numberOfObjects             - Exact number of generated RSOs
-%   periapsisAltitudeLimitsKm   - [minimum maximum], km
-%   inclinationLimitsRad        - [minimum maximum], rad
-%   eccentricityLimits          - [minimum maximum]
-%   moonRadius                  - Lunar reference radius, km
-%   moonMu                      - Lunar gravitational parameter, km^3/s^2
+%   - numberOfObjects - Exact number of generated RSOs
+%   - periapsisAltitudeLimitsKm - [minimum maximum], km
+%   - inclinationLimitsRad - [minimum maximum], rad
+%   - eccentricityLimits - [minimum maximum]
+%   - moonRadius - Lunar reference radius, km
+%   - moonMu - Lunar gravitational parameter, km^3/s^2
 %
 % Outputs:
-%   initialStatesMoonInertial   - 6xN MCI state matrix
-%   rsoCatalog                  - N-row orbital-element catalog
-%
-% Periapsis altitude, inclination, and eccentricity each use N equally
-% spaced levels. Inclination and eccentricity are deterministically
-% permuted so the objects do not lie along one correlated diagonal.
+%   - initialStatesMoonInertial - 6xN MCI state matrix
+%   - rsoCatalog - N-row orbital-element catalog
 
 arguments
     numberOfObjects (1,1) double ...

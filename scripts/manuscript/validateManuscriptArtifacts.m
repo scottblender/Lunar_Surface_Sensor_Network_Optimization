@@ -1,8 +1,5 @@
 function manifest = validateManuscriptArtifacts(outputDirectory,userConfig)
-% VALIDATEMANUSCRIPTARTIFACTS Check generated products against the paper.
-%
-% The manifest mirrors the attached AAS TeX source (2026-09-20). Products
-% whose underlying study is optional are reported but do not raise an error.
+% VALIDATEMANUSCRIPTARTIFACTS - Check generated products against the paper.
 
 arguments
     outputDirectory (1,1) string

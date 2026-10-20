@@ -1,14 +1,7 @@
 function tableInfo = buildOperationalManuscriptTable(operationalResults,userConfig)
-% BUILDOPERATIONALMANUSCRIPTTABLE Write the four-row spacecraft table in TeX.
+% BUILDOPERATIONALMANUSCRIPTTABLE - Write the four-row spacecraft table in TeX.
 %
-% The manuscript table contains one row per operational/legacy target, so one
-% optimized network case must be selected. By default the information-
-% optimized N_s=max(networkSizes) network is used; both choices are
-% configurable through operationalTableObjective and
-% operationalTableNetworkSize.
-%
-% Output:
-%   tables/spacecraft_tracking.csv
+% Outputs:
 
 arguments
     operationalResults (1,1) struct

@@ -1,10 +1,15 @@
 function result = runABC(objectiveFcn,problem,config)
-% RUNABC Discrete artificial bee colony with strictly budgeted batch FEs.
-% Adapted from scottblender/Gradient-Free-Optimization-for-Cislunar-SDA-2,
-% src/optimization/abc_discrete.m (e0ccf9e1b18409f74348c42bf559efdfb2852103).
-% Retains employed/onlooker/scout phases, greedy food selection, and a
-% client-side FE counter. Food sources here are sorted unique sensor IDs,
-% rather than the reference implementation's orbit/slot pairs.
+% RUNABC - Run discrete artificial bee colony optimization within an FE budget.
+%
+% Inputs:
+%   - objectiveFcn - Scalar minimization objective on distinct sensor-site IDs.
+%   - problem - Common integer bounds and sensor-ordering constraints.
+%   - config - FE budget, even colony size, parallel flag, display, and abcLimit.
+%
+% Outputs:
+%   - result - Best network, scores, and strictly budgeted FE history.
+%
+% See also optimization.runOptimizer.
 
 budget = config.functionEvaluationBudget;
 colonySize = config.populationSize;

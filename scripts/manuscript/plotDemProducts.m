@@ -1,5 +1,5 @@
 function plotInfo = plotDemProducts(userConfig)
-% PLOTDEMPRODUCTS Generate original and reduced DEM manuscript figures.
+% PLOTDEMPRODUCTS - Generate original and reduced DEM manuscript figures.
 
 arguments
     userConfig (1,1) struct = struct()

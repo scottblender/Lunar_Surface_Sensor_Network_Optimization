@@ -1,37 +1,14 @@
 function studyState = runGlobalOptimization(userConfig)
-% RUNGLOBALOPTIMIZATION
-% Run discrete lunar-surface sensor-network optimization using a frozen
-% precomputed optimization database.
+% RUNGLOBALOPTIMIZATION - Optimize sensor-site indices using a frozen database.
 %
-% The decision vector contains candidate-site indices
+% Inputs:
+%   - userConfig - Optional database, solver, network, budget, seed, and pool settings.
 %
-%       x = [i1,i2,...,iNs]
+% Outputs:
+%   - studyState - Saved runs, convergence histories, and best-network diagnostics.
 %
-% with strictly increasing integer indices, so duplicate sensors and
-% permutation-equivalent networks are not intentionally searched.
-%
-% A common function-evaluation (FE) budget and discrete design problem are
-% shared across solvers. The original GA search and its exact FE accounting
-% live in optimization.runGA; new methods implement the same callback contract.
-%
-% Parallel execution normally follows the same efficient pattern used by the
-% related cislunar gradient-free study: create/reuse one process pool for the
-% complete multi-run study and create one worker-local parallel.pool.Constant
-% containing the frozen objective database. If MATLAB reports a recoverable
-% worker-dispatch failure, the affected run is retried once after rebuilding
-% the process pool and worker constant. The optimizer RNG is reset to the same
-% run seed before retrying, so the stochastic study definition is preserved.
-%
-% Example
-%
-%   config = struct();
-%   config.networkSize = 3;
-%   config.objectiveMode = "information";
-%   config.functionEvaluationBudget = 12000;
-%   config.populationSize = 60;
-%   config.numberOfRuns = 10;
-%   config.useParallel = true;
-%   studyState = runGlobalOptimization(config);
+% Notes:
+%   - Post-search diagnostic evaluations are excluded from search FE counts.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -428,9 +405,7 @@ for runIndex = 1:config.numberOfRuns
         solverFunctionEvaluations = searchFunctionEvaluations;
     end
 
-    % Every solver uses its output callback for comparison FE. A solver's
-    % raw funccount can exceed the admitted callback budget (GA commonly
-    % reports one extra terminal evaluation); keep that count separately.
+    % Keep raw solver FEs separate from capped comparison checkpoints.
     if searchFunctionEvaluations < functionEvaluationBudget
         fprintf("%s stopped at callback FE %d of the requested %d.\n", ...
             config.optimizer,searchFunctionEvaluations,functionEvaluationBudget);
@@ -638,7 +613,7 @@ end
 %% Local helpers
 
 function objectiveDatabase = buildObjectiveDatabase(database)
-% BUILDOBJECTIVEDATABASE Retain only fields required by networkObjective.
+% BUILDOBJECTIVEDATABASE - Retain only fields required by networkObjective.
 
 objectiveDatabase = struct();
 objectiveDatabase.meta = database.meta;
@@ -697,7 +672,7 @@ objectiveDatabase.estimation.objectWeights = ...
 end
 
 function [pool,poolWasCreated] = ensureProcessPool(forceRestart)
-% ENSUREPROCESSPOOL Return a process-based pool.
+% ENSUREPROCESSPOOL - Return a process-based pool.
 
 pool = gcp("nocreate");
 poolWasCreated = false;
@@ -720,7 +695,7 @@ end
 end
 
 function cleanupParallelPool(pool)
-% CLEANUPPARALLELPOOL Best-effort deletion of an owned pool.
+% CLEANUPPARALLELPOOL - Best-effort deletion of an owned pool.
 
 if isempty(pool)
     return
@@ -737,8 +712,7 @@ end
 end
 
 function tf = isRecoverableParallelDispatchError(errorObject)
-% ISRECOVERABLEPARALLELDISPATCHERROR Restrict automatic retry to worker/
-% pool dispatch failures rather than retrying arbitrary objective errors.
+% ISRECOVERABLEPARALLELDISPATCHERROR - Identify retryable worker/pool failures.
 
 messageText = lower(string(errorObject.message));
 stackNames = strings(0,1);

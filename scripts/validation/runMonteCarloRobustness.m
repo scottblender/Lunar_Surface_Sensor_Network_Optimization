@@ -1,9 +1,5 @@
 function studyState = runMonteCarloRobustness(userConfig)
-% RUNMONTECARLOROBUSTNESS Global random-network benchmark on the production grid.
-% Draw 1000 networks per objective/network-size case, uniformly over all
-% database candidate sites without replacement within each network. Repeated
-% networks across realizations are allowed. This compares the nominal GA
-% solution with a global random baseline; it does not prove local optimality.
+% RUNMONTECARLOROBUSTNESS - Global random-network benchmark on the production grid.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -279,7 +275,7 @@ end
 
 end
 
-%% ------------------------------------------------------------------------
+%% Local functions
 function results = evaluateDiscreteDesignNetwork(sensorIndices,database)
 sensorIndices = double(sensorIndices(:));
 [~,details] = optimization.networkObjective(sensorIndices,database,"information");
@@ -304,7 +300,7 @@ results.numberOfAcceptedMeasurements = nnz(selectedAvailability);
 results.numberOfPossibleMeasurements = numel(selectedAvailability);
 end
 
-%% ------------------------------------------------------------------------
+%% Local functions
 function nominalNetwork = nominalNetworkFromStudy(database,studyState,summaryFile)
 sensorIndices = double(studyState.overallBestSensorIndices(:));
 
@@ -332,7 +328,7 @@ nominalNetwork.summaryFile = string(summaryFile);
 nominalNetwork.bestRunIndex = studyState.overallBestRunIndex;
 end
 
-%% ------------------------------------------------------------------------
+%% Local functions
 function operationalDatabase = buildOperationalTrackingDatabase(referenceDatabase,dem)
 moonRadiusKm = referenceDatabase.config.moon.radiusKm;
 moonMuKm3S2 = referenceDatabase.config.moon.muKm3S2;
@@ -385,7 +381,7 @@ operationalDatabase.estimation.stateScales = referenceDatabase.estimation.stateS
 operationalDatabase.estimation.objectWeights = ones(numberOfObjects,1);
 end
 
-%% ------------------------------------------------------------------------
+%% Local functions
 function caseState = packCaseState( ...
     networkSize,objectiveMode,seed,nominalNetwork,nominalRso,nominalOperational, ...
     sampledCandidateIndices,sampledLatitudes,sampledLongitudes,rsoResults, ...
@@ -454,7 +450,7 @@ if includeOperational
 end
 end
 
-%% ------------------------------------------------------------------------
+%% Local functions
 function validateCompletedCase(caseState,config,database)
 assert(caseState.completedRuns == config.numberOfMonteCarloRuns, ...
     "Monte Carlo case did not complete all requested realizations.");
@@ -491,7 +487,7 @@ if config.includeOperationalSpacecraft
 end
 end
 
-%% ------------------------------------------------------------------------
+%% Local functions
 function demFile = resolveDemFile(database,dataDirectory)
 if isfield(database,"meta") && isfield(database.meta,"demSource")
     candidate = string(database.meta.demSource);
@@ -519,4 +515,4 @@ error("runMonteCarloRobustness:DemNotFound", ...
     "No production lunar DEM could be resolved.");
 end
 
-%% ------------------------------------------------------------------------
+%% Settings

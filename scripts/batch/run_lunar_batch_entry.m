@@ -1,6 +1,4 @@
-%RUN_LUNAR_BATCH_ENTRY Stable MATLAB entry point for the full PowerShell study.
-% One MATLAB process and one process-based parallel pool are reused for all
-% requested network-size/objective cases and all independent runs.
+% Load batch settings, run the optimization campaign, and save its log.
 
 try
     projectRoot = getenv('PROJECT_ROOT');
@@ -40,9 +38,7 @@ try
     addpath(genpath(fullfile(projectRoot,'scripts')));
     addpath(fullfile(projectRoot,'src'));
 
-    % Start one process pool for the complete production study and reuse it.
-    % Seven workers avoid the intermittent eighth-worker connection failure
-    % observed on this machine while preserving parallel objective execution.
+    % Reuse one process pool; seven workers avoid a local connection failure.
     p = gcp('nocreate');
     if ~isempty(p)
         delete(p);

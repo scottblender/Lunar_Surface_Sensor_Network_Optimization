@@ -1,18 +1,4 @@
-%% testTerrainHorizonGeometry
-% Unit test for the terrain-horizon geometry.
-%
-% Test 1:
-%   Constant-elevation spherical lunar surface.
-%
-% Test 2:
-%   A synthetic 0.2 km terrain wall beginning exactly 20 km east of
-%   the sensor.
-%
-% The test verifies:
-%   - Maximum apparent terrain angle.
-%   - Range to the horizon-defining feature.
-%   - DEM elevation of the feature.
-%   - Periodic equality at 0 and 2*pi azimuth.
+%% Unit test for the terrain-horizon geometry.
 
 clear;
 close all;
@@ -54,10 +40,7 @@ candidateLongitudes = sensorLongitude;
 
 %% Construct synthetic DEM grid
 
-% Use a grid spacing that corresponds exactly to the radial search step.
-% Along the equator, the longitude increment is:
-%
-%   deltaLongitude = terrainRangeStep / moonRadius.
+% Match equatorial longitude spacing to terrainRangeStep/moonRadius.
 
 angularGridStep = ...
     terrainRangeStep / moonRadius;
@@ -106,13 +89,7 @@ flatDem = griddedInterpolant( ...
 
 %% Analytic result for a flat spherical surface
 
-% For terrain and sensor at the same lunar radius:
-%
-%   elevation = atan2(R*cos(delta) - R, R*sin(delta))
-%
-% which is equivalent to:
-%
-%   elevation = -delta/2.
+% For equal radii, the horizon angle is -delta/2.
 
 firstCentralAngle = ...
     terrainRangeStep / moonRadius;

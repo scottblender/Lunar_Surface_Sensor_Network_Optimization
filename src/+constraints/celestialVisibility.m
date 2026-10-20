@@ -11,24 +11,19 @@ function [isVisible, ...
         sunRadius, ...
         minimumAngularSeparation, ...
         earthMinimumAngularSeparation)
-% CELESTIALVISIBILITY Apply Earth and Sun angular-separation gates.
+% CELESTIALVISIBILITY - Apply Earth and Sun angular-separation gates.
 %
-% All positions must be expressed in the same reference frame and units.
-% minimumAngularSeparation is the Sun center-referenced keep-out angle.
-% earthMinimumAngularSeparation optionally specifies an independent Earth
-% keep-out angle. If it is omitted, Earth uses minimumAngularSeparation so
-% legacy callers retain the previous shared-angle behavior.
+% Inputs:
+%   - Positions use one common frame and distance unit.
+%   - Body radii use the same distance unit; keep-out angles are in radians.
+%   - earthMinimumAngularSeparation defaults to the Sun keep-out angle.
 %
-% For each body b,
+% Outputs:
+%   - Visibility flags and actual/required center-separation angles (rad).
 %
-%   thetaRequired,b = max(thetaOccultation,b, thetaConfigured,b).
-%
-% A zero configured separation degenerates exactly to physical occultation.
-% Physical tangency is blocked. Equality at a configured minimum angular
-% separation is allowed.
-%
-% The Moon is intentionally not screened here. For a lunar surface sensor,
-% lunar obstruction is represented by the local terrain/horizon LOS gate.
+% Notes:
+%   - Physical tangency is blocked; equality at the configured angle is allowed.
+%   - Lunar obstruction is handled by terrain screening.
 
 arguments
     observerPosition (3,1) double

@@ -1,5 +1,6 @@
 function tests = testABCOptimizer
-% No DEM, frozen database, or Global Optimization Toolbox required.
+% TESTABCOPTIMIZER - Test ABC feasibility, evaluation budgets, and reproducibility.
+
 tests = functiontests(localfunctions);
 end
 

@@ -1,5 +1,5 @@
 function exportManuscriptFigure(fig,outputFile,widthInches,heightInches)
-% EXPORTMANUSCRIPTFIGURE Export a manuscript figure through one EPS pipeline.
+% EXPORTMANUSCRIPTFIGURE - Export a manuscript figure through one EPS pipeline.
 
 arguments
     fig (1,1) matlab.ui.Figure
@@ -23,16 +23,12 @@ if ~isappdata(fig,"ManuscriptTypographyFinalized") || ...
         ~getappdata(fig,"ManuscriptTypographyFinalized")
     applyManuscriptTypography(fig,outputFile,widthInches);
 end
-% Do not change axes insets or tiled-layout geometry during export. TightInset
-% is figure-relative, not tile-relative; copying it into every small 3D tile
-% can consume the entire plotting area after a font change.
+% Preserve axes insets and tiled-layout geometry during export.
 fig.PaperUnits = "inches";
 fig.PaperSize = [widthInches heightInches];
 fig.PaperPosition = [0 0 widthInches heightInches];
 fig.PaperPositionMode = "manual";
 drawnow;
-% Use the full paper box for EPS output. The default tight EPS bounding box
-% can clip endpoint tick labels and other decorations whose extents land
-% exactly on the figure edge.
+% Use the full paper box to avoid clipping endpoint labels in EPS output.
 print(fig,char(outputFile),"-depsc","-opengl","-r600","-loose");
 end

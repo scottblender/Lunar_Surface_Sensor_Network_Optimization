@@ -5,26 +5,20 @@ function [isVisible,isOccluded,closestDistance,segmentFraction] = ...
         bodyPosition, ...
         bodyRadius, ...
         radiusPadding)
-% SPHERICALBODYOCCLUSION Determine whether a spherical body blocks LOS.
+% SPHERICALBODYOCCLUSION - Determine whether a spherical body blocks LOS.
 %
 % Inputs:
-%   observerPosition - 3x1 observer position in a common frame, km
-%   targetPosition   - 3x1 target position in the same frame, km
-%   bodyPosition     - 3x1 body-center position, km
-%   bodyRadius       - Spherical body radius, km
-%   radiusPadding    - Optional additional occultation radius, km
+%   - observerPosition - 3x1 observer position in a common frame, km
+%   - targetPosition - 3x1 target position in the same frame, km
+%   - bodyPosition - 3x1 body-center position, km
+%   - bodyRadius - Spherical body radius, km
+%   - radiusPadding - Optional additional occultation radius, km
 %
 % Outputs:
-%   isVisible        - True when the body does not intersect the LOS segment
-%   isOccluded       - True when the body intersects the LOS segment
-%   closestDistance  - Closest segment-to-body-center distance, km
-%   segmentFraction  - Closest-point fraction along observer-to-target LOS
-%
-% The LOS segment is
-%
-%   r(tau) = rObserver + tau*(rTarget - rObserver),
-%
-% where 0 <= tau <= 1.
+%   - isVisible - True when the body does not intersect the LOS segment
+%   - isOccluded - True when the body intersects the LOS segment
+%   - closestDistance - Closest segment-to-body-center distance, km
+%   - segmentFraction - Closest-point fraction along observer-to-target LOS
 
 arguments
     observerPosition (3,1) double

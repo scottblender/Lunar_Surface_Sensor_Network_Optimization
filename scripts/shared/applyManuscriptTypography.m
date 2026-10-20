@@ -1,6 +1,6 @@
 function applyManuscriptTypography(fig,outputFile,widthInches)
-% Set type by final placement width, not by the size of the source canvas.
-% Targets are 9 pt ticks/legends and 10 pt labels at manuscript placement.
+% APPLYMANUSCRIPTTYPOGRAPHY - Set figure text sizes for the final manuscript width.
+
 style = publicationPlotStyle();
 [~,stem] = fileparts(outputFile);
 halfWidth = startsWith(stem,["convergence_","monte_carlo_", ...

@@ -1,4 +1,5 @@
 function tests = testNetworkSelectionBins
+% TESTNETWORKSELECTIONBINS - Test geographic selection-frequency bins.
 tests = functiontests(localfunctions);
 end
 

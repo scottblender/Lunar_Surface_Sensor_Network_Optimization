@@ -1,21 +1,5 @@
 function results = evaluateOperationalRsoNetworks(userConfig)
-% EVALUATEOPERATIONALRSONETWORKS Evaluate optimized networks on operational RSOs.
-%
-% The overall-best information- and coverage-optimized networks for
-% N_s = [3 5 7 10] are evaluated against the representative operational
-% spacecraft returned by rsoGeneration.operationalRsos. The operational
-% spacecraft are NOT used to redesign the network; this is an out-of-sample
-% validation of the networks optimized against the 20-object RSO population.
-%
-% This function is data-focused. It evaluates every production network case,
-% caches the operational/legacy validation metrics, and writes supporting
-% CSVs. The combined manuscript heatmap is generated separately by
-% plotOperationalRsoTrackingHeatmaps, while buildOperationalManuscriptTable
-% writes the four-row table used by the current TeX source.
-%
-% Usage:
-%   results = evaluateOperationalRsoNetworks();
-%   results = evaluateOperationalRsoNetworks(config);
+% EVALUATEOPERATIONALRSONETWORKS - Evaluate optimized networks on operational RSOs.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -141,9 +125,7 @@ end
 
 if ~useCachedResults
     %% Build a compact operational validation database
-    % Only candidate sites appearing in at least one overall-best network are
-    % retained. Their precomputed terrain horizons are reused from the frozen
-    % production database. Operational truth and visibility are recomputed.
+    % Validate the union of best-network sites using their cached terrain horizons.
     fprintf("\n============================================================\n");
     fprintf("Operational-RSO network validation\n");
     fprintf("============================================================\n");
@@ -290,7 +272,7 @@ fprintf("Operational-RSO supporting table:\n  %s\n",summaryFile);
 
 end
 
-%% ========================================================================
+%% Local functions
 function operationalDatabase = buildOperationalDatabase(sourceDatabase,originalIndices,dem)
 moonRadius = sourceDatabase.config.moon.radiusKm;
 moonMu = sourceDatabase.config.moon.muKm3S2;
@@ -397,7 +379,7 @@ earthPositions = database.ephemeris.earthPositionsMci(:,indices);
 sunPositions = database.ephemeris.sunPositionsMci(:,indices);
 end
 
-%% ========================================================================
+%% Local functions
 function summaryTable = buildSummaryTable( ...
     config,spacecraftNames,rmsPositionErrorKm,rmsVelocityErrorKmS, ...
     observabilityPercent,measurementUpdates)
@@ -452,7 +434,7 @@ summaryTable = table( ...
     'TotalMeasurementUpdates'});
 end
 
-%% ========================================================================
+%% Local functions
 function [summaryFile,studyState] = resolveStudySummary(runRoot,networkSize,objectiveMode,config)
 files = dir(fullfile(runRoot,"**","study_summary.mat"));
 summaryFile = "";

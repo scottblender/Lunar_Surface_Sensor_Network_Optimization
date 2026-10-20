@@ -1,5 +1,6 @@
 function tests = testAnalyzeSavedDiscreteRadiusStudy
-% No optimization, production database, or graphics dependencies.
+% TESTANALYZESAVEDDISCRETERADIUSSTUDY - Test saved radius-study metrics and sensor displacements.
+
 tests = functiontests(localfunctions);
 end
 

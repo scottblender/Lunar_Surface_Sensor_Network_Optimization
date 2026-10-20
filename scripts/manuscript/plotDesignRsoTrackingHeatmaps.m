@@ -1,8 +1,5 @@
 function plotInfo = plotDesignRsoTrackingHeatmaps(campaign,userConfig)
-% PLOTDESIGNRSOTRACKINGHEATMAPS Combined design-RSO RMSE/observability figure.
-%
-% The overall-best network from each production case is re-evaluated with a
-% fixed measurement-noise seed. Metrics are cached to avoid repeated EKF work.
+% PLOTDESIGNRSOTRACKINGHEATMAPS - Combined design-RSO RMSE/observability figure.
 
 arguments
     campaign (1,1) struct

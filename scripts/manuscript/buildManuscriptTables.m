@@ -1,8 +1,5 @@
 function tableInfo = buildManuscriptTables(campaign,userConfig)
-% BUILDMANUSCRIPTTABLES Export tables with the same structure as the TeX.
-%
-% Each CSV mirrors the column organization of the corresponding manuscript
-% table instead of exposing implementation-oriented intermediate columns.
+% BUILDMANUSCRIPTTABLES - Export tables with the same structure as the TeX.
 
 arguments
     campaign (1,1) struct
@@ -65,9 +62,7 @@ tableInfo.plannedClpsFile = writeTable( ...
     planned,tableDirectory,"planned_clps_landing_regions.csv");
 
 %% Design RSO population
-% The design population is represented in the manuscript by the 3D MCRF
-% family figure instead of a long orbital-element table. The complete
-% catalog remains available in campaign.database.rso.catalog.
+% Show the design population as an MCRF figure; retain the full catalog in the database.
 
 %% Synthetic DEM retained peaks
 

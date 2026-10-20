@@ -75,3 +75,15 @@ Calls by function name are unchanged. Update full script paths:
 Saved studies, local data, database versions, and default output directories are
 not migrated or rewritten. Scientific source packages and GA/PSO/SURROGATE
 solver mechanics retain their previous behavior.
+
+## Comment style
+
+Function help starts with `FUNCTIONNAME - Short purpose.` Add compact `Inputs:`
+and `Outputs:` lists when dimensions, units, or options need explanation. Keep
+examples and longer workflow instructions in `docs/`. This is a shortened form
+of the [MatNWB docstring format](https://matnwb.readthedocs.io/en/latest/pages/developer/documentation/formatting_docstrings.html).
+
+Scripts start with one summary and use short section or inline comments for
+configuration, data loading, computation, and saving. Preserve scientific units,
+non-obvious numerical choices, and evaluation-budget conventions. Script-test
+section boundaries and executable statements are unchanged by the comment pass.

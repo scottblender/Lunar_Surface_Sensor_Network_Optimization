@@ -1,17 +1,5 @@
 function figureInfo = plotOptimizationPilotResults(studyState)
-% PLOTOPTIMIZATIONPILOTRESULTS Plot completed 10 x 1200-FE pilot results.
-%
-% Figures:
-%   1. Overall-best optimized sensor locations in the south-polar domain.
-%   2. Five representative RSO trajectories in the Moon-rotating frame.
-%   3. Best-so-far objective convergence versus function evaluations.
-%
-% The search and EKF histories remain in MCI. Figure 2 transforms the truth
-% histories to MR only for visualization so the lunar surface and sensors are
-% body-fixed. The representative-orbit figure intentionally omits inline RSO
-% metadata and very large-scale outliers to remain legible at manuscript size.
-%
-% If studyState is omitted, the newest completed 10 x 1200-FE pilot is used.
+% PLOTOPTIMIZATIONPILOTRESULTS - Plot completed 10 x 1200-FE pilot results.
 
 arguments
     studyState (1,1) struct = struct()
@@ -519,9 +507,7 @@ function [representativeIndices,scaleOutlierIndex] = ...
 numberOfObjects = numel(maxRadiusByObjectKm);
 [~,radiusOrder] = sort(maxRadiusByObjectKm(:));
 
-% Restrict the manuscript geometry figure to the lower 80 percent of the
-% radius distribution. The complete population remains in the optimization
-% and in the exported RSO table.
+% Plot the lower 80% of orbital radii; retain all targets in the study and tables.
 numberInScale = max(maximumRepresentatives,ceil(0.80*numberOfObjects));
 numberInScale = min(numberInScale,numberOfObjects);
 availableIndices = radiusOrder(1:numberInScale);

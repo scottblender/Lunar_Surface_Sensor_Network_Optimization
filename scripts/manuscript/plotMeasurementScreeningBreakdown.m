@@ -1,10 +1,6 @@
 function plotInfo = plotMeasurementScreeningBreakdown( ...
     fullCampaign,restrictedCampaign,userConfig)
-% PLOTMEASUREMENTSCREENINGBREAKDOWN RSO-specific constraint screening.
-%
-% Figure 14 shows every design RSO in two aligned horizontal-bar panels,
-% one for each domain. Each stack partitions all sensor/epoch opportunities into
-% mutually exclusive rejection categories plus accepted measurements.
+% PLOTMEASUREMENTSCREENINGBREAKDOWN - RSO-specific constraint screening.
 
 arguments
     fullCampaign (1,1) struct

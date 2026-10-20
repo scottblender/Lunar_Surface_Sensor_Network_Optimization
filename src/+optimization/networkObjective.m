@@ -3,44 +3,20 @@ function [objectiveValue,details] = ...
         sensorDecision, ...
         database, ...
         objectiveMode)
-% NETWORKOBJECTIVE Evaluate one candidate surface-sensor network.
+% NETWORKOBJECTIVE - Evaluate one candidate surface-sensor network.
 %
 % Inputs:
-%   sensorDecision - Vector of candidate indices defining the network.
-%                    The network size is the length of this vector and may
-%                    be any positive integer up to the available candidate
-%                    count. Network-size study choices belong to the run
-%                    configuration, not to the precomputed database.
-%
-%   database       - Optimization database created by
-%                    optimization.buildOptimizationDatabase.
-%
-%   objectiveMode  - "information" or "coverage".
+%   - sensorDecision - Vector of distinct, 1-based candidate-site IDs.
+%   - database - Frozen optimization database.
+%   - objectiveMode - "information" or "coverage".
 %
 % Outputs:
-%   objectiveValue - Objective value for minimization.
+%   - objectiveValue - Network score for minimization.
+%   - details - Optional information and coverage diagnostics.
 %
-%   details        - Optional diagnostic structure. When requested, both
-%                    information and coverage metrics are evaluated.
-%
-% The objective uses an index-vector decision representation rather than a
-% full S-element binary vector. For example:
-%
-%       [31 104 587]
-%
-% represents a three-sensor network.
-%
-% Candidate indices are canonicalized by sorting. Duplicate indices are
-% infeasible.
-%
-% IMPORTANT:
-% Only the selected sensor rows/slices are passed to the information and
-% coverage objectives. Therefore, objective cost scales primarily with the
-% selected network size rather than the total number of candidate sites.
-%
-% database.study.networkSizes is retained as study metadata only. It does
-% not constrain evaluation, so one production database can be reused for
-% different network-size studies without rebuilding it.
+% Notes:
+%   - IDs are sorted; duplicates receive the infeasible penalty.
+%   - Only selected sensor data are loaded and evaluated.
 
 arguments
     sensorDecision double
@@ -48,10 +24,7 @@ arguments
     objectiveMode (1,1) string
 end
 
-%% ========================================================================
-%  Basic database information
-%  ========================================================================
-
+%% Basic database information
 objectiveMode = ...
     lower(objectiveMode);
 
@@ -70,10 +43,7 @@ sensorIndicesInput = ...
 networkSize = ...
     length(sensorIndicesInput);
 
-%% ========================================================================
-%  Initialize diagnostics
-%  ========================================================================
-
+%% Initialize diagnostics
 details = struct();
 
 details.feasible = ...
@@ -118,10 +88,7 @@ details.informationByObject = ...
 details.coverageByObject = ...
     NaN(numberOfObjects,1);
 
-%% ========================================================================
-%  Objective-mode validation
-%  ========================================================================
-
+%% Objective-mode validation
 validObjectiveModes = ...
     ["information","coverage"];
 
@@ -156,10 +123,7 @@ if ~ismember(objectiveMode,supportedModes)
         objectiveMode);
 end
 
-%% ========================================================================
-%  Validate network size
-%  ========================================================================
-
+%% Validate network size
 if networkSize < 1
 
     details.reason = ...
@@ -182,10 +146,7 @@ if networkSize > numberOfCandidates
     return
 end
 
-%% ========================================================================
-%  Validate candidate indices
-%  ========================================================================
-
+%% Validate candidate indices
 if any(~isfinite(sensorIndicesInput))
 
     details.reason = ...
@@ -234,10 +195,7 @@ if length(unique(sensorIndicesInput)) ~= networkSize
     return
 end
 
-%% ========================================================================
-%  Canonicalize network
-%  ========================================================================
-
+%% Canonicalize network
 sensorIndices = ...
     sort(sensorIndicesInput);
 
@@ -253,13 +211,8 @@ details.sensorIndices = ...
 details.selectedSensors = ...
     selectedSensorsFull;
 
-%% ========================================================================
-%  Slice database to selected sensors
-%  ========================================================================
-%
-% The downstream covariance code sees only the selected N_s sensors.
-% Therefore it does not repeatedly scan every candidate location during
-% every covariance update.
+%% Slice database to selected sensors
+% Pass only selected sensors to avoid scanning the global grid during each update.
 
 if isfield(database.visibility,"candidateChunks") && ...
         ~isempty(database.visibility.candidateChunks)
@@ -307,10 +260,7 @@ else
         ]);
 end
 
-%% ========================================================================
-%  Determine required calculations
-%  ========================================================================
-
+%% Determine required calculations
 calculateInformation = ...
     objectiveMode == "information";
 
@@ -328,16 +278,10 @@ if nargout > 1
         true;
 end
 
-%% ========================================================================
-%  Information objective
-%  ========================================================================
-
+%% Information objective
 if calculateInformation
 
-    % Production databases may store Jacobians in equal-count chunk files
-    % to avoid MATLAB's maximum single-array size. In that case, use the
-    % global candidate -> chunk/local-index map and MATFILE partial indexing
-    % so only the selected sensor histories are read from disk.
+    % Load only selected Jacobian slices through the global-to-chunk index map.
     if isfield(database.tracking,"measurementJacobianChunks") && ...
             ~isempty(database.tracking.measurementJacobianChunks)
 
@@ -375,10 +319,7 @@ if calculateInformation
         informationByObject;
 end
 
-%% ========================================================================
-%  Coverage objective
-%  ========================================================================
-
+%% Coverage objective
 if calculateCoverage
 
     [coverageObjectiveValue,coverageByObject] = ...
@@ -400,10 +341,7 @@ if calculateCoverage
         coverageByObject;
 end
 
-%% ========================================================================
-%  Return requested objective
-%  ========================================================================
-
+%% Return requested objective
 switch objectiveMode
 
     case "information"

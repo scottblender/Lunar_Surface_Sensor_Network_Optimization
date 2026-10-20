@@ -1,13 +1,7 @@
 function [results,diagnostics] = evaluatePerturbedNetwork( ...
     sensorLatitudesRad,sensorLongitudesRad,database,dem)
-% EVALUATEPERTURBEDNETWORK Evaluate one arbitrary off-grid surface network.
-%
-% This is the continuous counterpart to optimization.networkObjective. The
-% target dynamics, STM/process-noise histories, P0, measurement covariance,
-% state scales, object weights, and stored Earth/Sun ephemerides are reused
-% from the production database. Every quantity that depends on the perturbed
-% sensor positions is rebuilt: DEM elevation, terrain horizon, visibility,
-% celestial screening, measurement availability, and RA/Dec Jacobians.
+% EVALUATEPERTURBEDNETWORK - Evaluate one arbitrary off-grid surface network.
+% Reuse frozen dynamics and noise; rebuild site-dependent visibility and Jacobians.
 
 arguments
     sensorLatitudesRad (:,1) double

@@ -1,5 +1,6 @@
 function output = mergeAnalysisConfig(defaults,override)
-% MERGEANALYSISCONFIG Recursively merge scalar-struct configuration fields.
+% MERGEANALYSISCONFIG - Recursively merge scalar-struct configuration fields.
+
 output = defaults;
 fields = fieldnames(override);
 for k = 1:numel(fields)

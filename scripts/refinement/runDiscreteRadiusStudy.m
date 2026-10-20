@@ -1,38 +1,6 @@
-%% runDiscreteRadiusStudy
-% RUNDISCRETERADIUSSTUDY Post-process one saved lunar sensor optimization.
-%
-% Preferred usage, from the MATLAB project root:
-%   run("scripts/refinement/runDiscreteRadiusStudy.m");
-%
-% DEFAULT MODE: reads a saved optimization study_summary.mat, including its
-% best sensor indices and objective mode (GA, PSO or surrogateopt results).
-% All radius searches remain anchored to that SAME original network.
-% The radius sweep calls runDiscreteRadiusSensitivity, which reuses a shared
-% objective cache across radii and saves summaries/figures. No global
-% optimizer is rerun and no production study files are overwritten.
-%
-% The CURRENT database at results/optimization_database.mat is always
-% authoritative by default, even when the saved study lists an old version.
-% The saved study supplies observation-site coordinates and objective mode;
-% the sensitivity function maps the original physical locations onto the
-% current candidate grid and recomputes the starting objective on that DB.
-% This means updated databases do not require updating historical studies.
-% Old saved objective values are NOT compared to objectives from a new DB.
-%
-% ALTERNATIVE MODE: set radiusStudySource="direct_indices" to use
-% explicit current-grid IDs (instead of coordinates from a saved study).
-%
-% If a COMPATIBLE saved radius_sensitivity_study.mat exists, this runner
-% automatically reuses it: no expensive objective evaluations are repeated.
-% It then recalculates computational-efficiency eta, per-sensor movement,
-% and figures/CSVs using analyzeSavedDiscreteRadiusStudy. The single entry
-% point for both workflows remains THIS script. An incompatible MAT is
-% never reused silently. Set radiusStudyReuseExistingResults=false to
-% deliberately rerun the complete radius refinement.
+%% Run or reload a saved-network radius sweep and summarize its results.
 
-%% ========================================================================
-% USER SETTINGS
-% ========================================================================
+%% Settings
 
 radiusStudySource = "saved_study";  % "saved_study" or "direct_indices"
 
@@ -43,24 +11,19 @@ radiusStudyStudyFolder = "ga_coverage_n3_20260915_121933";
 % Leave empty to use the directory above.
 radiusStudySummaryFile = "";
 
-% Blank = the CURRENT canonical database at results/optimization_database.mat.
+% Blank = the current database at results/optimization_database.mat.
 % Override only if a newer database is stored at a different path.
 radiusStudyDatabaseFile = "";
 
-% For saved studies, allow at most this much movement when mapping each
-% old physical location to the CURRENT candidate grid (km). Empty uses
-% twice the grid spacing recorded in the current DB (fallback 30 km).
+% Limit site remapping in km; empty uses twice the grid spacing (30 km fallback).
 radiusStudyMaximumRemapDistanceKm = [];
 
-% Used ONLY for "direct_indices" (no historical study summary).
+% Used for "direct_indices" (no historical study summary).
 % Use the exact original IDs from your successful standalone refinement:
 radiusStudyInitialIndices = [];
 radiusStudyObjectiveMode = "information"; % "coverage" or "information"
 
-% Search 10 to 100 km. Inf explicitly REMOVES the combinatorial cap.
-% This is exhaustive and can require substantial time and RAM. Each
-% radius still enumerates all combinations; unique objective calls are cached
-% across radii. Leave skipOversized=false so no radius is silently omitted.
+% Sweep 10–100 km without a combination cap; cache objectives across radii.
 radiusStudyRadiiKm = 10:10:100;
 radiusStudyMaximumCombinations = Inf;
 radiusStudySkipOversized = false;
@@ -81,10 +44,7 @@ radiusStudyExistingMatFile = "";
 % when its displacement >= this fraction of the selected search radius.
 radiusStudyBoundaryFraction = 0.90;
 
-%% ========================================================================
-% PATHS
-% ========================================================================
-
+%% PATHS
 radiusStudyScriptPath = mfilename("fullpath");
 assert(~isempty(radiusStudyScriptPath), ...
     "runDiscreteRadiusStudy:ScriptPath", ...
@@ -117,10 +77,7 @@ assert(isfile(radiusStudyConfig.databaseFile), ...
     "Current optimization database not found: %s", ...
     radiusStudyConfig.databaseFile);
 
-%% ========================================================================
-% SELECT STUDY OR DIRECT INITIAL INDICES
-% ========================================================================
-
+%% SELECT STUDY OR DIRECT INITIAL INDICES
 radiusStudyExpectedSavedIndices = [];
 switch lower(string(radiusStudySource))
     case "saved_study"
@@ -199,10 +156,7 @@ switch lower(string(radiusStudySource))
             "radiusStudySource must be saved_study or direct_indices.");
 end
 
-%% ========================================================================
-% RUN AND REPORT
-% ========================================================================
-
+%% RUN AND REPORT
 fprintf("\n============================================================\n");
 fprintf("Lunar discrete refinement radius sensitivity\n");
 fprintf("============================================================\n");
@@ -211,10 +165,7 @@ fprintf("Max raw combinations / radius: %.0f\n", ...
     radiusStudyMaximumCombinations);
 fprintf("Current DB: %s\n",radiusStudyConfig.databaseFile);
 
-%% ========================================================================
-% RECOVER SAVED SWEEP OR PERFORM REFINEMENT
-% ========================================================================
-
+%% RECOVER SAVED SWEEP OR PERFORM REFINEMENT
 radiusStudy = struct();
 radiusStudyReusedMatFile = "";
 if radiusStudyReuseExistingResults
@@ -265,10 +216,7 @@ if radiusStudyReuseExistingResults
                 radiusStudyPossibleMat,ME.message);
         end
     end
-    % Fail safely if a previous sweep is present but is incompatible.
-    % NEVER launch a 2.7-million-FE run merely because a cached MAT fails
-    % the provenance checks. To force a new sweep, deliberately set
-    % radiusStudyReuseExistingResults=false in USER SETTINGS.
+    % Reject incompatible cached results; require an explicit choice to rerun refinement.
     if ~isempty(radiusStudyCandidates) && ...
             strlength(radiusStudyReusedMatFile) == 0
         error("runDiscreteRadiusStudy:IncompatibleSavedResult", ...
@@ -293,7 +241,7 @@ else
     fprintf("Using existing J and FE counts; only metrics are recalculated.\n");
 end
 
-% This post-processing step NEVER calls networkObjective or the optimizer.
+% Compute diagnostics from saved results without objective evaluations.
 % The helper is invoked internally: one script runs/reuses everything.
 radiusStudyAnalysisConfig = struct();
 radiusStudyAnalysisConfig.study = radiusStudy;
@@ -388,12 +336,9 @@ if strlength(radiusStudy.outputDirectory) > 0
 end
 
 % Workspace outputs: radiusStudy (sweep) and radiusStudyAnalysis (metrics).
-% The original saved sweep MAT is never overwritten by post-processing.
+% Save diagnostics separately from the source sweep.
 
-%% ========================================================================
-% LOCAL HELPER: REUSE ONLY COMPATIBLE SAVED SWEEPS
-% ========================================================================
-
+%% LOCAL HELPER: REUSE ONLY COMPATIBLE SAVED SWEEPS
 function tf = isReusableRadiusStudy( ...
     saved,config,source,root,matDatenum,expectedSavedIndices)
 tf = false;

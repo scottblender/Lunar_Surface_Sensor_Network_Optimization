@@ -1,31 +1,14 @@
 function comparison = runOptimizerComparisonTrial(objectiveMode)
-% RUNOPTIMIZERCOMPARISONTRIAL End-to-end 3 x 1200-FE lunar optimization trial.
+% RUNOPTIMIZERCOMPARISONTRIAL - Compare four optimizers using three seeds and 1200 FE per run.
 %
-% Runs three independent optimization seeds for each of GA, SURROGATE,
-% PSO, and ABC using the SAME frozen lunar database and objective definition.
-% The network size is FIXED at Ns = 3. Comparison FE are the capped output
-% callback checkpoints, not MATLAB's final raw solver funccount.
+% Inputs:
+%   - objectiveMode - "information" (default) or "coverage".
 %
-%   setupProject;
-%   comparison = runOptimizerComparisonTrial();           % information
-%   comparison = runOptimizerComparisonTrial("coverage"); % coverage
+% Outputs:
+%   - comparison - Per-run metrics and saved CSV/MAT report paths.
 %
-% 12 optimization runs total (4 algorithms x 3 seeds), 1200 callback FE
-% per run, population/swarm size 60, seed sequence 1000:1002.
-%
-% This is an integration trial, not part of the fast runtests suite.
-% The local results/optimization_database.mat is required and is not
-% distributed with the GitHub source repository.
-%
-% Pool policy: reuse one process-based parallel pool for all runs and
-% methods; do not restart between independent runs or algorithms; leave
-% the pool open afterward. Worker-dispatch retry is retained to match
-% the production driver, but an unexpected pool replacement fails this
-% shared-pool integration check.
-%
-% The driver saves run_001.mat ... run_003.mat and study_summary.mat for
-% each algorithm. This function saves a compact twelve-row comparison CSV
-% and MATLAB summary in results/optimization_runs.
+% Notes:
+%   - Uses GA, SURROGATE, PSO, and ABC with one shared process pool.
 
 arguments
     objectiveMode (1,1) string = "information"

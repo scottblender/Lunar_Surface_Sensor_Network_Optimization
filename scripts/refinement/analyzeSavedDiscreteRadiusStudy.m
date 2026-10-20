@@ -1,36 +1,14 @@
 function analysis = analyzeSavedDiscreteRadiusStudy(userConfig)
-% ANALYZESAVEDDISCRETERADIUSSTUDY Post-process existing radius-sweep results.
+% ANALYZESAVEDDISCRETERADIUSSTUDY - Post-process existing radius-sweep results.
 %
-% Does NOT run optimization, refine networks, or call networkObjective.
-% Uses saved per-radius best indices and FE counts plus candidate locations
-% from the SAME database used when the sweep ran.
+% Inputs:
+%   - userConfig - Saved radius study, matching database, and output settings.
 %
-% Example:
-%   setupProject;
-%   cfg = struct();
-%   cfg.studyMatFile = fullfile("results","local_refinement", ...
-%       "radius_sensitivity_20261016_155246_828", ...
-%       "radius_sensitivity_study.mat");
-%   analysis = analyzeSavedDiscreteRadiusStudy(cfg);
-%   disp(analysis.summaryTable);
-%   disp(analysis.sensorDisplacementTable);
+% Outputs:
+%   - analysis - Gain-per-FE and sensor-displacement tables.
 %
-% Defaults to the most recent radius_sensitivity_study.mat. New output
-% files are written beside the existing files, WITHOUT replacing the
-% original study MAT, original summary CSV, or original figures.
-%
-% eta = marginal relative improvement in |J| (percentage points)
-%       per 1000 NEW (uncached) objective function evaluations.
-% If a radius has no new FEs, eta is NaN (undefined), not inflated.
-%
-% Network indices are sorted/canonical, NOT persistent sensor labels.
-% Per-sensor displacements use minimum-total-distance, one-to-one
-% assignment between original sensors and winning sites, subject to
-% each original sensor's saved, radius-bounded neighborhood.
-%
-% Config: studyMatFile, databaseFile, outputDirectory, saveResults,
-%         makePlots, boundaryFraction (default .9).
-% Tests may also set study and database directly, with outputs off.
+% Notes:
+%   - Post-processing reads saved results without evaluating the objective.
 
 arguments
     userConfig (1,1) struct = struct()

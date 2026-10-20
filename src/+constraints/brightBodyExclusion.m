@@ -6,21 +6,21 @@ function [isClear,isExcluded,centerSeparation, ...
         bodyPosition, ...
         bodyRadius, ...
         limbExclusionMargin)
-% BRIGHTBODYEXCLUSION Apply a disk-aware angular exclusion constraint.
+% BRIGHTBODYEXCLUSION - Apply a disk-aware angular exclusion constraint.
 %
 % Inputs:
-%   observerPosition      - 3x1 observer position, km
-%   targetPosition        - 3x1 target position, km
-%   bodyPosition          - 3x1 bright-body center position, km
-%   bodyRadius            - Bright-body physical radius, km
-%   limbExclusionMargin   - Required angular margin beyond the limb, rad
+%   - observerPosition - 3x1 observer position, km
+%   - targetPosition - 3x1 target position, km
+%   - bodyPosition - 3x1 bright-body center position, km
+%   - bodyRadius - Bright-body physical radius, km
+%   - limbExclusionMargin - Required angular margin beyond the limb, rad
 %
 % Outputs:
-%   isClear               - Target is outside the exclusion region
-%   isExcluded            - Target is inside the exclusion region
-%   centerSeparation      - Target/body-center angular separation, rad
-%   apparentAngularRadius - Apparent angular radius of the body, rad
-%   requiredSeparation    - Angular radius plus limb margin, rad
+%   - isClear - Target is outside the exclusion region
+%   - isExcluded - Target is inside the exclusion region
+%   - centerSeparation - Target/body-center angular separation, rad
+%   - apparentAngularRadius - Apparent angular radius of the body, rad
+%   - requiredSeparation - Angular radius plus limb margin, rad
 
 arguments
     observerPosition (3,1) double

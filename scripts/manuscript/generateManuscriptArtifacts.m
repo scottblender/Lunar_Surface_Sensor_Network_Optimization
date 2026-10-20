@@ -1,20 +1,5 @@
 function products = generateManuscriptArtifacts(userConfig)
-% GENERATEMANUSCRIPTARTIFACTS One driver for all manuscript figures/tables.
-%
-% The generated products are synchronized with the current AAS manuscript.
-% Numerical figures are kept in focused plot functions, while the process
-% diagram is written as TikZ. Optional studies are never fabricated: Monte
-% Carlo, restricted-domain, and operational products are generated only when
-% the required underlying results are available.
-%
-% Examples:
-%   products = generateManuscriptArtifacts();
-%
-%   cfg = struct();
-%   cfg.clearOutputDirectory = true;
-%   cfg.restrictedResultsDirectory = "...";
-%   cfg.restrictedDatabaseFile = "...";
-%   products = generateManuscriptArtifacts(cfg);
+% GENERATEMANUSCRIPTARTIFACTS - One driver for all manuscript figures/tables.
 
 arguments
     userConfig (1,1) struct = struct()

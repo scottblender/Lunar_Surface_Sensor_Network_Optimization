@@ -1,20 +1,4 @@
-%% testCelestialVisibility
-% Focused validation of the unified Earth/Sun minimum angular separation
-% constraint used by constraints.celestialVisibility.
-%
-% The intended rule for each body is
-%
-%   thetaRequired = max(thetaOccultation, minimumAngularSeparation).
-%
-% Therefore:
-%   1. minimumAngularSeparation = 0 must reproduce physical occultation.
-%   2. A configured minimum separation may reject an otherwise unoccluded LOS.
-%   3. Physical occultation still dominates when its angular threshold is larger.
-%   4. Increasing the configured separation cannot restore visibility.
-%   5. Earth and Sun use the same configured minimum separation.
-%
-% The Moon is intentionally absent from this test because lunar obstruction
-% for surface sensors is handled by the terrain/horizon LOS tests.
+%% Focused validation of the unified Earth/Sun minimum angular separation.
 
 clear;
 close all;
@@ -45,8 +29,7 @@ for functionIndex = 1:length(requiredFunctions)
 end
 
 %% Simple normalized geometry
-% The geometry is deliberately scale-independent so each expected result is
-% easy to inspect analytically.
+% Use normalized geometry with analytically checkable results.
 
 observerPosition = [0;0;0];
 earthPosition = [100;0;0];
@@ -60,9 +43,7 @@ sunRadius = 10;
 angularTolerance = 1e-11;
 
 %% 1. Target in front of body: zero separation reduces to occultation only
-% The target and body center have zero angular separation, but the target is
-% entirely in front of the Earth. Physical occultation therefore cannot
-% occur. With zero configured separation the LOS must remain visible.
+% A target in front of Earth remains clear even at zero center separation.
 
 targetPosition = [50;0;0];
 
@@ -106,8 +87,7 @@ assert(abs(earthRequiredKeepOut-minimumAngularSeparation) < angularTolerance, ..
     "Configured minimum separation was not used as the active threshold.");
 
 %% 3. Zero configured separation reproduces physical occultation
-% Put the target directly behind the body. Both the angular formulation and
-% the legacy segment/sphere calculation must classify the LOS as blocked.
+% A target behind the body must fail both angular and segment/sphere tests.
 
 targetPosition = [200;0;0];
 
@@ -242,8 +222,7 @@ assert(visibleBoundary && ~earthBlockedBoundary, ...
     "Equality at the configured minimum angular separation should be allowed.");
 
 %% 7. Sun uses the same rule
-% Swap the nearby test body from Earth to Sun and repeat a known physical
-% occultation at zero configured separation.
+% Apply the same zero-angle occultation check to the Sun.
 
 earthPositionFar = [0;-1000;0];
 sunPositionNear = [100;0;0];
@@ -265,9 +244,7 @@ assert(~earthBlockedSunCase && sunBlockedSunCase, ...
     "Earth and Sun body-specific blocked masks are inconsistent.");
 
 %% 8. Random zero-angle comparison against segment/sphere occultation
-% This is the strongest degeneration check: with the configured minimum set
-% to zero, the new angular test must match the independent geometric
-% segment/sphere calculation across many finite target ranges and directions.
+% At zero keep-out angle, compare against independent segment/sphere occultation.
 
 rng(17,"twister");
 numberOfRandomCases = 5000;
@@ -316,8 +293,7 @@ assert(numberMismatches == 0, ...
     numberMismatches,numberOfRandomCases);
 
 %% 9. Monotonicity with increasing minimum angular separation
-% Increasing the minimum-separation angle must never turn a blocked Earth
-% LOS back into a clear Earth LOS.
+% Increasing keep-out angles must not clear a blocked line of sight.
 
 rng(23,"twister");
 minimumSeparationSweep = deg2rad([0,2,5,10,20]);

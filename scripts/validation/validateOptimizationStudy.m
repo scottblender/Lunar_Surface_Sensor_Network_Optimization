@@ -1,17 +1,5 @@
 function studyState = validateOptimizationStudy(studyState,userConfig)
-% VALIDATEOPTIMIZATIONSTUDY Run fixed-noise EKF validation after optimization.
-%
-% This stage is outside the optimization function-evaluation budget. By
-% default only the overall best network is validated. Set validateAllRuns
-% true to validate every independent optimization run; every run then uses
-% the SAME measurement-noise seed and therefore the same candidate/time
-% measurement-noise realization.
-%
-% Example
-%   validationConfig = struct();
-%   validationConfig.measurementNoiseSeed = 5000;
-%   validationConfig.validateAllRuns = false;
-%   studyState = validateOptimizationStudy(studyState,validationConfig);
+% VALIDATEOPTIMIZATIONSTUDY - Run fixed-noise EKF validation after optimization.
 
 arguments
     studyState (1,1) struct

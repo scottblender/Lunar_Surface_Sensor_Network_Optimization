@@ -1,26 +1,10 @@
-%% testOptimizationPilotResults
-% Validate and visualize the most recent 10-run, 1200-FE optimization pilot.
-%
-% The script checks optimizer-seed independence, exact FE histories,
-% monotonic best-so-far convergence, valid sensor selections, and fixed-noise
-% final EKF validation. It then calls plotOptimizationPilotResults to create
-% repository-style figures for:
-%   1. Overall-best optimized sensor locations in the south-polar domain.
-%   2. Representative RSO geometry with the optimized network.
-%   3. Convergence across all ten independent optimization runs.
-%
-% By default the newest matching study under results/optimization_runs is
-% selected. Set studySummaryFile below to an explicit study_summary.mat path
-% to inspect a different pilot.
+%% Validate and visualize the most recent 10-run, 1200-FE optimization pilot.
 
 clear;
 close all;
 clc;
 
-%% ========================================================================
-%  Project paths
-%  ========================================================================
-
+%% Project paths
 testDirectory = fileparts(mfilename("fullpath"));
 projectRoot = fileparts(testDirectory);
 sourceDirectory = fullfile(projectRoot,"src");
@@ -34,10 +18,7 @@ addpath(sourceDirectory);
 addpath(genpath(scriptsDirectory));
 rehash path;
 
-%% ========================================================================
-%  Optional explicit study summary
-%  ========================================================================
-
+%% Optional explicit study summary
 studySummaryFile = "";
 
 if strlength(studySummaryFile) == 0
@@ -52,10 +33,7 @@ assert(isfield(studyData,"studyState"), ...
     "study_summary.mat does not contain studyState.");
 studyState = studyData.studyState;
 
-%% ========================================================================
-%  Pilot configuration checks
-%  ========================================================================
-
+%% Pilot configuration checks
 assert(studyState.numberOfRuns == 10, ...
     "Pilot must contain exactly 10 independent runs.");
 assert(studyState.config.functionEvaluationBudget == 1200, ...
@@ -91,10 +69,7 @@ end
 assert(isequal(actualSeeds,expectedSeeds), ...
     "Independent optimizer seeds do not match the expected sequence.");
 
-%% ========================================================================
-%  Fixed-noise EKF validation checks
-%  ========================================================================
-
+%% Fixed-noise EKF validation checks
 assert(isfield(studyState,"validation"), ...
     ["Pilot does not contain final EKF validation. Run the pilot with " ...
      "runOptimizationPilot or call validateOptimizationStudy first."]);
@@ -127,10 +102,7 @@ numberOfObjects = size(validation.truthStateHistories,3);
 assert(numberOfObjects == studyState.runStates{1}.numberOfObjects, ...
     "Validation RSO count does not match the optimization study.");
 
-%% ========================================================================
-%  Publication-style result figures
-%  ========================================================================
-
+%% Publication-style result figures
 figureInfo = plotOptimizationPilotResults(studyState);
 
 assert(isgraphics(figureInfo.sensorNetwork,"figure"), ...
@@ -155,10 +127,7 @@ assert(all(figureInfo.representativeRsoIndices >= 1) && ...
     all(figureInfo.representativeRsoIndices <= numberOfObjects), ...
     "Representative RSO indices are outside the validation population.");
 
-%% ========================================================================
-%  Console summary
-%  ========================================================================
-
+%% Console summary
 [~,worstObjectIndex] = max(validation.rmsPositionErrorKm);
 
 fprintf("\n");
@@ -201,10 +170,7 @@ fprintf("Figure export:            passed\n");
 fprintf("\n");
 fprintf("testOptimizationPilotResults passed.\n");
 
-%% ========================================================================
-%  Local helper
-%  ========================================================================
-
+%% Local helper
 function summaryFile = findLatestPilotSummary(resultsDirectory)
 
 runRoot = fullfile(resultsDirectory,"optimization_runs");

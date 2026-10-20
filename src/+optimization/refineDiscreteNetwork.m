@@ -1,46 +1,21 @@
 function result = refineDiscreteNetwork( ...
     initialSensorIndices,database,objectiveMode,radiusKm,userConfig)
-% REFINEDISCRETENETWORK Exhaustively refine a lunar candidate-site network.
+% REFINEDISCRETENETWORK - Exhaustively refine a lunar candidate-site network.
 %
-% result = optimization.refineDiscreteNetwork( ...
-%     initialSensorIndices,database,objectiveMode,radiusKm)
-% result = optimization.refineDiscreteNetwork(...,userConfig)
+% Inputs:
+%   - initialSensorIndices - Distinct, 1-based candidate-site IDs.
+%   - database - Frozen optimization database.
+%   - objectiveMode - "coverage" or "information".
+%   - radiusKm - Great-circle search radius around each original site (km).
+%   - userConfig - Optional combination limit, improvement tolerance, or objective.
 %
-% This is POST-PROCESSING: it does not modify the global optimizer, its
-% database, its FE history, or its saved study. Each observer may occupy any
-% retained candidate site within radiusKm of THAT observer's original site.
-% All Cartesian combinations are tested, rejecting duplicate sensor IDs.
-% Overlapping neighborhoods may generate the same sorted network more than
-% once; each unique network is evaluated only once.
+% Outputs:
+%   - result - Best network, objective, neighborhoods, and evaluation counts.
 %
-% The search is exhaustive WITHIN THESE FIXED GEOGRAPHIC NEIGHBORHOODS,
-% not over the global candidate set or arbitrary off-grid coordinates.
-% The input (unrefined) network is always feasible and is never worsened.
-%
-% Inputs
-%   initialSensorIndices : vector of distinct, 1-based candidate IDs
-%   database             : production optimization database
-%   objectiveMode        : "coverage" or "information"
-%   radiusKm             : max great-circle distance from each original
-%                          observer location, in kilometers
-%   userConfig (optional):
-%       maximumCombinations  (default 10000): bound on *raw* Cartesian
-%                            combinations before expensive FE begins.
-%                            Set Inf explicitly to remove the cap; this
-%                            can require very large compute time/memory.
-%       improvementTolerance (default 1e-10): absolute J improvement
-%       objectiveFcn (default []): optional @(indices) objective for tests;
-%                                 normally uses optimization.networkObjective
-%
-% Outputs include bestSensorIndices, bestObjective, initialObjective,
-% improvement, neighborhoodIndices, numberOfObjectiveEvaluations, and
-% counts of valid/duplicate/repeated combinations. Reported FE includes
-% the initial-network evaluation and is separate from global-optimizer FE.
-%
-% Example (after loading a saved studyState and its matching database):
-%   indices = studyState.overallBestSensorIndices;
-%   result = optimization.refineDiscreteNetwork( ...
-%       indices,database,string(studyState.config.objectiveMode),10);
+% Notes:
+%   - Tests all combinations within fixed neighborhoods and caches repeats.
+%   - Refinement FEs include the starting network and are separate from search FEs.
+%   - maximumCombinations defaults to 10000; Inf removes the limit.
 
 arguments
     initialSensorIndices double

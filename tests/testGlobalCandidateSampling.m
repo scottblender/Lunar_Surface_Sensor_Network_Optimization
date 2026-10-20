@@ -1,4 +1,5 @@
 function tests = testGlobalCandidateSampling
+% TESTGLOBALCANDIDATESAMPLING - Test uniform candidate sampling and seed reproducibility.
 tests = functiontests(localfunctions);
 end
 

@@ -3,12 +3,15 @@ function [objectiveValue,details] = ...
         sensorDecision, ...
         databaseConstant, ...
         objectiveMode)
-% NETWORKOBJECTIVEFROMCONSTANT Evaluate a network using worker-local data.
+% NETWORKOBJECTIVEFROMCONSTANT - Evaluate a network using worker-local data.
 %
-% This wrapper is intended for Global Optimization Toolbox parallel runs.
-% The frozen optimization database is stored in a parallel.pool.Constant so
-% the GA objective handle does not capture and repeatedly serialize the full
-% database for every independent optimization run.
+% Inputs:
+%   - sensorDecision - Candidate-site IDs.
+%   - databaseConstant - Worker-local parallel.pool.Constant holding frozen data.
+%   - objectiveMode - "information" or "coverage".
+%
+% Outputs:
+%   - objectiveValue, details - Network objective and optional diagnostics.
 
 arguments
     sensorDecision double

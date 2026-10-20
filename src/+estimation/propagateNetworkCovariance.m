@@ -8,24 +8,23 @@ function [covarianceHistory,dOptimalityHistory] = ...
         selectedSensors, ...
         measurementCovariances, ...
         stateScales)
-% PROPAGATENETWORKCOVARIANCE Run a covariance-only network EKF.
+% PROPAGATENETWORKCOVARIANCE - Run a covariance-only network EKF.
 %
 % Inputs:
-%   initialCovariance          - 6x6 fixed covariance at the initial epoch
-%   stateTransitionHistory     - 6x6xN interval STMs
-%   processNoiseHistory        - 6x6xN discrete process covariances
-%   measurementJacobianHistory - 2x6xSxN measurement Jacobians
-%   measurementAvailable       - SxN LOS gates
-%   selectedSensors            - Sx1 binary/logical sensor-selection vector
-%   measurementCovariances     - 2x2 or 2x2xS RA/Dec covariances
-%   stateScales                - 6x1 state normalization scales
+%   - initialCovariance - 6x6 fixed covariance at the initial epoch
+%   - stateTransitionHistory - 6x6xN interval STMs
+%   - processNoiseHistory - 6x6xN discrete process covariances
+%   - measurementJacobianHistory - 2x6xSxN measurement Jacobians
+%   - measurementAvailable - SxN LOS gates
+%   - selectedSensors - Sx1 binary/logical sensor-selection vector
+%   - measurementCovariances - 2x2 or 2x2xS RA/Dec covariances
+%   - stateScales - 6x1 state normalization scales
 %
 % Outputs:
-%   covarianceHistory  - 6x6xN posterior covariance history
-%   dOptimalityHistory - Nx1 values of -log(det(normalized covariance))
+%   - covarianceHistory - 6x6xN posterior covariance history
+%   - dOptimalityHistory - Nx1 values of -log(det(normalized covariance))
 %
-% Every call begins from the same initialCovariance. Covariance is not
-% carried between separate candidate-network evaluations.
+% Each evaluation starts from the same initial covariance.
 
 arguments
     initialCovariance (6,6) double

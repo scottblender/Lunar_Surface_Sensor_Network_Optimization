@@ -1,15 +1,8 @@
 function result = generateDomainComparisonProducts( ...
     fullCampaign,userConfig,restrictedCampaign)
-% GENERATEDOMAINCOMPARISONPRODUCTS Compare full and restricted design domains.
+% GENERATEDOMAINCOMPARISONPRODUCTS - Compare full and restricted design domains.
 %
 % Outputs:
-%   domain_comparison_locations.eps
-%   domain_comparison_metrics.eps
-%   tables/domain_comparison.csv
-%
-% The two EPS files are intended for the two half-width subfigures in the
-% manuscript. Each is therefore kept to a compact source width so typography
-% remains legible after LaTeX scaling.
 
 arguments
     fullCampaign (1,1) struct
@@ -145,9 +138,7 @@ lgd.AutoUpdate = "off";
 lgd.Layout.Tile = "north";
 
 locationsFile = fullfile(outputDirectory,"domain_comparison_locations.eps");
-% The Figure 24 map has intentionally larger local typography. Prevent the
-% shared export helper from reapplying manuscript typography and overwriting
-% those final sizes immediately before the EPS print pass.
+% Keep the map typography fixed during EPS export.
 setappdata(locationFig,"ManuscriptTypographyFinalized",true);
 exportManuscriptFigure(locationFig,string(locationsFile),8.5,5.8);
 

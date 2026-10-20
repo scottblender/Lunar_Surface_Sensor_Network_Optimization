@@ -1,5 +1,6 @@
 function tests = testManuscriptContextLayout
-% Data-free graphics regression: no DEM or optimization campaign required.
+% TESTMANUSCRIPTCONTEXTLAYOUT - Data-free graphics regression: no DEM or optimization campaign required.
+
 tests = functiontests(localfunctions);
 end
 

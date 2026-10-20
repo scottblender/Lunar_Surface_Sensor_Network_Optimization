@@ -1,20 +1,20 @@
 function measurementJacobian = surfaceRaDecJacobian( ...
     state, time, latitude, longitude, dem, ...
     moonRadius, theta0, angularRate)
-% SURFACERADECJACOBIAN Jacobian of topocentric RA/Dec.
+% SURFACERADECJACOBIAN - Jacobian of topocentric RA/Dec.
 %
 % Inputs:
-%   state       - 6x1 target state in MCI, km and km/s
-%   time        - Time from the simulation start, s
-%   latitude    - Sensor latitude, rad
-%   longitude   - East-positive sensor longitude, rad
-%   dem         - Processed lunar griddedInterpolant
-%   moonRadius  - Lunar reference radius, km
-%   theta0      - Moon rotation angle at time = 0, rad
-%   angularRate - Lunar rotation rate, rad/s
+%   - state - 6x1 target state in MCI, km and km/s
+%   - time - Time from the simulation start, s
+%   - latitude - Sensor latitude, rad
+%   - longitude - East-positive sensor longitude, rad
+%   - dem - Processed lunar griddedInterpolant
+%   - moonRadius - Lunar reference radius, km
+%   - theta0 - Moon rotation angle at time = 0, rad
+%   - angularRate - Lunar rotation rate, rad/s
 %
-% Output:
-%   measurementJacobian - 2x6 Jacobian d[RA;Dec]/dstate
+% Outputs:
+%   - measurementJacobian - 2x6 Jacobian d[RA;Dec]/dstate
 
 arguments
     state (6,1) double

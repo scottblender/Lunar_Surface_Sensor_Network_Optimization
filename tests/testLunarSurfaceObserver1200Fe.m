@@ -1,21 +1,6 @@
 function tests = testLunarSurfaceObserver1200Fe
-% TESTLUNARSURFACEOBSERVER1200FE Real lunar-surface observer optimization trial.
-%
-% Runs the production objective, NOT a synthetic fitness function:
-%   - Ns = 3 lunar-surface observers;
-%   - GA, PSO and SURROGATE (surrogateopt);
-%   - 3 independent seeded runs of each algorithm;
-%   - 1200 requested callback FE per run;
-%   - coverage and information objectives tested separately.
-%
-% Prerequisite: results/optimization_database.mat and the solver toolboxes.
-% Local database/chunk products are intentionally not committed to Git.
-%
-% Run both objectives (18 optimization runs in total):
-%   runtests("tests/testLunarSurfaceObserver1200Fe.m")
-%
-% Run just one MATLAB test from the editor/Test Browser if desired.
-% Results are saved automatically under results/optimization_runs/.
+% TESTLUNARSURFACEOBSERVER1200FE - Real lunar-surface observer optimization trial.
+
 tests = functiontests(localfunctions);
 end
 

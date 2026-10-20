@@ -1,6 +1,7 @@
 function fig = plotConstraintScreeningPanels(fullPercent,polarPercent, ...
     categoryNames,categoryColors,networkSize,objectiveMode)
-% PLOTCONSTRAINTSCREENINGPANELS Compare all RSOs without repeated domain ticks.
+% PLOTCONSTRAINTSCREENINGPANELS - Compare all RSOs without repeated domain ticks.
+
 style = publicationPlotStyle();
 assert(isequal(size(fullPercent),size(polarPercent)), ...
     "Domain screening arrays must have the same dimensions.");

@@ -1,17 +1,14 @@
 function augmentedDerivative = lunarStateAndStmDynamics( ...
     time, augmentedState, moonMu)
-% LUNARSTATEANDSTMDYNAMICS Propagate the MCI state and STM.
+% LUNARSTATEANDSTMDYNAMICS - Propagate the MCI state and STM.
 %
 % Inputs:
-%   time           - Propagation time, s
-%   augmentedState - 42x1 vector [state; STM(:)]
-%   moonMu         - Lunar gravitational parameter, km^3/s^2
+%   - time - Propagation time, s
+%   - augmentedState - 42x1 vector [state; STM(:)]
+%   - moonMu - Lunar gravitational parameter, km^3/s^2
 %
-% Output:
-%   augmentedDerivative - 42x1 derivative [stateDerivative; STMdot(:)]
-%
-% The initial augmented state should be:
-%   augmentedState0 = [initialState; reshape(eye(6), 36, 1)];
+% Outputs:
+%   - augmentedDerivative - 42x1 derivative [stateDerivative; STMdot(:)]
 
 arguments
     time (1,1) double

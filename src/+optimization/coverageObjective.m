@@ -3,19 +3,16 @@ function [objectiveValue,objectCoverageCounts] = ...
         selectedSensors, ...
         measurementAvailability, ...
         objectWeights)
-% COVERAGEOBJECTIVE Evaluate summed network LOS coverage.
+% COVERAGEOBJECTIVE - Evaluate summed network LOS coverage.
 %
 % Inputs:
-%   selectedSensors         - Sx1 binary/logical selection vector
-%   measurementAvailability - SxNxO LOS gates
-%   objectWeights           - Ox1 nonnegative weights
+%   - selectedSensors - Sx1 binary/logical selection vector
+%   - measurementAvailability - SxNxO LOS gates
+%   - objectWeights - Ox1 nonnegative weights
 %
 % Outputs:
-%   objectiveValue       - Negative weighted coverage for minimization
-%   objectCoverageCounts - Ox1 number of covered observation epochs
-%
-% An object is covered at an epoch when at least one selected sensor has
-% established LOS.
+%   - objectiveValue - Negative weighted coverage for minimization
+%   - objectCoverageCounts - Ox1 number of covered observation epochs
 
 arguments
     selectedSensors (:,1)

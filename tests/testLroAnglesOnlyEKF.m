@@ -1,14 +1,4 @@
-%% testLroAnglesOnlyEKF
-% Test the complete angles-only tracking sequence:
-%
-%   RA/Dec acquisition arc
-%       -> Gauss IOD
-%       -> nonlinear refinement
-%       -> Monte Carlo P0
-%       -> lunar surface EKF
-%
-% The first continuous LOS pass is consumed by IOD. The EKF begins at the
-% end of that pass and uses only later observations.
+%% Test angles-only acquisition, IOD, and EKF tracking.
 
 clear;
 close all;

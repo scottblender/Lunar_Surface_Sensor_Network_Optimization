@@ -1,57 +1,13 @@
 function study = runDiscreteRadiusSensitivity(userConfig)
-% RUNDISCRETERADIUSSENSITIVITY Radius sweep around ONE FIXED lunar network.
+% RUNDISCRETERADIUSSENSITIVITY - Sweep geographic refinement radii around a fixed sensor network.
 %
-% This is POST-PROCESSING ONLY; no solver is rerun and the production
-% database or original optimization study is never modified.
+% Inputs:
+%   - userConfig - Starting study/network, database, radii, and sweep settings.
 %
-% Example (from repository root):
-%   setupProject;
-%   cfg = struct();
-%   cfg.studySummaryFile = ...
-%       "results/optimization_runs/YOUR_STUDY_FOLDER/study_summary.mat";
-%   cfg.radiiKm = [10 20 30 40 50 60];
-%   cfg.maximumCombinations = 50000;
-%   study = runDiscreteRadiusSensitivity(cfg);
+% Outputs:
+%   - study - Radius results, shared evaluation counts, and elbow summary.
 %
-% Omit studySummaryFile to use the latest study_summary.mat found beneath
-% results/optimization_runs. Specify it for reproducible publications.
-%
-% Optional userConfig fields:
-%   initialSensorIndices  - direct starting candidate IDs on CURRENT database
-%                           (bypasses saved-study lookup when nonempty)
-%   objectiveMode         - "information"/"coverage"; required for direct IDs
-%   studySummaryFile      - saved study_summary.mat (default latest)
-%                           do not combine with initialSensorIndices
-%   databaseFile          - CURRENT database MAT (default results/optimization_database.mat)
-%   maximumRemapDistanceKm - optional cap on saved-site -> current-grid distance;
-%                            default 2*config.candidates.spacingKm (or 30 km
-%                            if spacing is unavailable)
-%   radiiKm               - increasing radii in km (default [10 20 30 40 50 60])
-%   maximumCombinations   - raw Cartesian limit per radius (default 50000);
-%                           Inf explicitly opts in to uncapped enumeration
-%   skipOversized         - skip limit-exceeding radii (default true)
-%   improvementTolerance  - absolute J tolerance (default 1e-10)
-%   captureFraction       - fraction of largest OBSERVED gain (default .95)
-%   marginalThresholdPct   - elbow criterion for marginal % J reduction
-%                           vs previous radius (default 1 percent)
-%   outputDirectory       - directory for CSV/MAT/figures (default timestamped)
-%   saveResults           - write MAT and CSV (default true)
-%   makePlots             - write objective/radius and objective/FE PNGs
-%                           (default true; requires graphics)
-%
-% Testing/development ONLY:
-%   studyState, database  - preloaded structs (avoid MAT-file dependency)
-%   objectiveFcn          - @(sortedCandidateIndices) scalar J override
-%
-% IMPORTANT: The measured 'r95' is relative to the largest COMPLETED
-% radius, not a certificate of global or continuous optimality. Oversized
-% radii are marked as skipped and are not used for that reference.
-%
-% The same original sensor indices anchor ALL radii. A shared Map caches
-% objectives of canonical sorted networks across different radius runs:
-% cumulative FE counts REAL calls to the objective, not repeat cache hits.
-%
-% Data files under results/ are ignored by Git.
+% See also runDiscreteRadiusStudy, analyzeSavedDiscreteRadiusStudy.
 
 arguments
     userConfig (1,1) struct = struct()
@@ -119,9 +75,7 @@ if ~isempty(config.maximumRemapDistanceKm)
 end
 
 %% Determine the fixed starting network (no global optimizer rerun).
-% A direct index vector lets this radius sweep use EXACTLY the same
-% current-database starting point as refineDiscreteNetwork. This avoids
-% accidentally selecting a historical study for a different database.
+% Use direct IDs to reproduce a standalone refinement on the current database.
 summaryFile = "";
 if ~isempty(config.initialSensorIndices)
     assert(strlength(string(config.studySummaryFile)) == 0 && ...
@@ -178,9 +132,7 @@ assert(isscalar(objectiveMode) && ...
     "runDiscreteRadiusSensitivity:InvalidObjectiveMode", ...
     "Expected a coverage or information optimization study.");
 
-% Current DB is authoritative, regardless of the version recorded in a
-% historical optimization study. A saved path may now point to a rebuilt
-% MAT-file, so do not select the database from studyState.config.
+% Use the current database; a historical study path may refer to rebuilt data.
 if ~isempty(fieldnames(config.database))
     database = config.database;
     databaseFile = "";
@@ -475,11 +427,7 @@ for k = completedIndices(:).'
     previousBest = currentBest;
 end
 
-% Heuristic elbow: the LAST tested radius producing a marginal relative
-% improvement >= threshold, provided a larger radius was actually tested
-% and no later radius produced another material improvement. That radius
-% keeps the improvements worth the additional search effort; the largest
-% radius still has the best absolute objective. Not an optimality proof.
+% Choose the last material gain only when a larger tested radius shows a plateau.
 tradeoffRadiusKm = NaN;
 material = find(completed & isfinite(marginalRelativeImprovementPct) & ...
     marginalRelativeImprovementPct >= config.marginalThresholdPct);

@@ -1,23 +1,4 @@
-%% testLroReferenceFrames
-% Propagate an LRO-like lunar orbit and create two views:
-%   1. The physical trajectory in the Moon-rotating frame
-%   2. The above-horizon trajectory as seen from a surface sensor
-%
-% Expected project layout:
-%   project/
-%     data/new_lunar_interpolant_model.mat
-%     src/+orbitDynamics/...
-%     src/+referenceFrames/...
-%     tests/testLroReferenceFrames.m
-
-% The MAT-file must contain the griddedInterpolant F. Its grid is assumed
-% to be latitude/longitude in degrees and its elevation values in km.
-
-% Required functions:
-%   orbitDynamics.propagateLunarOrbit
-%   referenceFrames.moonRotating
-%   referenceFrames.topographic
-
+%% Plot an LRO-like orbit in rotating and local sensor frames.
 
 clear;
 close all;
@@ -44,9 +25,7 @@ demData = load(demPath, "F");
 assert(isfield(demData, "F") && isa(demData.F, "griddedInterpolant"), ...
     "The DEM file must contain a griddedInterpolant named F.");
 
-% Convert the supplied degree-based DEM grid into the radian-based
-% interpolant expected by referenceFrames.topographic. Add a periodic seam
-% at 2*pi so longitude remains continuous across 0/360 degrees.
+% Convert DEM coordinates to radians and add a periodic longitude seam.
 sourceDem = demData.F;
 latitudeGrid = deg2rad(sourceDem.GridVectors{1}(:));
 longitudeGrid = deg2rad(sourceDem.GridVectors{2}(:));
@@ -140,9 +119,7 @@ up = statesTopographic(:,3);
 azimuth = mod(atan2(east, north), 2*pi);
 elevation = atan2(up, hypot(east, north));
 
-% A sky plot uses zenith angle as its radius: the zenith is at 0 degrees
-% and the local horizon is at 90 degrees. NaNs separate portions of the
-% orbit that are below the sensor's geometric horizon.
+% Use zenith angle as plot radius; NaNs separate below-horizon arcs.
 visibleFromSensor = elevation >= 0;
 skyRadiusDegrees = 90 - rad2deg(elevation);
 skyRadiusDegrees(~visibleFromSensor) = NaN;

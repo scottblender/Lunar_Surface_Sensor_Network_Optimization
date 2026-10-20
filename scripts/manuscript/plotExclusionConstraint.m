@@ -1,8 +1,4 @@
-%% plotExclusionConstraint
-% Generate a white-background celestial-body exclusion schematic.
-%
-% Output:
-%   Exclusion_Constraint_Schematic.eps
+%% Draw the Earth/Sun angular-exclusion geometry.
 
 clear;
 clc;

@@ -1,32 +1,18 @@
 function [stateOut, measurement] = topographic( ...
     stateIn, latitude, longitude, dem, moonRadius, direction)
-%TOPOGRAPHIC Convert between Moon rotating and local ENU coordinates.
-%
-% Local axes:
-%   +X: East
-%   +Y: North
-%   +Z: Up
-%
-% DEM requirement:
-%   elevation = dem(latitude, longitude)
-%
-%   latitude and longitude must be in radians.
-%   elevation and moonRadius must be in kilometers.
+% TOPOGRAPHIC - Convert between Moon rotating and local ENU coordinates.
 %
 % Inputs:
-%   stateIn    - 6x1 input state, km and km/s
-%   latitude   - Sensor latitude, rad
-%   longitude  - East-positive sensor longitude, rad
-%   dem        - Processed griddedInterpolant
-%   moonRadius - Lunar reference radius, km
-%   direction  - "fromRotating" or "toRotating"
+%   - stateIn - 6x1 input state, km and km/s
+%   - latitude - Sensor latitude, rad
+%   - longitude - East-positive sensor longitude, rad
+%   - dem - Interpolant dem(latitudeRad,longitudeRad), returning km.
+%   - moonRadius - Lunar reference radius, km
+%   - direction - "fromRotating" or "toRotating"
 %
 % Outputs:
-%   stateOut    - 6x1 transformed state
-%   measurement - [azimuth; elevation; range; rangeRate]
-%
-% A sensor fixed to the lunar surface has zero velocity in the
-% Moon-rotating frame.
+%   - stateOut - 6x1 transformed state
+%   - measurement - [azimuth (rad); elevation (rad); range (km); rangeRate (km/s)].
 
 surfaceElevation = dem(latitude, longitude);
 sensorRadius = moonRadius + surfaceElevation;

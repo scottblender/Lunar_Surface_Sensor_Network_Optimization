@@ -1,5 +1,6 @@
 function tests = testManuscriptArtifactLayout
-% Data-free checks for figure decoration bounds and the manuscript inventory.
+% TESTMANUSCRIPTARTIFACTLAYOUT - Data-free checks for figure decoration bounds and the manuscript inventory.
+
 tests = functiontests(localfunctions);
 end
 

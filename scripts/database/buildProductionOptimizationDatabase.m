@@ -1,19 +1,10 @@
-%% buildProductionOptimizationDatabase.m
-% Build and save the production optimization database used for the
-% lunar-surface sensor-network global optimization study.
-%
-% The production terrain input is the synthetic lunar DEM stored as a
-% griddedInterpolant. The DEM loader also remains backward compatible with
-% the previous numeric global raster representation.
+%% Build and save the production database from the local lunar DEM.
 
 clear;
 close all;
 clc;
 
-%% ========================================================================
-%  Project paths
-%  ========================================================================
-
+%% Project paths
 scriptDirectory = ...
     fileparts(mfilename("fullpath"));
 
@@ -40,17 +31,11 @@ if ~isfolder(resultsDirectory)
     mkdir(resultsDirectory);
 end
 
-%% ========================================================================
-%  Lunar reference constant
-%  ========================================================================
-
+%% Lunar reference constant
 moonRadiusKm = ...
     1737.4;
 
-%% ========================================================================
-%  Load production lunar DEM
-%  ========================================================================
-
+%% Load production lunar DEM
 demPath = ...
     resolveProductionDemPath(dataDirectory);
 
@@ -89,10 +74,7 @@ else
         demModel.rawMaximumElevationKm);
 end
 
-%% ========================================================================
-%  Production study configuration
-%  ========================================================================
-
+%% Production study configuration
 config = struct();
 
 %% Output
@@ -112,8 +94,7 @@ config.demModel = ...
     demModel;
 
 %% Study cases
-% These are current study cases only; the database/objective layer supports
-% other positive network sizes without rebuilding the physical database.
+% Network sizes are study settings; the physical database is reusable.
 
 config.study.networkSizes = ...
     [3,5,7,10];
@@ -164,11 +145,7 @@ config.candidates.spacingKm = ...
     15;
 
 %% Equal-count candidate chunks
-% Partition the complete southern-hemisphere candidate list immediately after
-% grid generation. Terrain horizons, truth visibility, final visibility, and
-% full 2x6 RA/Dec Jacobians are then built and stored chunk-by-chunk. Objective
-% evaluations use MATFILE partial indexing through the global -> chunk/local
-% index map.
+% Partition candidates before building terrain, visibility, and Jacobian chunks.
 
 config.chunking.enabled = ...
     true;
@@ -182,9 +159,7 @@ config.chunking.useParallel = ...
 config.chunking.maximumParallelWorkers = ...
     2;
 
-% Reuse completed candidate chunks after an interrupted/late-stage build.
-% Existing chunks are validated before reuse; inconsistent/incomplete chunks
-% are recomputed rather than silently accepted.
+% Validate completed chunks before reuse; rebuild incomplete or inconsistent chunks.
 config.chunking.resumeExisting = ...
     true;
 
@@ -261,9 +236,7 @@ config.ephemeris.sunOrbitalPeriodSeconds = ...
     365.256363004*86400;
 
 %% Tracking arc
-% Three-day surveillance arc with one measurement opportunity every
-% 10 minutes. The optimization database excludes the t = 0 reference epoch,
-% leaving exactly 432 measurement/update epochs.
+% Use 432 updates over three days at 10-minute spacing, excluding t = 0.
 
 config.tracking.outputStepSeconds = ...
     10*60;
@@ -280,9 +253,7 @@ config.measurement.declinationSigmaRad = ...
     deg2rad(1/3600);
 
 %% Fixed-P0 angles-only IOD calibration
-% This reference acquisition is independent of the optimized candidate
-% network. It is used once to estimate one fixed P0 that is then applied
-% identically to every RSO and every network evaluation.
+% Calibrate one independent IOD prior and reuse its P0 for all networks and RSOs.
 
 config.iod.referencePeriapsisAltitudeKm = ...
     50;
@@ -349,10 +320,7 @@ config.estimation.objectWeights = ...
 config.objective.infeasiblePenalty = ...
     1e12;
 
-%% ========================================================================
-%  Prevent accidental overwrite
-%  ========================================================================
-
+%% Prevent accidental overwrite
 outputExistsMessage = ...
     "Optimization database already exists:\n%s\n" + ...
     "Archive, delete, or rename it before rebuilding with the new DEM.";
@@ -382,19 +350,13 @@ if isfolder(chunkDirectory)
     end
 end
 
-%% ========================================================================
-%  Build database
-%  ========================================================================
-
+%% Build database
 database = ...
     optimization.buildOptimizationDatabase( ...
         dem, ...
         config);
 
-%% ========================================================================
-%  Production timing checks
-%  ========================================================================
-
+%% Production timing checks
 assert(mod( ...
     config.tracking.finalTimeSeconds, ...
     config.tracking.outputStepSeconds) == 0, ...
@@ -429,10 +391,7 @@ assert(all(abs( ...
     config.tracking.outputStepSeconds) < 1e-9), ...
     "Optimization tracking cadence is not uniformly 600 seconds.");
 
-%% ========================================================================
-%  Summary
-%  ========================================================================
-
+%% Summary
 fprintf("\n");
 fprintf("Production database ready.\n");
 fprintf("Output:\n  %s\n",config.outputFile);
@@ -484,10 +443,7 @@ fprintf("IOD MC convergence: %d/%d\n", ...
     database.iod.calibration.diagnostics.numberOfSuccessfulSamples, ...
     database.iod.calibration.diagnostics.numberOfRequestedSamples);
 
-%% ========================================================================
-%  Local helpers
-%  ========================================================================
-
+%% Local helpers
 function demPath = resolveProductionDemPath(dataDirectory)
 
 demPath = fullfile(dataDirectory,"Synthetic_Lunar_DEM.mat");

@@ -1,5 +1,6 @@
 function percent = binNetworkSelectionFrequency(runStates,database,latitudeEdges,longitudeEdges)
-% Percentage of runs with one or more selected sensors in each geographic bin.
+% BINNETWORKSELECTIONFREQUENCY - Count the percentage of runs selecting sites in each geographic bin.
+
 assert(~isempty(runStates),"No optimization runs supplied.");
 counts = zeros(numel(latitudeEdges)-1,numel(longitudeEdges)-1);
 for run = 1:numel(runStates)

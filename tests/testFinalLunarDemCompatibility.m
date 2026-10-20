@@ -1,44 +1,10 @@
-%% testFinalLunarDemCompatibility
-% Validate Full_Resolution_DEM.mat against the current lunar-surface workflow.
-%
-% The test verifies:
-%   1. The file is a finite global 2:1 raster.
-%   2. The 2880-by-5760 raster convention is north-to-south,
-%      east-positive, cell-centered, and 0.0625 deg/pixel.
-%   3. A translated triaxial ellipsoid can be fit with lsqnonlin using
-%      p = [x0,y0,z0,a,b,c].
-%   4. Removing the fitted ellipsoid produces a lower-RMS residual terrain
-%      field while preserving the physical radial surface exactly.
-%   5. The workflow-compatible interpolant covers the poles and periodic
-%      longitude seam.
-%   6. The DEM works with the current topographic, terrain-horizon,
-%      RA/Dec measurement, and measurement-Jacobian functions.
-%
-% The physical decomposition is
-%
-%   H_residual(lat,lon)
-%       = H_current(lat,lon) - H_ellipsoid(lat,lon)
-%
-% with
-%
-%   H_ellipsoid = r_ellipsoid - R_Moon.
-%
-% Therefore
-%
-%   R_Moon + H_current
-%       = r_ellipsoid + H_residual.
-%
-% The current workflow can continue to use the sphere-referenced radial
-% height interpolant without loss of triaxial geometry.
+%% Validate Full_Resolution_DEM.mat against the current lunar-surface workflow.
 
 clear;
 close all;
 clc;
 
-%% ========================================================================
-%  Project paths
-%  ========================================================================
-
+%% Project paths
 testDirectory = ...
     fileparts(mfilename("fullpath"));
 
@@ -78,10 +44,7 @@ for functionIndex = 1:length(requiredFunctions)
         "%s was not found.",functionName);
 end
 
-%% ========================================================================
-%  Load new DEM
-%  ========================================================================
-
+%% Load new DEM
 moonRadiusKm = ...
     1737.4;
 
@@ -129,10 +92,7 @@ longitudeSpacingDeg = ...
 assert(abs(latitudeSpacingDeg-longitudeSpacingDeg) < 1e-12, ...
     "The new DEM does not have equal angular sampling.");
 
-%% ========================================================================
-%  Build workflow interpolant and fit reference ellipsoid
-%  ========================================================================
-
+%% Build workflow interpolant and fit reference ellipsoid
 [dem,triaxialModel] = ...
     digitalElevationModel.loadTriaxialLunarDem( ...
         string(newDemPath), ...
@@ -143,10 +103,7 @@ assert(abs(latitudeSpacingDeg-longitudeSpacingDeg) < 1e-12, ...
 assert(isa(dem,"griddedInterpolant"), ...
     "The DEM loader did not return a griddedInterpolant.");
 
-%% ========================================================================
-%  Raster and orientation checks
-%  ========================================================================
-
+%% Raster and orientation checks
 assert(isequal( ...
     triaxialModel.rawRasterSize, ...
     [numberOfLatitudes,numberOfLongitudes]), ...
@@ -170,10 +127,7 @@ assert(triaxialModel.rawMinimumLongitudeDeg > 150 && ...
     triaxialModel.rawMinimumLongitudeDeg < 230, ...
     "DEM longitude orientation appears inconsistent with the expected map.");
 
-%% ========================================================================
-%  Triaxial-fit checks
-%  ========================================================================
-
+%% Triaxial-fit checks
 centerOffsetKm = ...
     triaxialModel.centerOffsetKm;
 
@@ -207,10 +161,7 @@ assert(triaxialModel.residualHeightRmsKm < ...
 assert(triaxialModel.maximumReconstructionErrorKm < 1e-10, ...
     "Ellipsoid + residual does not reconstruct the source DEM.");
 
-%% ========================================================================
-%  Interpolant coverage and periodicity
-%  ========================================================================
-
+%% Interpolant coverage and periodicity
 latitudeGrid = ...
     dem.GridVectors{1}(:);
 
@@ -261,10 +212,7 @@ seamTwoPi = ...
 assert(max(abs(seamZero-seamTwoPi)) < 1e-12, ...
     "The DEM longitude seam is not periodic.");
 
-%% ========================================================================
-%  Explicit ellipsoid/residual reconstruction at workflow sample points
-%  ========================================================================
-
+%% Explicit ellipsoid/residual reconstruction at workflow sample points
 ellipsoidRadiusKm = ...
     digitalElevationModel.triaxialEllipsoidRadius( ...
         sampleLatitudes, ...
@@ -289,10 +237,7 @@ assert(max(abs( ...
     surfaceRadiusFromTriaxialDecompositionKm)) < 1e-10, ...
     "Triaxial residual decomposition changed the physical lunar radius.");
 
-%% ========================================================================
-%  Topographic-frame compatibility
-%  ========================================================================
-
+%% Topographic-frame compatibility
 sensorLatitude = ...
     sampleLatitudes(1);
 
@@ -332,10 +277,7 @@ assert(norm(localState) < 1e-10, ...
 assert(abs(localMeasurement(3)) < 1e-10, ...
     "Surface sensor did not return zero local range.");
 
-%% ========================================================================
-%  Terrain-horizon compatibility
-%  ========================================================================
-
+%% Terrain-horizon compatibility
 candidateLatitudes = ...
     sampleLatitudes;
 
@@ -374,10 +316,7 @@ assert(abs(horizonAzimuths(1)) < 1e-12 && ...
     abs(horizonAzimuths(end)-2*pi) < 1e-12, ...
     "Terrain horizon azimuth grid is not periodic.");
 
-%% ========================================================================
-%  RA/Dec model and Jacobian compatibility
-%  ========================================================================
-
+%% RA/Dec model and Jacobian compatibility
 time = ...
     0;
 
@@ -430,10 +369,7 @@ assert(all(isfinite(measurement)), ...
 assert(all(isfinite(measurementJacobian),"all"), ...
     "RA/Dec Jacobian is nonfinite with the new DEM.");
 
-%% ========================================================================
-%  Summary
-%  ========================================================================
-
+%% Summary
 fprintf("\n");
 fprintf("Final lunar DEM compatibility summary\n");
 fprintf("-------------------------------------\n");

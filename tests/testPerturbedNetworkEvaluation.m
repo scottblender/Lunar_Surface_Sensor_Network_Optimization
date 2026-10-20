@@ -1,6 +1,4 @@
-%% testPerturbedNetworkEvaluation
-% Verify that the continuous off-grid evaluator reproduces the discrete
-% database objective when evaluated at the exact same candidate locations.
+%% Compare off-grid and discrete evaluations at identical sensor coordinates.
 
 clear;
 close all;

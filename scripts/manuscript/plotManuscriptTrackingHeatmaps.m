@@ -1,5 +1,6 @@
 function fig = plotManuscriptTrackingHeatmaps(rms,observable,names,networkSizes,modes,figureName)
-% Shared geometry for manuscript tracking figures; one colorbar per row.
+% PLOTMANUSCRIPTTRACKINGHEATMAPS - Plot RMS error and observability with shared heatmap layouts.
+
 style = publicationPlotStyle();
 nObjects = numel(names);
 nModes = numel(modes);
@@ -7,21 +8,13 @@ nModes = numel(modes);
 % figure need not become taller than a page. Small catalogs retain every name.
 labelStride = max(1,ceil(nObjects/10));
 labelRows = 1:labelStride:nObjects;
-% Respect the dedicated heatmap canvas minima. These larger source
-% dimensions preserve the left/top decoration room needed by the operational
-% spacecraft labels (especially the first LRO row) after EPS export.
-% Add vertical source-canvas room specifically for the two-row tracking
-% heatmaps. The extra inch prevents the bottom design-RSO tick in the upper
-% panel (RSO 19 for the 20-object design catalog) from being clipped during
-% EPS rendering without changing the horizontal scale.
+% Reserve room for spacecraft names, row titles, and colorbars in EPS exports.
 height = max(style.heatmapHeightInches + 1.0, ...
     2*numel(labelRows)*style.axisFontSize*1.15/72+3.0);
 width = max(style.heatmapWidthInches,4.8*nModes+1.8);
 fig = figure("Name",figureName,"Color",style.backgroundColor, ...
     "Units","inches","Position",[0.5 0.5 width height],"Renderer","opengl");
-% Use a dedicated spacer row between the two nested heatmap layouts. EPS
-% rendering can otherwise let the lower layout paint over the lowest tick
-% label of the upper layout (for example, Queqiao-2 or RSO 19).
+% Separate the heatmap rows so EPS labels do not overlap.
 outer = tiledlayout(fig,9,1,"TileSpacing","compact","Padding","loose");
 positive = rms(isfinite(rms) & rms>0);
 assert(~isempty(positive),"No positive tracking errors are available.");

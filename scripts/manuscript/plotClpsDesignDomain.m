@@ -1,13 +1,7 @@
 function plotInfo = plotClpsDesignDomain(userConfig)
-% PLOTCLPSDESIGNDOMAIN Southern-hemisphere design domain with CLPS context.
+% PLOTCLPSDESIGNDOMAIN - Southern-hemisphere design domain with CLPS context.
 %
-% The full primary optimization domain (-90 <= latitude <= 0 deg) is shown
-% using the same polar-map styling and mission callout treatment as the
-% original CLPS_LSP_Detail manuscript figure. The restricted -90 to -75 deg
-% comparison region is retained as a highlighted inner disk.
-%
-% Output:
-%   CLPS_Southern_Hemisphere_Design_Domain.eps
+% Outputs:
 
 arguments
     userConfig (1,1) struct = struct()
@@ -185,9 +179,7 @@ plannedHandle = scatter(ax,lspAnchorX,lspAnchorY,105,"d", ...
     "MarkerEdgeColor",theme.markerEdgeColor,"LineWidth",1.0, ...
     "DisplayName","Planned LSP anchor");
 
-% Keep the original detailed mission information, with compact white
-% callout boxes immediately outside the polar disk. The map remains the
-% dominant element rather than being shrunk to accommodate the annotations.
+% Place mission callouts outside the polar map.
 mapLimit = outerRadiusKm + 120;
 
 axis(ax,"equal");

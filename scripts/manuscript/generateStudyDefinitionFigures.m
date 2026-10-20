@@ -1,9 +1,5 @@
 function outputs = generateStudyDefinitionFigures(userConfig)
-% GENERATESTUDYDEFINITIONFIGURES Regenerate the manuscript definition figures.
-%
-% Existing, validated schematic generators are intentionally reused so their
-% geometry remains unchanged. Their EPS files are moved into the consolidated
-% manuscript output directory after generation.
+% GENERATESTUDYDEFINITIONFIGURES - Regenerate the manuscript definition figures.
 
 arguments
     userConfig (1,1) struct = struct()

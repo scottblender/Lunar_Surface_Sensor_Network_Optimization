@@ -1,9 +1,4 @@
-%% plotAnglesOnlyMeasurementModel
-% Create white-background publication schematics for the angles-only model.
-%
-% Outputs:
-%   angles_only_right_ascension_geometry.eps
-%   angles_only_declination_geometry.eps
+%% Draw the RA/Dec measurement geometry for manuscript figures.
 
 clear;
 clc;

@@ -1,19 +1,5 @@
 function result = evaluateDemResolutionValidation(productionInfo,userConfig)
-% EVALUATEDEMRESOLUTIONVALIDATION Compare synthetic and full DEM terrain gates.
-%
-% This validation does not rerun the optimization. It evaluates the exact
-% overall-best sensor sites from the completed production study using:
-%   synthetic DEM: data/Synthetic_Lunar_DEM.mat
-%   full DEM:      data/Full_Resolution_DEM.mat
-%
-% The comparison is limited to terrain-horizon geometry and terrain-informed
-% observability so Earth/Sun screening cannot mask terrain-model differences.
-%
-% Main paper output:
-%   conference_dem_resolution_validation.csv
-%
-% The full-resolution DEM is treated as the reference. A false clear occurs
-% when the synthetic DEM accepts terrain LOS while the full DEM rejects it.
+% EVALUATEDEMRESOLUTIONVALIDATION - Compare synthetic and full DEM terrain gates.
 
 arguments
     productionInfo (1,1) struct

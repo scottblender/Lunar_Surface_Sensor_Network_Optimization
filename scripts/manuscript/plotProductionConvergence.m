@@ -1,5 +1,5 @@
 function plotInfo = plotProductionConvergence(campaign,userConfig)
-% PLOTPRODUCTIONCONVERGENCE Generate the two manuscript convergence figures.
+% PLOTPRODUCTIONCONVERGENCE - Generate the two manuscript convergence figures.
 
 arguments
     campaign (1,1) struct
@@ -39,9 +39,7 @@ for objectiveIndex = 1:numel(config.objectiveModes)
         [fe,meanHistory,stdHistory] = aggregateConvergence( ...
             studyState,config.numberOfRuns);
         c = networkColors(networkIndex,:);
-        % EPS does not preserve transparency as reliably as MATLAB's on-screen
-        % renderer. Use an opaque lightened version of the series color for
-        % the +/-1 sigma band so it remains visible after EPS/PDF conversion.
+        % Use an opaque light color for the sigma band in EPS output.
         bandColor = 0.45*c + 0.55*[1 1 1];
 
         fill(ax,[fe;flipud(fe)], ...

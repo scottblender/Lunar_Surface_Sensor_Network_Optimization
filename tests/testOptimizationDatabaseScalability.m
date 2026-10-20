@@ -1,24 +1,6 @@
-%% testOptimizationDatabaseScalability
-% 20-RSO / reduced-candidate scalability test.
-%
-% The pilot uses:
-%   - all 20 production RSOs
-%   - 100 candidate LOCATIONS sampled from the full southern-hemisphere grid
-%   - arbitrary configured network sizes
-%   - one independent reference IOD for one fixed P0
-%   - exactly the requested IOD observation count
-%   - full terrain + Earth + Sun visibility
-%   - production 8-hour / 60-second tracking definition
-%   - selected-sensor objective slicing
-%
-% An RSO is NOT required to be visible. Zero coverage is a valid physical
-% outcome and does not remove the RSO from the population.
+%% Test a 20-target database with a reduced candidate grid.
 
-% Do not clear the caller workspace; this test may be run by the post-build wrapper.
-
-%% ========================================================================
-%  Paths
-%  ========================================================================
+%% Settings
 
 testDirectory = ...
     fileparts(mfilename("fullpath"));
@@ -35,10 +17,7 @@ assert(isfolder(sourceDirectory), ...
 addpath(sourceDirectory);
 rehash path;
 
-%% ========================================================================
-%  Pilot definition
-%  ========================================================================
-
+%% Pilot definition
 numberOfPilotCandidates = ...
     100;
 
@@ -50,17 +29,11 @@ expectedNumberOfObjects = ...
 networkSizes = ...
     sort(unique([3,5,7,10]));
 
-%% ========================================================================
-%  Constants
-%  ========================================================================
-
+%% Constants
 moonRadius = ...
     1737.4;
 
-%% ========================================================================
-%  Load DEM
-%  ========================================================================
-
+%% Load DEM
 demPath = ...
     fullfile( ...
         projectRoot, ...
@@ -77,10 +50,7 @@ assert(isfile(demPath), ...
         24, ...
         48);
 
-%% ========================================================================
-%  Complete production candidate grid
-%  ========================================================================
-
+%% Complete production candidate grid
 [fullCandidateLatitudes,fullCandidateLongitudes] = ...
     digitalElevationModel.buildCandidateSensorGrid( ...
         deg2rad([-90,0]), ...
@@ -102,10 +72,7 @@ fprintf("Full production candidate grid\n");
 fprintf("------------------------------\n");
 fprintf("Candidate locations: %d\n",numberOfFullCandidates);
 
-%% ========================================================================
-%  Spatially distributed pilot subset
-%  ========================================================================
-
+%% Spatially distributed pilot subset
 pilotCandidateIndices = ...
     selectSpatialPilotCandidates( ...
         fullCandidateLatitudes, ...
@@ -121,20 +88,14 @@ pilotCandidateLongitudes = ...
 fprintf("Pilot candidate locations: %d\n", ...
     length(pilotCandidateIndices));
 
-%% ========================================================================
-%  Temporary output
-%  ========================================================================
-
+%% Temporary output
 temporaryFile = ...
     string(tempname) + ".mat";
 
 cleanupObject = ...
     onCleanup(@()cleanupFile(temporaryFile)); %#ok<NASGU>
 
-%% ========================================================================
-%  Production-like configuration
-%  ========================================================================
-
+%% Production-like configuration
 config = struct();
 
 config.outputFile = ...
@@ -285,10 +246,7 @@ config.estimation.stateScales = ...
 config.estimation.objectWeights = ...
     ones(expectedNumberOfObjects,1);
 
-%% ========================================================================
-%  Build
-%  ========================================================================
-
+%% Build
 fprintf("\n");
 fprintf("============================================================\n");
 fprintf("Starting 20-RSO scalability database build\n");
@@ -305,10 +263,7 @@ database = ...
 measuredBuildRuntimeSeconds = ...
     toc(databaseTimer);
 
-%% ========================================================================
-%  Structural checks
-%  ========================================================================
-
+%% Structural checks
 numberOfObjects = ...
     database.meta.numberOfObjects;
 
@@ -332,10 +287,7 @@ assert(numberOfOptimizationTimes == ...
 assert(isequal(database.study.networkSizes,networkSizes), ...
     "Database network-size configuration changed.");
 
-%% ========================================================================
-%  Verify single fixed P0 and exact IOD calibration
-%  ========================================================================
-
+%% Verify single fixed P0 and exact IOD calibration
 P0 = ...
     database.prior.initialCovariance;
 
@@ -384,10 +336,7 @@ assert( ...
     ceil(0.8*config.iod.numberOfMonteCarloSamples), ...
     "Reference IOD Monte Carlo convergence is below 80 percent.");
 
-%% ========================================================================
-%  All 20 RSOs remain in population regardless of visibility
-%  ========================================================================
-
+%% All 20 RSOs remain in population regardless of visibility
 assert(height(database.rso.catalog) == ...
     expectedNumberOfObjects, ...
     "An RSO was removed from the population.");
@@ -397,10 +346,7 @@ assert(size( ...
     expectedNumberOfObjects, ...
     "Visibility database does not contain all 20 RSOs.");
 
-%% ========================================================================
-%  Accepted measurements by RSO
-%  ========================================================================
-
+%% Accepted measurements by RSO
 acceptedObservationsByObject = ...
     reshape( ...
         sum( ...
@@ -418,10 +364,7 @@ numberOfUnobservableObjects = ...
 assert(all(isfinite(acceptedObservationsByObject)), ...
     "Observation counts are invalid.");
 
-%% ========================================================================
-%  Numerical database checks
-%  ========================================================================
-
+%% Numerical database checks
 assert(all(isfinite( ...
     database.tracking.referenceStateHistories),"all"));
 
@@ -447,10 +390,7 @@ assert(all( ...
     database.visibility.geometricAvailability, ...
     "all"));
 
-%% ========================================================================
-%  Representative nested networks for every configured size
-%  ========================================================================
-
+%% Representative nested networks for every configured size
 maximumNetworkSize = ...
     max(networkSizes);
 
@@ -471,10 +411,7 @@ for sizeIndex = 1:numberOfNetworkSizes
         maximumNetwork(1:networkSizes(sizeIndex));
 end
 
-%% ========================================================================
-%  Objective timing for every configured network size
-%  ========================================================================
-
+%% Objective timing for every configured network size
 informationObjectives = ...
     zeros(numberOfNetworkSizes,1);
 
@@ -529,10 +466,7 @@ for sizeIndex = 2:numberOfNetworkSizes
         "Adding sensors reduced coverage.");
 end
 
-%% ========================================================================
-%  Slicing equivalence, determinism, and sensor-order invariance
-%  ========================================================================
-
+%% Slicing equivalence, determinism, and sensor-order invariance
 baseNetwork = ...
     representativeNetworks{1};
 
@@ -622,10 +556,7 @@ assert(max(abs( ...
     details.coverageByObject-directCoverageByObject)) <= 1e-12, ...
     "Coverage-by-object diagnostics changed after slicing.");
 
-%% ========================================================================
-%  Memory accounting
-%  ========================================================================
-
+%% Memory accounting
 jacobianBytes = ...
     numel( ...
         database.tracking.measurementJacobianHistories) * 8;
@@ -670,10 +601,7 @@ estimatedFullJacobianBytes = ...
     jacobianBytesPerCandidate * ...
     estimatedFullRetainedCandidates;
 
-%% ========================================================================
-%  Per-RSO summary
-%  ========================================================================
-
+%% Per-RSO summary
 fprintf("\n");
 fprintf("20-RSO visibility summary\n");
 fprintf("-------------------------\n");
@@ -696,10 +624,7 @@ for objectIndex = 1:numberOfObjects
     fprintf("\n");
 end
 
-%% ========================================================================
-%  Final scalability summary
-%  ========================================================================
-
+%% Final scalability summary
 fprintf("\n");
 fprintf("============================================================\n");
 fprintf("Optimization database scalability summary\n");
@@ -786,10 +711,7 @@ fprintf("Coverage monotonicity:         passed\n");
 fprintf("\n");
 fprintf("testOptimizationDatabaseScalability passed.\n");
 
-%% ========================================================================
-%  Local functions
-%  ========================================================================
-
+%% Local functions
 function selectedIndices = ...
     selectSpatialPilotCandidates( ...
         candidateLatitudes, ...

@@ -1,16 +1,5 @@
 function restrictedCampaign = loadRestrictedCampaign(fullCampaign,userConfig)
-% LOADRESTRICTEDCAMPAIGN Load the complete matched restricted-domain campaign.
-%
-% The restricted study is identified by date rather than by one individual
-% network-size/objective folder. This guarantees that all eight restricted
-% cases (N_s = 3,5,7,10 x information/coverage) are loaded together.
-%
-% Preferred configuration:
-%   restrictedCampaignDate = "20260915"
-%
-% Optional fallback:
-%   restrictedCampaignAnchor = "ga_coverage_n3_20260915_121933"
-% The anchor is used only to infer the YYYYMMDD date and reference database.
+% LOADRESTRICTEDCAMPAIGN - Load the complete matched restricted-domain campaign.
 
 arguments
     fullCampaign (1,1) struct
@@ -73,11 +62,7 @@ if isfield(userConfig,"restrictedStudyName") && ...
     restrictedConfig.studyName = string(userConfig.restrictedStudyName);
 end
 
-% Use the current full-domain frozen database as the common physical model.
-% The 20260915 studies are selected by date, and their stored best sensor
-% latitudes/longitudes are mapped into this database by downstream plotting
-% routines. This avoids relying on a historical restricted database path that
-% may have been overwritten when the final 20260918/20260919 database was built.
+% Use the full-domain physical model and preserve restricted-study site coordinates.
 restrictedConfig.databaseFile = string(fullCampaign.databaseFile);
 restrictedConfig.requireDatabaseMatch = false;
 

@@ -1,8 +1,5 @@
 function outputFile = writeOptimizationWorkflowTikz(userConfig)
-% WRITEOPTIMIZATIONWORKFLOWTIKZ Write the manuscript optimization workflow.
-%
-% This is kept synchronized with the current AAS manuscript source. The
-% workflow is a process diagram rather than a numerical MATLAB figure.
+% WRITEOPTIMIZATIONWORKFLOWTIKZ - Write the manuscript optimization workflow.
 
 arguments
     userConfig (1,1) struct = struct()

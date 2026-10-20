@@ -1,5 +1,6 @@
 function tests = testOptimizerAdapter
-% Small deterministic interface tests; no lunar production database needed.
+% TESTOPTIMIZERADAPTER - Small deterministic interface tests; no lunar production database needed.
+
 tests = functiontests(localfunctions);
 end
 

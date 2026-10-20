@@ -1,4 +1,5 @@
 function tests = testRsoScreeningPanels
+% TESTRSOSCREENINGPANELS - Test constraint-screening panels for both study domains.
 tests = functiontests(localfunctions);
 end
 

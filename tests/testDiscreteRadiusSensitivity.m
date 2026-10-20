@@ -1,7 +1,6 @@
 function tests = testDiscreteRadiusSensitivity
-% TESTDISCRETERADIUSSENSITIVITY Small offline radius-sweep regression tests.
-% Run: runtests("tests/testDiscreteRadiusSensitivity.m")
-% No lunar DEM, production database, optimization license, or plots needed.
+% TESTDISCRETERADIUSSENSITIVITY - Small offline radius-sweep regression tests.
+
 tests = functiontests(localfunctions);
 end
 

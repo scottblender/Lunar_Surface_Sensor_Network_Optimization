@@ -1,20 +1,4 @@
-%% testMultiRsoTerrainRayClearance
-% Validates the precomputed terrain-horizon gate against direct,
-% range-aware terrain sampling for multiple sensors and RSOs.
-%
-% RSOs:
-%   1. LRO-like 50 km polar orbit.
-%   2. Chandrayaan-1-like 100 km polar orbit.
-%   3. A 200 km, 60 degree inclined orbit.
-%
-% The test reports:
-%   - Geometric measurement opportunities.
-%   - Precomputed horizon-database measurements.
-%   - Direct range-aware measurements.
-%   - Conservative database rejections.
-%   - False database clearances.
-%
-% False database clearances must be zero.
+%% Compare horizon gates with direct terrain-ray clearance for multiple targets.
 
 clear;
 close all;
@@ -745,11 +729,7 @@ assert( ...
 
 %% Plot measurement comparison
 
-% Each row represents one RSO.
-% Columns represent:
-%   1. Geometric LOS
-%   2. Precomputed horizon
-%   3. Direct range-aware result
+% Rows are RSOs; columns are geometric, horizon-gated, and direct-ray results.
 
 comparisonCounts = [
     geometricCounts, ...
