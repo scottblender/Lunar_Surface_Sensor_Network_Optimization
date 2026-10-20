@@ -230,8 +230,6 @@ To avoid creating any result files during a quick check:
     results = runtests("tests/refinement/testDiscreteRefinement.m");
     assertSuccess(results);
     disp(results);
-    disp(results2);
-    disp(results3);
 
 These use small synthetic inputs and do not require a local DEM, production
 database, optimizer toolbox, or visible plots. Run the real radius sweep

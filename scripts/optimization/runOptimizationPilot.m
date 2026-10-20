@@ -94,7 +94,7 @@ summaryFile = fullfile(string(studyState.studyDirectory),"study_summary.mat");
 save(summaryFile,"studyState","-v7.3");
 
 fprintf("\nPilot complete.\n");
-fprintf("Run the result/visualization test with:\n");
+fprintf("Plot the completed pilot with:\n");
 fprintf('  plotOptimizationPilotResults\n');
 
 end

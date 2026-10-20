@@ -53,7 +53,7 @@ moonRadiusKm = double(database.config.moon.radiusKm);
 theta0Rad = double(database.config.moon.theta0Rad);
 angularRateRadS = 2*pi/double(database.config.moon.siderealPeriodSeconds);
 
-% Follow tests/rsoGeneration/testRsoGeneration.m: one smoothly sampled orbital period
+% Use one smoothly sampled orbital period per target
 % per object, rather than overlapping revolutions across the full campaign.
 moonMu = double(database.config.moon.muKm3S2);
 numberOfSamples = 501;
