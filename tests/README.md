@@ -9,6 +9,8 @@ results = runSmokeTests;
 
 "Data-free" means no local DEM, optimization database, or saved study is needed.
 The suite includes graphics and a process-pool check when the toolbox is installed.
+Graphics checks need a display large enough for the full figure canvas; CI uses
+an explicit 2560-by-1600 virtual display.
 GA, PSO, and surrogate tests require Global Optimization Toolbox.
 
 ## Folders

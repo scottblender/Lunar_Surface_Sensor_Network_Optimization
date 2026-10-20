@@ -124,5 +124,7 @@ canvas containment, spacing, connections to targets and box corners, and
 annotation coordinates use a one-screen-pixel tolerance for figure resizing.
 The plotting implementation is unchanged.
 
-The layout test creates an explicit standalone (`WindowStyle="normal"`) figure
-and completes rendering before checking positions, avoiding asynchronous figure-container resizing in recent MATLAB releases.
+The layout test creates a standalone (`WindowStyle="normal"`) figure and
+completes rendering before checking positions. CI also starts a 2560-by-1600
+Xvfb display so the screen does not shrink the requested canvas. This follows
+[the MATLAB Actions virtual-display guidance](https://github.com/matlab-actions/.github#use-virtual-display-on-linux-runner).

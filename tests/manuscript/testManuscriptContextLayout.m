@@ -35,6 +35,8 @@ layoutClpsContext(fig,ax,boxes,leaders,targets,heading,cb,lgd);
 drawnow;
 fig.Units = "points";
 canvas = fig.Position(3:4);
+fprintf("Layout test: screen = %s px; canvas = %s pt.\n", ...
+    mat2str(get(groot,"ScreenSize")),mat2str(canvas));
 % Annotation coordinates can round to a screen pixel when the figure resizes.
 positionTolerance = 72/get(groot,"ScreenPixelsPerInch");
 verifyEqual(testCase,ax.Position(3),ax.Position(4),"AbsTol",1e-8);
