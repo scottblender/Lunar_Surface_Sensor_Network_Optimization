@@ -81,6 +81,6 @@ campaign discovery intentionally remains GA-only.
 partial batches, odd/single-sensor networks, full candidate sets, scout
 incumbent preservation, seed reproducibility, invalid settings, penalty/nonfinite
 failure, and serial/parallel equivalence when the toolbox is available.
-`testOptimizerAdapter.m` and `testNewOptimizerAdapters.m` cover existing methods.
+`tests/optimization/testOptimizerAdapters.m` covers GA, PSO, and surrogate methods.
 `testLunarSurfaceObserver1200Fe.m` is a real-database integration test for all
 four methods; it needs the local production database and solver toolboxes.

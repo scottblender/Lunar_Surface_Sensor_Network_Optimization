@@ -13,4 +13,4 @@ jobs:
           products: Global_Optimization_Toolbox Parallel_Computing_Toolbox
       - uses: matlab-actions/run-command@v2
         with:
-          command: setupProject; results = runtests(["tests/testAnalysisSetup.m", "tests/testABCOptimizer.m", "tests/testOptimizerAdapter.m", "tests/testNewOptimizerAdapters.m", "tests/testRefineDiscreteNetwork.m", "tests/testDiscreteRadiusSensitivity.m", "tests/testAnalyzeSavedDiscreteRadiusStudy.m"]); assertSuccess(results);
+          command: addpath('tests'); results = runSmokeTests;

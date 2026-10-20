@@ -102,7 +102,7 @@ was unavailable in the editing environment, so rendered exports and the
 following data-free graphics regression still require a MATLAB run:
 
 ```matlab
-results = runtests('tests/testManuscriptContextLayout.m');
+results = runtests('tests/manuscript/testManuscriptContextLayout.m');
 assertSuccess(results);
 setupProject;
 generateManuscriptArtifacts;
@@ -173,8 +173,8 @@ same RMS color limits.
 CLPS box padding and outer gaps are reduced; geographic label extents are
 checked against leader segments and other labels before export.
 
-Run `runtests({'tests/testManuscriptContextLayout.m', ...
- 'tests/testManuscriptArtifactLayout.m'})` in MATLAB. These rendering tests
+Run `runtests({'tests/manuscript/testManuscriptContextLayout.m', ...
+ 'tests/manuscript/testManuscriptArtifactLayout.m'})` in MATLAB. These rendering tests
 were added but could not be executed in the editing environment. Static lint
 checks were run; the evaluator retains a pre-existing name/value-style lint
 advisory in its operational-catalog construction.
@@ -238,7 +238,7 @@ panels use 0--100 percent, and multiple sensors in the same bin within one run
 count once. Stored optimized coordinates take precedence over candidate
 indices; longitude wraps into [0,360). Existing EPS filenames are retained.
 
-The earlier trajectory reference was found in `tests/testRsoGeneration.m`.
+The earlier trajectory reference was found in `tests/rsoGeneration/testRsoGeneration.m`.
 Its one-period-per-object presentation, light grid and unenclosed equal-scale
 axes replace the repeated three-day revolutions and forced cube bounds.
 The manuscript version remains MCRF, sampled at 501 points per orbital
