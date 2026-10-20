@@ -1,6 +1,6 @@
 function result = runGA(objectiveFcn,problem,config)
 % RUNGA Preserve production integer-GA callback FE accounting and incumbent.
-% This adapter was extracted from scripts/runGlobalOptimization.m.
+% This adapter was extracted from scripts/optimization/runGlobalOptimization.m.
 % Input/output contract: docs/optimizer_adapter_guide.md.
 
 populationSize = config.populationSize;

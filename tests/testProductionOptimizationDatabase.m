@@ -1,7 +1,7 @@
 %% testProductionOptimizationDatabase
 % Post-build validation of the production optimization database.
 %
-% Run immediately after scripts/buildProductionOptimizationDatabase.m and
+% Run immediately after scripts/database/buildProductionOptimizationDatabase.m and
 % before starting the 12000-FE production campaign. This validates:
 %   - full southern-hemisphere 15-km candidate grid;
 %   - six equal-count ORIGINAL candidate chunks created from the start;
@@ -33,7 +33,7 @@ databaseFile = fullfile(resultsDirectory,"optimization_database.mat");
 
 assert(isfile(databaseFile), ...
     ["Production optimization database was not found. " ...
-     "Run scripts/buildProductionOptimizationDatabase.m first.\n%s"], ...
+     "Run scripts/database/buildProductionOptimizationDatabase.m first.\n%s"], ...
     databaseFile);
 
 databaseData = load(databaseFile,"database");

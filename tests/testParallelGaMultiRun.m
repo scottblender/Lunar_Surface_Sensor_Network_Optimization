@@ -13,7 +13,7 @@ function testSharedPoolAcrossThreeGARuns(testCase)
 testDirectory = fileparts(mfilename("fullpath"));
 projectRoot = fileparts(testDirectory);
 addpath(fullfile(projectRoot,"src"));
-addpath(fullfile(projectRoot,"scripts"));
+addpath(genpath(fullfile(projectRoot,"scripts")));
 rehash path;
 
 % Use the caller's existing process pool. Create one only if absent.

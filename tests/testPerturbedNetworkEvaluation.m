@@ -11,7 +11,7 @@ thisFile = mfilename("fullpath");
 testDirectory = fileparts(thisFile);
 projectRoot = fileparts(testDirectory);
 addpath(fullfile(projectRoot,"src"));
-addpath(fullfile(projectRoot,"scripts"));
+addpath(genpath(fullfile(projectRoot,"scripts")));
 rehash path;
 
 resultsFile = fullfile(projectRoot,"results","optimization_database.mat");

@@ -22,7 +22,7 @@ end
 function setupOnce(testCase)
 root = fileparts(fileparts(mfilename("fullpath")));
 addpath(fullfile(root,"src"));
-addpath(fullfile(root,"scripts"));
+addpath(genpath(fullfile(root,"scripts")));
 testCase.TestData.databaseFile = ...
     fullfile(root,"results","optimization_database.mat");
 end
@@ -44,7 +44,7 @@ assumeTrue(testCase,isfile(databaseFile), ...
 
 % Do not create, close, or restart a parallel pool in an integration smoke
 % test. All solvers use the same serial objective and FE comparison budget.
-algorithms = ["GA","PSO","SURROGATE"];
+algorithms = ["GA","PSO","SURROGATE","ABC"];
 networkSize = 3;
 numberOfRuns = 3;
 budget = 1200;

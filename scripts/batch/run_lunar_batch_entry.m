@@ -37,7 +37,7 @@ try
         'START_CASE must be between 1 and %d.', numberOfCases);
 
     cd(projectRoot);
-    addpath(fullfile(projectRoot,'scripts'));
+    addpath(genpath(fullfile(projectRoot,'scripts')));
     addpath(fullfile(projectRoot,'src'));
 
     % Start one process pool for the complete production study and reuse it.

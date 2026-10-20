@@ -7,7 +7,7 @@ end
 
 function setupOnce(~)
 root = fileparts(fileparts(mfilename("fullpath")));
-addpath(fullfile(root,"scripts"));
+addpath(genpath(fullfile(root,"scripts")));
 addpath(fullfile(root,"src"));
 end
 

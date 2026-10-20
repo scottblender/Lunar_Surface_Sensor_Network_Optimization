@@ -4,7 +4,7 @@ end
 
 function testBothDomainsRetainAllTwentyRsos(testCase)
 root = fileparts(fileparts(mfilename("fullpath")));
-addpath(fullfile(root,"scripts"));
+addpath(genpath(fullfile(root,"scripts")));
 full = repmat([50 10 5 5 5 25],20,1);
 polar = repmat([60 5 5 5 5 20],20,1);
 names = ["Horizon","Terrain","Earth","Sun","Earth + Sun","Accepted"];

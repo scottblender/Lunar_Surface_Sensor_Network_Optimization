@@ -31,7 +31,7 @@ assert(isfolder(sourceDirectory), ...
     "Source directory not found: %s",sourceDirectory);
 
 addpath(sourceDirectory);
-addpath(scriptsDirectory);
+addpath(genpath(scriptsDirectory));
 rehash path;
 
 %% ========================================================================

@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$RunnerFile = Join-Path $ProjectRoot "scripts\runGlobalOptimization.m"
+$RunnerFile = Join-Path $ProjectRoot "scripts\optimization\runGlobalOptimization.m"
 $BatchEntry = Join-Path $ProjectRoot "scripts\batch\run_lunar_batch_entry.m"
 
 if (-not (Test-Path $RunnerFile)) {
