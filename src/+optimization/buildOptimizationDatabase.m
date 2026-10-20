@@ -2094,7 +2094,7 @@ summary.acceptedByObject = ...
 
 end
 
-%% Recursive configuration merge
+%% Angle wrapping
 function wrappedAngle = wrapAngle(angle)
 
 wrappedAngle = ...
