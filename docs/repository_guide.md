@@ -30,7 +30,8 @@ serve database construction/access; `networkObjective`, `coverageObjective`, and
 `evaluatePerturbedNetwork` serve post-search validation. Shared functions remain
 single implementations across analyses.
 
-Tests remain at their existing `tests/` paths, preserving familiar test commands.
+Tests are grouped by analysis under `tests/`; see [the test guide](../tests/README.md).
+Use `addpath("tests"); results = runSmokeTests;` for the data-free suite.
 Batch launchers remain under `scripts/batch/` and now load nested workflow paths.
 The figure/table audit moved from `scripts/FIGURE_TABLE_AUDIT.md` to `docs/`.
 
@@ -58,8 +59,7 @@ production checks remain supported.
 
 ## Migration
 
-After pulling, run `setupProject` (also when opening the existing MATLAB
-project). Replace `addpath("scripts")` in local launchers with `setupProject`, or
+After pulling, run `setupProject` from the repository root. Replace `addpath("scripts")` in local launchers with `setupProject`, or
 use `addpath(genpath(fullfile(projectRoot,"scripts")))` from outside the root.
 Calls by function name are unchanged. Update full script paths:
 
@@ -87,3 +87,44 @@ Scripts start with one summary and use short section or inline comments for
 configuration, data loading, computation, and saving. Preserve scientific units,
 non-obvious numerical choices, and evaluation-budget conventions. Script-test
 section boundaries and executable statements are unchanged by the comment pass.
+
+## Follow-up test and file audit
+
+- Grouped tests into eight analysis folders and updated their root calculations,
+  sibling-script calls, CI paths, documentation, and printed launch commands.
+- Combined `testOptimizerAdapter.m` and `testNewOptimizerAdapters.m` into
+  `tests/optimization/testOptimizerAdapters.m`. Removed the second duplicate
+  rounding/duplicate-penalty test; the common wrapper test still checks that
+  behavior, and both PSO and surrogate end-to-end adapter tests remain.
+- Moved the reference-frame visualization to
+  `scripts/validation/plotLroReferenceFrames.m`. It checked input availability
+  but did not assert frame-transform accuracy, so it belongs with diagnostics.
+- Removed an empty repeated section in the terrain-objective test; retained
+  its assertions. Reused the shared shallow configuration merge in the production
+  result validator instead of keeping another local copy.
+- Isolated scripts called by the post-build runner so their `clear` statements
+  cannot erase the runner's optional scalability setting.
+- Removed `blank_project.prj` and its `resources/project/` metadata. The project
+  registered only Git housekeeping files and default labels, with no scientific
+  file list, startup settings, or paths. `setupProject` is the supported setup.
+- Removed the unreferenced `optimization.brightBodyExclusion` limb-margin helper.
+  Current visibility uses the center-separation model in `celestialVisibility`.
+- Removed the unreferenced historical plotting change log
+  `docs/manuscript_plot_updates.md`; current figure requirements remain in the
+  figure/table audit and plotting source.
+
+The remaining scientific source files have repository callers or tests.
+Standalone analysis entry points and non-overlapping numerical, DEM, terrain,
+and saved-production checks are retained. This audit covers tracked repository
+files; it cannot identify calls in untracked local scripts or external projects.
+
+The context-layout regression now checks the current compact-callout contract:
+canvas containment, spacing, connections to targets and box corners, and
+45-degree leaders. Its obsolete outside-disk assertion was removed; normalized
+annotation coordinates use a one-screen-pixel tolerance for figure resizing.
+The plotting implementation is unchanged.
+
+The layout test creates a standalone (`WindowStyle="normal"`) figure and
+completes rendering before checking positions. CI also starts a 2560-by-1600
+Xvfb display so the screen does not shrink the requested canvas. This follows
+[the MATLAB Actions virtual-display guidance](https://github.com/matlab-actions/.github#use-virtual-display-on-linux-runner).

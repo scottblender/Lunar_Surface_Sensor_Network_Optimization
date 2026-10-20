@@ -227,9 +227,9 @@ To avoid creating any result files during a quick check:
 
 ## Regression tests
 
-    results = runtests("tests/testRefineDiscreteNetwork.m");
-    results2 = runtests("tests/testDiscreteRadiusSensitivity.m");
-    results3 = runtests("tests/testAnalyzeSavedDiscreteRadiusStudy.m");
+    results = runtests("tests/refinement/testRefineDiscreteNetwork.m");
+    results2 = runtests("tests/refinement/testDiscreteRadiusSensitivity.m");
+    results3 = runtests("tests/refinement/testAnalyzeSavedDiscreteRadiusStudy.m");
     disp(results);
     disp(results2);
     disp(results3);

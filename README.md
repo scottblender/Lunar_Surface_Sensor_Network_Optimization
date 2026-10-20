@@ -12,8 +12,8 @@ setupProject;
 ```
 
 This adds `src/` and all analysis folders under `scripts/` to the MATLAB path.
-Run it after opening `blank_project.prj` as well. Data and results are excluded
-from the path. Local DEMs and generated databases are not distributed in Git.
+Data and results are excluded from the path. Local DEMs and generated databases
+are not distributed in Git.
 
 ## Find an analysis
 
@@ -27,7 +27,7 @@ from the path. Local DEMs and generated databases are not distributed in Git.
 | `scripts/domain_comparison/` | Existing full/restricted-domain result products | `generateDomainComparisonProducts`, `loadRestrictedCampaign` |
 | `scripts/shared/` | Campaign loading, plotting styles/layout, and configuration helpers | `loadProductionCampaign`, `publicationPlotStyle` |
 | `scripts/batch/` | PowerShell campaign launcher and MATLAB batch entry | `run_full_optimization_study.ps1` |
-| `tests/` | Focused regressions and data-dependent validation studies | See validation below |
+| `tests/` | Tests grouped by analysis, plus a smoke-suite runner | [Test guide](tests/README.md) |
 | `docs/` | Workflow details, adapter contract, and figure audit | [Repository guide](docs/repository_guide.md) |
 
 Function names are unchanged. Direct script paths have moved; for example:
@@ -95,23 +95,26 @@ The production manuscript loader continues to select the existing GA campaigns.
 
 ## Validation
 
-Small tests that need no local production database:
+Run the data-free function-based smoke suite from the repository root:
 
 ```matlab
-setupProject;
-results = runtests(["tests/testAnalysisSetup.m", ...
-    "tests/testABCOptimizer.m", "tests/testOptimizerAdapter.m", ...
-    "tests/testNewOptimizerAdapters.m", "tests/testRefineDiscreteNetwork.m", ...
-    "tests/testDiscreteRadiusSensitivity.m", ...
-    "tests/testAnalyzeSavedDiscreteRadiusStudy.m"]);
-assertSuccess(results);
+addpath("tests");
+results = runSmokeTests;
 ```
 
-The GitHub MATLAB smoke workflow runs this set. The ABC parallel equivalence
-case skips when Parallel Computing Toolbox is unavailable. Existing physics,
-terrain, production, and real-database integration tests remain in `tests/`;
-some are standalone scripts and require local DEM/database files. In particular,
-`testLunarSurfaceObserver1200Fe.m` now includes ABC with the other three methods.
+This is the same suite used by GitHub Actions. It includes optimizer, refinement,
+sampling, setup, and manuscript regressions. Global Optimization Toolbox is needed
+for GA/PSO/SURROGATE; the ABC parallel case needs Parallel Computing Toolbox.
+
+Tests are grouped under `tests/optimization/`, `refinement/`, `database/`,
+`visibility/`, `estimation/`, `rsoGeneration/`, `manuscript/`, and `setup/`.
+See [the test guide](tests/README.md) for individual commands and required inputs.
+Legacy script-based checks run with `run`, in their own workspace; do not run
+the entire tests tree recursively with `runtests`.
+
+The four-optimizer real-database trial is
+`tests/optimization/testLunarSurfaceObserver1200Fe.m`. It requires the local
+production database and solver toolboxes.
 
 ## Data and manuscript outputs
 
