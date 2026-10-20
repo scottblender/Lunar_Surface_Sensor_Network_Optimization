@@ -1,28 +1,9 @@
-%% testProductionConvergence12000Fe
-% Quick post-run convergence and sensor-placement diagnostic for the
-% 12000-FE production campaign.
-%
-% This script does NOT rerun the optimizer and produces no figures. It finds
-% the newest complete 12000-FE / 20-run production study for every objective
-% and network size, verifies the saved histories, then reports:
-%
-%   1) convergence consistency and terminal slopes,
-%   2) exact-network and exact-site diversity,
-%   3) repeated/common sensor locations,
-%   4) latitude-band preferences,
-%   5) whether solutions accumulate at either latitude-domain boundary, and
-%   6) longitude separation within the optimized networks.
-%
-% "Consistent plateau" is a practical diagnostic, not proof of the global
-% optimum. Thresholds are explicit below.
+%% Check convergence and sensor placement in saved 12000-FE studies.
 
 clear;
 clc;
 
-%% ========================================================================
-%  Project paths and production definition
-%  ========================================================================
-
+%% Project paths and production definition
 testDirectory = fileparts(mfilename("fullpath"));
 projectRoot = fileparts(testDirectory);
 runRoot = fullfile(projectRoot,"results","optimization_runs");
@@ -42,20 +23,11 @@ studyName = "lunar_surface_production_optimization";
 
 latitudeDomainDeg = [-90,0];
 
-%% ========================================================================
-%  Diagnostic settings
-%  ========================================================================
-
+%% Diagnostic settings
 % Linear terminal slope is fitted over the final quarter of each history.
 terminalWindowFraction = 0.25;
 
-% Convergence consistency heuristic:
-%   - 90% of runs must have a terminal slope magnitude below this fraction
-%     of their total optimization gain per 1000 FE,
-%   - 90% of runs must obtain no more than this fraction of their total gain
-%     during the final quarter of the FE budget,
-%   - final run-to-run standard deviation must be small relative to the mean
-%     optimization gain.
+% Require 90% of runs to meet the configured terminal-slope and late-gain limits.
 maximumP90AbsNormalizedSlopePctPer1000Fe = 0.50;
 maximumP90LateImprovementPct = 5.0;
 maximumFinalStdToMeanGainPct = 5.0;
@@ -68,10 +40,7 @@ numberOfLatitudeBandsToPrint = 3;
 
 writeCsv = true;
 
-%% ========================================================================
-%  Discover completed studies
-%  ========================================================================
-
+%% Discover completed studies
 summaryFiles = dir(fullfile(runRoot,"*","study_summary.mat"));
 
 assert(~isempty(summaryFiles), ...
@@ -82,10 +51,7 @@ summaryFiles = summaryFiles(order);
 
 numberOfCases = numel(networkSizes)*numel(objectiveModes);
 
-%% ========================================================================
-%  Allocate convergence summary
-%  ========================================================================
-
+%% Allocate convergence summary
 objectiveColumn = strings(numberOfCases,1);
 networkSizeColumn = zeros(numberOfCases,1);
 
@@ -102,10 +68,7 @@ finalStdToMeanGainPct = zeros(numberOfCases,1);
 consistentPlateau = false(numberOfCases,1);
 convergenceDiagnostic = strings(numberOfCases,1);
 
-%% ========================================================================
-%  Allocate placement summary
-%  ========================================================================
-
+%% Allocate placement summary
 uniqueNetworkCount = zeros(numberOfCases,1);
 mostRepeatedNetworkRuns = zeros(numberOfCases,1);
 
@@ -134,10 +97,7 @@ studyFileColumn = strings(numberOfCases,1);
 commonSiteTables = cell(numberOfCases,1);
 latitudeBandTables = cell(numberOfCases,1);
 
-%% ========================================================================
-%  Process all eight production cases
-%  ========================================================================
-
+%% Process all eight production cases
 row = 0;
 
 for objectiveIndex = 1:numel(objectiveModes)
@@ -278,10 +238,7 @@ for objectiveIndex = 1:numel(objectiveModes)
                 meanPairwiseCircularSeparationDeg(sensorLongitudesDeg);
         end
 
-        %% ----------------------------------------------------------------
-        %  Convergence metrics
-        %  ----------------------------------------------------------------
-
+        %% Convergence metrics
         meanHistory = mean(historyMatrix,2);
         meanTerminalCoefficients = ...
             polyfit(terminalFe,meanHistory(terminalMask),1);
@@ -320,10 +277,7 @@ for objectiveIndex = 1:numel(objectiveModes)
             maximumP90LateImprovementPct, ...
             maximumFinalStdToMeanGainPct);
 
-        %% ----------------------------------------------------------------
-        %  Exact network/site diversity
-        %  ----------------------------------------------------------------
-
+        %% Exact network/site diversity
         [~,~,networkGroup] = ...
             unique(sensorIndexMatrix,"rows");
 
@@ -407,10 +361,7 @@ for objectiveIndex = 1:numel(objectiveModes)
 
         commonSiteTables{row} = commonSiteTable;
 
-        %% ----------------------------------------------------------------
-        %  Boundary and geographic-distribution diagnostics
-        %  ----------------------------------------------------------------
-
+        %% Boundary and geographic-distribution diagnostics
         latitudeDistanceToBoundary = min( ...
             abs(allLatitudesDeg-latitudeDomainDeg(1)), ...
             abs(allLatitudesDeg-latitudeDomainDeg(2)));
@@ -449,10 +400,7 @@ for objectiveIndex = 1:numel(objectiveModes)
         caseMeanLongitudeSeparation = ...
             mean(runMeanPairwiseLongitudeSeparation);
 
-        %% ----------------------------------------------------------------
-        %  Latitude-band frequency
-        %  ----------------------------------------------------------------
-
+        %% Latitude-band frequency
         [latitudeBandTable,caseTopBand,caseTopBandPct] = ...
             buildLatitudeBandTable( ...
                 allLatitudesDeg, ...
@@ -464,10 +412,7 @@ for objectiveIndex = 1:numel(objectiveModes)
 
         latitudeBandTables{row} = latitudeBandTable;
 
-        %% ----------------------------------------------------------------
-        %  Store summaries
-        %  ----------------------------------------------------------------
-
+        %% Store summaries
         objectiveColumn(row) = objectiveMode;
         networkSizeColumn(row) = networkSize;
 
@@ -551,10 +496,7 @@ for objectiveIndex = 1:numel(objectiveModes)
     end
 end
 
-%% ========================================================================
-%  Compact convergence table
-%  ========================================================================
-
+%% Compact convergence table
 convergenceTable = table( ...
     objectiveColumn, ...
     networkSizeColumn, ...
@@ -596,10 +538,7 @@ fprintf("============================================================\n\n");
 
 disp(convergenceTable);
 
-%% ========================================================================
-%  Compact sensor-placement table
-%  ========================================================================
-
+%% Compact sensor-placement table
 placementTable = table( ...
     objectiveColumn, ...
     networkSizeColumn, ...
@@ -652,10 +591,7 @@ fprintf("============================================================\n\n");
 
 disp(placementTable);
 
-%% ========================================================================
-%  Most common exact sites by case
-%  ========================================================================
-
+%% Most common exact sites by case
 fprintf("\n");
 fprintf("============================================================\n");
 fprintf("Most common exact candidate sites\n");
@@ -670,10 +606,7 @@ for caseIndex = 1:numberOfCases
     disp(commonSiteTables{caseIndex});
 end
 
-%% ========================================================================
-%  Most common latitude bands by case
-%  ========================================================================
-
+%% Most common latitude bands by case
 fprintf("\n");
 fprintf("============================================================\n");
 fprintf("Most common 5-deg latitude bands\n");
@@ -688,10 +621,7 @@ for caseIndex = 1:numberOfCases
     disp(latitudeBandTables{caseIndex});
 end
 
-%% ========================================================================
-%  Save tabular diagnostics
-%  ========================================================================
-
+%% Save tabular diagnostics
 if writeCsv
 
     convergenceCsv = fullfile( ...
@@ -742,10 +672,7 @@ fprintf("  indicates whether selected sensors are longitudinally distributed.\n"
 fprintf("\n");
 fprintf("testProductionConvergence12000Fe passed all structural checks.\n");
 
-%% =========================================================================
-%  Local helpers
-%  =========================================================================
-
+%% Local helpers
 function [studyState,summaryFile] = findStudy( ...
     summaryFiles, ...
     networkSize, ...

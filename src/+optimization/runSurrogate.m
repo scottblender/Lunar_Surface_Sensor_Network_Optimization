@@ -1,7 +1,14 @@
 
 function result = runSurrogate(objectiveFcn,problem,config)
-% RUNSURROGATE Mixed-integer surrogate optimization adapter.
-% Tracks best-so-far objective and callback function evaluations.
+% RUNSURROGATE - Run mixed-integer surrogate optimization for sensor selection.
+%
+% Inputs:
+%   - objectiveFcn - Scalar network objective.
+%   - problem - Integer bounds and linear constraints.
+%   - config - FE budget, parallel flag, and display setting.
+%
+% Outputs:
+%   - result - Feasible incumbent, callback history, and raw solver FE count.
 
 budget = config.functionEvaluationBudget;
 

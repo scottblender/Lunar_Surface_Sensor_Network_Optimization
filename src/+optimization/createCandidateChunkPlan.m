@@ -1,11 +1,6 @@
 function chunkMetadata = createCandidateChunkPlan( ...
     numberOfCandidates,numberOfChunks,chunkDirectory)
-% CREATECANDIDATECHUNKPLAN Partition the global candidate list equally.
-%
-% Chunks are contiguous in the original global candidate ordering and differ
-% in size by at most one candidate. The partition is created immediately
-% after the candidate grid so every large candidate-dependent production
-% quantity can be built and saved chunk-by-chunk.
+% CREATECANDIDATECHUNKPLAN - Partition the global candidate list equally.
 
 arguments
     numberOfCandidates (1,1) double {mustBeInteger,mustBePositive}

@@ -1,5 +1,4 @@
-%% testNetworkCovariance
-% Test covariance-only network evaluation and both optimization objectives.
+%% Test covariance-only network evaluation and both optimization objectives.
 
 clear;
 close all;

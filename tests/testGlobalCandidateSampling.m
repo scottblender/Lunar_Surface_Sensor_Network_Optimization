@@ -1,10 +1,11 @@
 function tests = testGlobalCandidateSampling
+% TESTGLOBALCANDIDATESAMPLING - Test uniform candidate sampling and seed reproducibility.
 tests = functiontests(localfunctions);
 end
 
 function setupOnce(~)
 root = fileparts(fileparts(mfilename("fullpath")));
-addpath(fullfile(root,"scripts"));
+addpath(genpath(fullfile(root,"scripts")));
 end
 
 function testUniqueGlobalSamplesAndReproducibility(testCase)

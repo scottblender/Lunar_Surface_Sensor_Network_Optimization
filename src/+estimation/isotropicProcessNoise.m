@@ -1,19 +1,13 @@
 function processNoise = isotropicProcessNoise( ...
     timeStep, accelerationNoisePsd)
-% ISOTROPICPROCESSNOISE Discretize isotropic white acceleration noise.
+% ISOTROPICPROCESSNOISE - Discretize isotropic white acceleration noise.
 %
 % Inputs:
-%   timeStep            - EKF propagation interval, s
-%   accelerationNoisePsd- Continuous acceleration-noise PSD, km^2/s^3
+%   - timeStep - EKF propagation interval, s
+%   - accelerationNoisePsd - Continuous acceleration-noise PSD, km^2/s^3
 %
-% Output:
-%   processNoise - 6x6 discrete process-noise covariance
-%
-% State ordering:
-%   state = [position; velocity]
-%
-% The continuous acceleration-noise model is:
-%   E[aNoise(t)*aNoise(tau)'] = accelerationNoisePsd*I*delta(t-tau)
+% Outputs:
+%   - processNoise - 6x6 discrete process-noise covariance
 
 arguments
     timeStep (1,1) double {mustBePositive}

@@ -1,10 +1,11 @@
 function tests = testManuscriptPlotUpdates
+% TESTMANUSCRIPTPLOTUPDATES - Test figure typography, export bounds, and shared labels.
 tests = functiontests(localfunctions);
 end
 
 function setupOnce(~)
 root = fileparts(fileparts(mfilename("fullpath")));
-addpath(fullfile(root,"scripts"));
+addpath(genpath(fullfile(root,"scripts")));
 end
 
 function testFinalSizeTypography(testCase)

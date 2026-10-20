@@ -1,4 +1,4 @@
-# ---------------- run_full_optimization_study.ps1 ----------------
+# Launch the production MATLAB campaign and collect its logs.
 param(
     [string]$MatlabExe = "",
     [int]$EvalBudget = 12000,
@@ -10,8 +10,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Resolve the project and MATLAB executable.
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$RunnerFile = Join-Path $ProjectRoot "scripts\runGlobalOptimization.m"
+$RunnerFile = Join-Path $ProjectRoot "scripts\optimization\runGlobalOptimization.m"
 $BatchEntry = Join-Path $ProjectRoot "scripts\batch\run_lunar_batch_entry.m"
 
 if (-not (Test-Path $RunnerFile)) {
@@ -34,6 +35,7 @@ if (-not (Test-Path $MatlabExe)) {
     throw "Cannot find matlab.exe. Pass -MatlabExe or add MATLAB to PATH."
 }
 
+# Define the search cases and evaluation budget.
 $PopulationSize = 60
 $NetworkSizes = @(3, 5, 7, 10)
 $Objectives = @("information", "coverage")
@@ -69,6 +71,7 @@ $consoleLog = Join-Path $LogRoot "full_study.log"
 $BatchEntryMatlab = $BatchEntry.Replace("'", "''")
 $batchCommand = "run('$BatchEntryMatlab')"
 
+# Pass configuration to the MATLAB batch entry.
 $env:PROJECT_ROOT = $ProjectRoot
 $env:EVAL_BUDGET = "$EvalBudget"
 $env:POPULATION_SIZE = "$PopulationSize"
@@ -94,6 +97,7 @@ Write-Host ""
 Write-Host "Launching MATLAB using the same Start-Process -Wait pattern as the cislunar batch scripts..."
 Write-Host "MATLAB output is written to the batch log while the study runs."
 
+# Wait for MATLAB, combine its output streams, and report failures.
 $StudyTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
 Push-Location $ProjectRoot

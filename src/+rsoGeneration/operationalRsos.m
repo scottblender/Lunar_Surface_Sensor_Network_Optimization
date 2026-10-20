@@ -1,24 +1,16 @@
 function [initialStatesMoonInertial,rsoCatalog] = ...
     operationalRsos(moonRadius,moonMu)
-% OPERATIONALRSOS Return representative operational lunar spacecraft.
-%
-% Included spacecraft:
-%   1. LRO
-%   2. Chandrayaan-1
-%   3. Danuri
-%   4. Queqiao-2
+% OPERATIONALRSOS - Return representative operational lunar spacecraft.
 %
 % Inputs:
-%   moonRadius - Lunar reference radius, km
-%   moonMu     - Lunar gravitational parameter, km^3/s^2
+%   - moonRadius - Lunar reference radius, km
+%   - moonMu - Lunar gravitational parameter, km^3/s^2
 %
 % Outputs:
-%   initialStatesMoonInertial - 6x4 representative MCI states
-%   rsoCatalog                - Four-row orbital-element catalog
+%   - initialStatesMoonInertial - 6x4 representative MCI states
+%   - rsoCatalog - Four-row orbital-element catalog
 %
-% These are representative orbit geometries, not epoch-specific
-% operational ephemerides. The angular phases are selected to provide
-% different initial geometries in the simulation.
+% LRO, Chandrayaan-1, Danuri, and Queqiao-2 use representative orbits.
 
 arguments
     moonRadius (1,1) double {mustBePositive} = 1737.4
@@ -182,7 +174,7 @@ function state = keplerianToState( ...
     argumentOfPeriapsis, ...
     trueAnomaly, ...
     moonMu)
-% KEPLERIANTOSTATE Convert classical elements to an MCI state.
+% KEPLERIANTOSTATE - Convert classical elements to an MCI state.
 
 semilatusRectum = ...
     semiMajorAxis*(1 - eccentricity^2);

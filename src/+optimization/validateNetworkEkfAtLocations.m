@@ -1,16 +1,8 @@
 function validation = validateNetworkEkfAtLocations( ...
     database,sensorLatitudesRad,sensorLongitudesRad, ...
     filteredAvailability,userConfig)
-% VALIDATENETWORDEKFATLOCATIONS Run EKF validation at arbitrary surface sites.
-%
-% This wrapper preserves the production validateNetworkEkf implementation
-% while allowing optimized sites that are not members of the current
-% candidate grid. The supplied locations become a temporary local candidate
-% set and the supplied filtered-visibility gate is used directly.
-%
-% Because the temporary database contains exactly the selected network,
-% equal-size network comparisons use the same deterministic measurement-noise
-% realization for a common measurementNoiseSeed.
+% VALIDATENETWORKEKFATLOCATIONS - Run the network EKF at supplied surface coordinates.
+% Equal-size networks share the measurement-noise realization for a common seed.
 
 arguments
     database (1,1) struct

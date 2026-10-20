@@ -1,11 +1,12 @@
 function tests = testAnalyzeSavedDiscreteRadiusStudy
-% No optimization, production database, or graphics dependencies.
+% TESTANALYZESAVEDDISCRETERADIUSSTUDY - Test saved radius-study metrics and sensor displacements.
+
 tests = functiontests(localfunctions);
 end
 
 function setupOnce(~)
 root = fileparts(fileparts(mfilename("fullpath")));
-addpath(fullfile(root,"scripts"));
+addpath(genpath(fullfile(root,"scripts")));
 end
 
 function testRecoveredEtaAndPhysicalMovements(testCase)

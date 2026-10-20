@@ -1,13 +1,4 @@
-%% testMultiRsoFilteredVisibility
-% Test the fully filtered terrain and celestial visibility database for
-% multiple selenocentric RSOs.
-%
-% Earth and Sun are screened using one center-referenced minimum angular
-% separation. For each body, the effective threshold is the larger of the
-% configured minimum separation and the physical occultation angle. Thus a
-% zero configured angle degenerates exactly to physical occultation.
-%
-% Lunar obstruction is handled only by the surface terrain/horizon gate.
+%% Test terrain and celestial visibility for multiple targets.
 
 clear;
 close all;
@@ -183,8 +174,7 @@ for objectIndex = 1:numberOfObjects
 end
 
 %% Generic-time Earth and Sun histories in MCI
-% These phases define a repeatable geometry test. Replace these histories
-% with epoch-dependent ephemerides for a dated mission analysis.
+% Use repeatable Earth/Sun phases; mission analysis needs dated ephemerides.
 
 earthPhase0 = deg2rad(20);
 sunPhase0 = deg2rad(145);

@@ -1,22 +1,18 @@
 function [dem,triaxialModel] = loadTriaxialLunarDem( ...
     filePath,moonRadiusKm,rowStride,columnStride)
-% LOADTRIAXIALLUNARDEM Load a workflow-compatible global lunar DEM.
+% LOADTRIAXIALLUNARDEM - Load a workflow-compatible global lunar DEM.
 %
-% Supported MAT-file representations are:
-%   1. A numeric global 2:1 raster named DEM. The legacy translated
-%      triaxial-ellipsoid characterization is performed for this format.
-%   2. A griddedInterpolant named DEM or, if DEM is absent, the first
-%      griddedInterpolant stored in the MAT file. The interpolant is
-%      normalized to the current workflow convention
+% Inputs:
+%   - filePath - MAT file containing a numeric DEM or griddedInterpolant.
+%   - moonRadiusKm - Lunar reference radius (km).
+%   - rowStride, columnStride - Raster sampling strides for ellipsoid fitting.
 %
-%          elevationKm = dem(latitudeRad,longitudeRad)
+% Outputs:
+%   - dem - Interpolant queried as dem(latitudeRad,longitudeRad), returning km.
+%   - triaxialModel - Reference-surface fit and DEM metadata.
 %
-%      with increasing radian grid vectors, exact +/-90 deg latitude
-%      endpoints, and an exact periodic 0/360 deg longitude seam.
-%
-% This keeps referenceFrames.topographic, terrain-horizon generation,
-% RA/Dec measurements, EKF validation, and optimization database
-% construction compatible with either DEM storage format.
+% Notes:
+%   - Longitude is periodic; the latitude grid reaches both poles.
 
 arguments
     filePath (1,1) string
@@ -32,10 +28,7 @@ fileVariables = whos("-file",filePath);
 variableNames = string({fileVariables.name});
 variableClasses = string({fileVariables.class});
 
-%% ========================================================================
-%  Direct griddedInterpolant input
-%  ========================================================================
-
+%% Direct griddedInterpolant input
 interpolantIndex = find(variableClasses == "griddedInterpolant",1,"first");
 
 if any(variableNames == "DEM")
@@ -161,10 +154,7 @@ if ~isempty(interpolantIndex)
     return
 end
 
-%% ========================================================================
-%  Legacy numeric raster input
-%  ========================================================================
-
+%% Legacy numeric raster input
 assert(any(variableNames == "DEM"), ...
     [ ...
     "The lunar DEM MAT file must contain either a griddedInterpolant " ...
@@ -193,10 +183,7 @@ longitudeSpacingDeg = 360/numberOfLongitudes;
 assert(abs(latitudeSpacingDeg-longitudeSpacingDeg) < 1e-12, ...
     "The DEM does not have equal angular latitude/longitude spacing.");
 
-%% ========================================================================
-%  Cell-center coordinate vectors
-%  ========================================================================
-
+%% Cell-center coordinate vectors
 latitudeCentersDegDescending = ...
     90 - latitudeSpacingDeg/2 - ...
     (0:numberOfLatitudes-1).' * latitudeSpacingDeg;
@@ -208,10 +195,7 @@ longitudeCentersDeg = ...
 latitudeCentersRadDescending = deg2rad(latitudeCentersDegDescending);
 longitudeCentersRad = deg2rad(longitudeCentersDeg);
 
-%% ========================================================================
-%  Fit translated triaxial ellipsoid
-%  ========================================================================
-
+%% Fit translated triaxial ellipsoid
 triaxialModel = ...
     digitalElevationModel.fitTriaxialEllipsoid( ...
         rawElevationKm, ...
@@ -248,10 +232,7 @@ triaxialModel.rawMaximumLatitudeDeg = ...
 triaxialModel.rawMaximumLongitudeDeg = ...
     longitudeCentersDeg(maximumColumn);
 
-%% ========================================================================
-%  Build workflow-compatible interpolant
-%  ========================================================================
-
+%% Build workflow-compatible interpolant
 elevationGrid = flipud(rawElevationKm);
 latitudeCentersDegAscending = flipud(latitudeCentersDegDescending);
 

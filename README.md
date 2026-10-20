@@ -1,213 +1,131 @@
-iod.gaussAnglesOnly
-iod.refineAnglesOnly
-```
+# Lunar Surface Sensor Network Optimization
 
-The pipeline uses a Gauss angles-only estimate followed by optional nonlinear
-least-squares refinement using the available RA/Dec observations.
+MATLAB tools for selecting lunar surface sensor sites using terrain-aware
+visibility, RA/Dec measurements, and coverage or estimation objectives.
 
-`iod.refineAnglesOnly` requires MATLAB Optimization Toolbox.
+## Start here
 
-## Estimation
-
-State estimation and covariance analysis are provided by
+From the repository root in MATLAB:
 
 ```matlab
-estimation.lunarSurfaceEkf
-estimation.propagateNetworkCovariance
-estimation.isotropicProcessNoise
+setupProject;
 ```
 
-The EKF uses the lunar two-body dynamics and surface RA/Dec measurement model.
-The covariance-only propagation path is useful when evaluating many candidate
-sensor networks without generating a full noisy measurement realization for
-every network.
+This adds `src/` and all analysis folders under `scripts/` to the MATLAB path.
+Run it after opening `blank_project.prj` as well. Data and results are excluded
+from the path. Local DEMs and generated databases are not distributed in Git.
 
-## Network objectives
+## Find an analysis
 
-The optimization package currently provides two principal network metrics:
+| Folder | Purpose | Main entry points |
+| --- | --- | --- |
+| `scripts/database/` | Build frozen tracking/visibility databases and sample candidate sites | `buildProductionOptimizationDatabase.m`, `sampleGlobalCandidateNetwork` |
+| `scripts/optimization/` | Global search, pilot studies, and optimizer comparisons | `runGlobalOptimization`, `runOptimizationPilot`, `runOptimizerComparisonTrial` |
+| `scripts/refinement/` | Post-process saved networks and study geographic neighborhoods | `runDiscreteRadiusStudy.m`, `runDiscreteRadiusSensitivity`, `analyzeSavedDiscreteRadiusStudy`, `evaluateDiscreteNeighborRobustness` |
+| `scripts/validation/` | EKF, Monte Carlo, operational RSO, and DEM checks | `validateOptimizationStudy`, `runMonteCarloRobustness`, `evaluateOperationalRsoNetworks`, `evaluateDemResolutionValidation` |
+| `scripts/manuscript/` | Figures, tables, schematics, and export validation | `generateManuscriptArtifacts`, `exportQuadChartFigures` |
+| `scripts/domain_comparison/` | Existing full/restricted-domain result products | `generateDomainComparisonProducts`, `loadRestrictedCampaign` |
+| `scripts/shared/` | Campaign loading, plotting styles/layout, and configuration helpers | `loadProductionCampaign`, `publicationPlotStyle` |
+| `scripts/batch/` | PowerShell campaign launcher and MATLAB batch entry | `run_full_optimization_study.ps1` |
+| `tests/` | Focused regressions and data-dependent validation studies | See validation below |
+| `docs/` | Workflow details, adapter contract, and figure audit | [Repository guide](docs/repository_guide.md) |
+
+Function names are unchanged. Direct script paths have moved; for example:
 
 ```matlab
-optimization.coverageObjective
-optimization.informationObjective
+run("scripts/database/buildProductionOptimizationDatabase.m");
+run("scripts/refinement/runDiscreteRadiusStudy.m");
 ```
 
-`coverageObjective` evaluates measurement availability across the selected
-surface sensors, observation epochs, and RSOs.
+## Shared scientific functions
 
-`informationObjective` evaluates estimation performance using the propagated
-network covariance/information content.
-
-Expensive tracking geometry can first be assembled using
-
-```matlab
-optimization.precomputeTrackingData
-```
-
-so candidate networks can reuse common propagated target and visibility data.
-
-The production optimizer is driven by `scripts/runGlobalOptimization.m`,
-with the full multi-case batch campaign available under `scripts/batch/`.
-
-## Getting started
-
-Clone the repository and open
-
-```text
-blank_project.prj
-```
-
-in MATLAB.
-
-If working without the MATLAB project, add the source folder manually:
-
-```matlab
-addpath("src");
-```
-
-Local DEM and generated data should be placed under
-
-```text
-data/
-```
-
-The production manuscript figures resolve the processed lunar DEMs from
-`data/Synthetic_Lunar_DEM.mat` and `data/Full_Resolution_DEM.mat`, as
-appropriate. The repository intentionally does not track local contents of
-`data/` or `results/`.
-
-## Recommended validation sequence
-
-The repository contains focused regression tests for each major component.
-A useful validation sequence is:
-
-```matlab
-run("tests/testLroReferenceFrames.m");
-run("tests/testRsoGeneration.m");
-
-run("tests/testTerrainHorizonGeometry.m");
-run("tests/testLroTerrainAwareLos.m");
-
-run("tests/testCelestialVisibility.m");
-run("tests/testMultiRsoFilteredVisibility.m");
-
-run("tests/testLroAnglesOnlyEKF.m");
-run("tests/testNetworkCovariance.m");
-
-run("tests/testLroCandidateNetwork.m");
-run("tests/testTerrainAwareNetworkObjectives.m");
-run("tests/testMultiRsoTerrainAwareCandidateNetwork.m");
-```
-
-The focused celestial-visibility regression verifies:
-
-- zero-angle equivalence with physical occultation,
-- monotonic behavior as the configured keep-out angle increases,
-- configured-boundary behavior, and
-- consistent Earth/Sun screening.
-
-Terrain tests separately validate the local horizon geometry and
-terrain-aware line-of-sight gate.
-
-## Manuscript figure and table generation
-
-The manuscript plotting pipeline is explicitly scoped to the final production
-campaigns so historical results are not mixed into the paper:
-
-- full southern-hemisphere campaign: `20260918` and `20260919`
-- restricted south-polar campaign: `20260915`
-
-Generate all manuscript figures and tables with:
-
-```matlab
-products = generateManuscriptArtifacts(struct( ...
-    "clearOutputDirectory",true));
-```
-
-Outputs are written to:
-
-```text
-results/manuscript_artifacts/
-```
-
-The driver prints the exact study-summary files selected for both domains.
-
-The Monte Carlo robustness study must be rerun whenever the nominal optimized
-networks change. The final MC runner is scoped to the same 20260918/20260919
-full-domain campaign:
-
-```matlab
-mcConfig = struct();
-mcConfig.numberOfMonteCarloRuns = 1000;
-mcConfig.optimizationCampaignDates = ["20260918","20260919"];
-mcConfig.runPlotsAfterStudy = true;
-studyState = runMonteCarloRobustness(mcConfig);
-```
-
-After the MC run completes, rerun `generateManuscriptArtifacts` to refresh the
-complete paper artifact set.
-
-Manuscript plotting conventions: no standard plot grid lines; legends are
-outside the upper-right of the plot area when needed; the detailed CLPS
-geographic figure is the exception and keeps its original centered legend.
-
-A complete audit is documented in `scripts/FIGURE_TABLE_AUDIT.md`.
-
-## Data and outputs
-
-| Content | Default location |
+| MATLAB package in `src/` | Responsibility |
 | --- | --- |
-| Lunar DEM and local study inputs | `data/` |
-| Generated results | `results/` |
-| Manuscript plotting scripts | `scripts/` |
-| MATLAB package source | `src/` |
-| Regression and validation scripts | `tests/` |
+| `+digitalElevationModel` | DEM loading, ellipsoid fitting, candidate grids, terrain horizons |
+| `+orbitDynamics` | Lunar two-body propagation, Jacobian, and state transition matrix |
+| `+referenceFrames` | Moon-rotating and topographic frames |
+| `+constraints` | Terrain-independent body occultation and Earth/Sun exclusions |
+| `+measurements` | Surface RA/Dec observations and Jacobians |
+| `+rsoGeneration` | Operational and element-distributed target populations |
+| `+iod` | Gauss angles-only IOD and optional nonlinear refinement |
+| `+estimation` | EKF and covariance propagation |
+| `+optimization` | Frozen databases, terrain-aware visibility, network objectives, solver adapters, and discrete refinement |
 
-Both `data/` and `results/` retain tracked `.gitkeep` files while their local
-contents are excluded from version control.
+These packages support multiple analyses, so they remain shared rather than
+being copied into individual workflow folders.
 
-Generated MATLAB cache/code-generation files and exported `.eps`, `.pdf`, and
-`.png` graphics are also excluded from version control.
+## Run an optimizer
 
-## Current development status
+```matlab
+setupProject;
+config = struct();
+config.optimizer = "ABC";  % "GA", "SURROGATE", "PSO", or "ABC"
+config.networkSize = 3;
+config.objectiveMode = "information"; % or "coverage"
+config.functionEvaluationBudget = 1200;
+config.populationSize = 60;
+config.abcLimit = 20;
+config.numberOfRuns = 1;
+config.useParallel = false;
+config.studyName = "lunar_optimizer_comparison";
+studyState = runGlobalOptimization(config);
+```
 
-The current implementation provides the major physical and estimation
-components needed for lunar surface sensor-network optimization:
+All methods use the same frozen `results/optimization_database.mat`, objective,
+seed sequence, result format, and post-search diagnostic evaluation. GA, PSO,
+and SURROGATE require Global Optimization Toolbox. ABC needs no optimizer
+toolbox for serial execution; parallel evaluation needs Parallel Computing
+Toolbox. `iod.refineAnglesOnly` requires Optimization Toolbox.
 
-- Moon-centered orbit propagation
-- Moon-rotating and topographic reference frames
-- Terrain-derived candidate sites
-- Terrain-horizon visibility screening
-- Unified Earth/Sun keep-out screening
-- Surface RA/Dec measurements and Jacobians
-- Angles-only IOD
-- Extended Kalman filtering
-- Covariance propagation
-- Operational and generated RSO populations
-- Multi-RSO visibility precomputation
-- Coverage and information objectives
-- Regression tests for the major modeling components
+ABC adapts the employed/onlooker/scout structure from the
+[cislunar optimizer repository](https://github.com/scottblender/Gradient-Free-Optimization-for-Cislunar-SDA-2/blob/e0ccf9e1b18409f74348c42bf559efdfb2852103/src/optimization/abc_discrete.m)
+to sorted, distinct sensor-site IDs. `populationSize` is the total even colony
+size; half are food sources. `abcLimit` controls scout replacement after failed
+improvement attempts. The FE budget must cover the initial food sources and
+may end partway through a later phase. Each batch is truncated before evaluation,
+so ABC's actual and reported search FEs both equal the requested budget.
 
-The production workflow uses these components to perform discrete GA
-sensor-site optimization over the precomputed candidate network and to
-generate the manuscript figures, tables, and validation products from the
-completed campaign.
+GA/PSO/SURROGATE retain their existing callback-based FE accounting and separate
+raw solver counts. See the [adapter guide](docs/optimizer_adapter_guide.md) before
+making strict equal-budget comparisons.
 
-## Optimizer adapters (GA, surrogateopt, PSO)
+`runOptimizerComparisonTrial("information")` runs GA, SURROGATE, PSO, and ABC
+with three seeds and 1200 FE per method/run, using one shared process pool.
+The production manuscript loader continues to select the existing GA campaigns.
 
-The GA implementation now lives in `src/+optimization/runGA.m` and is
-called through `optimization.runOptimizer` by the unchanged production
-entry point `scripts/runGlobalOptimization.m`. The new SURROGATE and PSO
-choices are reserved for separate adapter functions; these have not yet
-been implemented. See [the optimizer adapter guide](docs/optimizer_adapter_guide.md)
-for inputs, required outputs, equal-FE accounting, round-and-penalize PSO
-behavior, tests, and Ava's branch workflow.
+## Validation
 
-FE accounting: all optimizers use callback FE checkpoints, capped at
-`config.functionEvaluationBudget`, for the comparison history and
-`runState.searchFunctionEvaluations`. The separate
-`runState.solverFunctionEvaluations` stores MATLAB's raw
-`output.funccount`. Thus the original GA behavior of 12,000 callback FE
-versus 12,001 raw solver FE is supported without error. Runs that stop
-early retain their actual final callback checkpoint. For strict at-budget
-comparisons, check whether a parallel solver evaluated additional points
-before its last callback.
+Small tests that need no local production database:
+
+```matlab
+setupProject;
+results = runtests(["tests/testAnalysisSetup.m", ...
+    "tests/testABCOptimizer.m", "tests/testOptimizerAdapter.m", ...
+    "tests/testNewOptimizerAdapters.m", "tests/testRefineDiscreteNetwork.m", ...
+    "tests/testDiscreteRadiusSensitivity.m", ...
+    "tests/testAnalyzeSavedDiscreteRadiusStudy.m"]);
+assertSuccess(results);
+```
+
+The GitHub MATLAB smoke workflow runs this set. The ABC parallel equivalence
+case skips when Parallel Computing Toolbox is unavailable. Existing physics,
+terrain, production, and real-database integration tests remain in `tests/`;
+some are standalone scripts and require local DEM/database files. In particular,
+`testLunarSurfaceObserver1200Fe.m` now includes ABC with the other three methods.
+
+## Data and manuscript outputs
+
+Place local DEMs in `data/` (normally `Synthetic_Lunar_DEM.mat` and
+`Full_Resolution_DEM.mat`). Generated databases and studies remain in `results/`.
+Both directories retain their original defaults and ignore rules.
+
+```matlab
+setupProject;
+products = generateManuscriptArtifacts(struct("clearOutputDirectory",true));
+```
+
+Manuscript products go to `results/manuscript_artifacts/`. Existing campaign
+selection remains full southern hemisphere `20260918`/`20260919` and restricted
+south pole `20260915`. Rerun Monte Carlo whenever nominal networks change.
+See [the figure/table audit](docs/FIGURE_TABLE_AUDIT.md) and
+[the discrete radius guide](docs/discrete_radius_sensitivity.md).

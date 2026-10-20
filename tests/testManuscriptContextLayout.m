@@ -1,11 +1,12 @@
 function tests = testManuscriptContextLayout
-% Data-free graphics regression: no DEM or optimization campaign required.
+% TESTMANUSCRIPTCONTEXTLAYOUT - Data-free graphics regression: no DEM or optimization campaign required.
+
 tests = functiontests(localfunctions);
 end
 
 function testCalloutsAndLeadersFitCanvas(testCase)
 root = fileparts(fileparts(mfilename("fullpath")));
-addpath(fullfile(root,"scripts"));
+addpath(genpath(fullfile(root,"scripts")));
 fig = figure("Visible","off","Units","inches","Position",[1 1 8 6]);
 cleanup = onCleanup(@()close(fig)); %#ok<NASGU>
 ax = axes(fig);

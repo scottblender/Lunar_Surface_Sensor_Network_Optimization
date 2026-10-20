@@ -1,15 +1,14 @@
 function data = loadChunkedCandidateData(database,sensorIndices,fieldName)
-% LOADCHUNKEDCANDIDATEDATA Partially load selected candidate data by index.
+% LOADCHUNKEDCANDIDATEDATA - Partially load selected candidate data by index.
 %
-% Supported fields:
-%   "measurementJacobianHistories" - 2x6xNsxNtxNobj double
-%   "filteredAvailability"         - NsxNtxNobj logical
-%   "maximumTerrainElevationRad"   - NsxNaz double
+% Inputs:
+%   - database - Frozen database with candidate-chunk metadata.
+%   - sensorIndices - Retained global candidate-site IDs.
+%   - fieldName - "measurementJacobianHistories", "filteredAvailability", or
+%     "maximumTerrainElevationRad".
 %
-% The optimizer decision variable remains the retained global candidate
-% index. This function maps each requested global index to its chunk and
-% local row, then uses MATFILE partial indexing so only selected candidates
-% are read from disk.
+% Outputs:
+%   - data - Selected candidate slices loaded from the chunk files.
 
 arguments
     database (1,1) struct

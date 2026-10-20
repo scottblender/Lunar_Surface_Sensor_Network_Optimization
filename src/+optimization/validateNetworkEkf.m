@@ -1,5 +1,5 @@
 function validation = validateNetworkEkf(database,sensorIndices,userConfig)
-% VALIDATENETWORDEKF Run deterministic noisy EKF validation for one network.
+% VALIDATENETWORKEKF - Run a fixed-noise EKF check for one sensor network.
 
 arguments
     database (1,1) struct

@@ -1,34 +1,10 @@
-%% testOptimizationDatabase
-% End-to-end validation of:
-%
-%   optimization.buildOptimizationDatabase
-%   optimization.networkObjective
-%
-% Validates:
-%   - 3 representative RSOs
-%   - 8 candidate surface locations
-%   - terrain + Earth + Sun screening
-%   - one independent reference IOD calibration
-%   - exactly the requested IOD observation count
-%   - one fixed P0 applied identically to every RSO
-%   - nominal truth-state initialization
-%   - STM / Q / Jacobian precomputation
-%   - arbitrary configured network sizes
-%   - reuse of one database for unconfigured network sizes
-%   - information and coverage objectives
-%   - selected-sensor slicing equivalence
-%   - objective determinism
-%   - sensor-order invariance
-%   - infeasible-network penalties
+%% Test database construction and network-objective evaluation.
 
 clear;
 close all;
 clc;
 
-%% ========================================================================
-%  Project paths
-%  ========================================================================
-
+%% Project paths
 testDirectory = ...
     fileparts(mfilename("fullpath"));
 
@@ -64,17 +40,11 @@ for functionIndex = 1:length(requiredFunctions)
         "%s was not found.",functionName);
 end
 
-%% ========================================================================
-%  Test definition
-%  ========================================================================
-
+%% Test definition
 networkSizes = ...
     sort(unique([3,5,7]));
 
-%% ========================================================================
-%  Load DEM
-%  ========================================================================
-
+%% Load DEM
 demPath = ...
     fullfile( ...
         projectRoot, ...
@@ -91,20 +61,14 @@ assert(isfile(demPath), ...
         24, ...
         48);
 
-%% ========================================================================
-%  Constants
-%  ========================================================================
-
+%% Constants
 moonRadius = ...
     1737.4;
 
 moonMu = ...
     4902.800066;
 
-%% ========================================================================
-%  Small deterministic RSO population
-%  ========================================================================
-
+%% Small deterministic RSO population
 rsoNames = [ ...
     "LRO-like 50 km polar"
     "Chandrayaan-like 100 km polar"
@@ -143,10 +107,7 @@ customCatalog = ...
         rsoNames, ...
         'VariableNames',{'Name'});
 
-%% ========================================================================
-%  Eight candidate locations
-%  ========================================================================
-
+%% Eight candidate locations
 candidateLatitudes = ...
     deg2rad([ ...
     -84.000000
@@ -177,20 +138,14 @@ assert(length(candidateLatitudes) == 8, ...
 assert(max(networkSizes) <= length(candidateLatitudes), ...
     "The largest configured network exceeds the test candidate set.");
 
-%% ========================================================================
-%  Temporary database file
-%  ========================================================================
-
+%% Temporary database file
 temporaryFile = ...
     string(tempname) + ".mat";
 
 cleanupObject = ...
     onCleanup(@()cleanupFile(temporaryFile)); %#ok<NASGU>
 
-%% ========================================================================
-%  Reduced test configuration
-%  ========================================================================
-
+%% Reduced test configuration
 config = struct();
 
 config.outputFile = ...
@@ -320,19 +275,13 @@ config.estimation.stateScales = ...
 config.estimation.objectWeights = ...
     ones(3,1);
 
-%% ========================================================================
-%  Build database
-%  ========================================================================
-
+%% Build database
 database = ...
     optimization.buildOptimizationDatabase( ...
         dem, ...
         config);
 
-%% ========================================================================
-%  Structural checks
-%  ========================================================================
-
+%% Structural checks
 numberOfCandidates = ...
     database.meta.numberOfCandidates;
 
@@ -361,10 +310,7 @@ assert(all(ismember( ...
 assert(database.prior.referenceTime == 0, ...
     "Optimization prior reference time should be zero.");
 
-%% ========================================================================
-%  Fixed-P0 and IOD calibration checks
-%  ========================================================================
-
+%% Fixed-P0 and IOD calibration checks
 P0 = ...
     database.prior.initialCovariance;
 
@@ -422,10 +368,7 @@ assert(max(abs( ...
     truthInitialStates),[],"all") < 1e-12, ...
     "Nominal prior states do not equal truth states at t = 0.");
 
-%% ========================================================================
-%  Tracking dimensions and numerical checks
-%  ========================================================================
-
+%% Tracking dimensions and numerical checks
 assert( ...
     isequal( ...
         size(database.visibility.filteredAvailability), ...
@@ -484,10 +427,7 @@ assert(all( ...
     "all"), ...
     "Terrain visibility exceeds geometric visibility.");
 
-%% ========================================================================
-%  Representative nested networks for every configured size
-%  ========================================================================
-
+%% Representative nested networks for every configured size
 maximumNetworkSize = ...
     max(networkSizes);
 
@@ -506,10 +446,7 @@ for sizeIndex = 1:numberOfNetworkSizes
         maximumNetwork(1:networkSizes(sizeIndex));
 end
 
-%% ========================================================================
-%  Evaluate both objectives for every configured size
-%  ========================================================================
-
+%% Evaluate both objectives for every configured size
 informationObjectives = ...
     zeros(numberOfNetworkSizes,1);
 
@@ -548,10 +485,7 @@ for sizeIndex = 2:numberOfNetworkSizes
         "Adding sensors reduced coverage.");
 end
 
-%% ========================================================================
-%  Verify selected-sensor slicing is numerically equivalent
-%  ========================================================================
-
+%% Verify selected-sensor slicing is numerically equivalent
 baseNetwork = ...
     representativeNetworks{1};
 
@@ -591,10 +525,7 @@ assert(abs( ...
     directCoverageObjective-coverageObjectives(1)) <= 1e-12, ...
     "Selected-sensor slicing changed the coverage objective.");
 
-%% ========================================================================
-%  Determinism and sensor-order invariance
-%  ========================================================================
-
+%% Determinism and sensor-order invariance
 informationRepeat = ...
     optimization.networkObjective( ...
         baseNetwork, ...
@@ -630,10 +561,7 @@ assert(abs( ...
     coveragePermuted-coverageObjectives(1)) <= 1e-12, ...
     "Coverage objective depends on sensor ordering.");
 
-%% ========================================================================
-%  Detailed objective diagnostics
-%  ========================================================================
-
+%% Detailed objective diagnostics
 [detailedObjective,details] = ...
     optimization.networkObjective( ...
         baseNetwork, ...
@@ -662,10 +590,7 @@ assert(max(abs( ...
     details.coverageByObject-directCoverageByObject)) <= 1e-12, ...
     "Coverage-by-object diagnostics changed after slicing.");
 
-%% ========================================================================
-%  Verify the database can be reused for an unconfigured network size
-%  ========================================================================
-
+%% Verify the database can be reused for an unconfigured network size
 reusableNetworkSize = ...
     find(~ismember(1:numberOfCandidates,networkSizes),1,"first");
 
@@ -707,10 +632,7 @@ assert(reusableCoverageObjective ~= ...
     database.objective.infeasiblePenalty, ...
     "A valid unconfigured network size was penalized.");
 
-%% ========================================================================
-%  Penalty handling
-%  ========================================================================
-
+%% Penalty handling
 if length(baseNetwork) >= 2
 
     duplicateNetwork = ...
@@ -759,10 +681,7 @@ assert( ...
     database.objective.infeasiblePenalty, ...
     "An empty network was not penalized.");
 
-%% ========================================================================
-%  Saved database
-%  ========================================================================
-
+%% Saved database
 assert(isfile(temporaryFile), ...
     "Database file was not saved.");
 
@@ -777,10 +696,7 @@ assert(isequal( ...
     database.prior.initialCovariance), ...
     "Saved fixed P0 differs from returned fixed P0.");
 
-%% ========================================================================
-%  Results
-%  ========================================================================
-
+%% Results
 fprintf("\n");
 fprintf("Optimization database test summary\n");
 fprintf("----------------------------------\n");
@@ -821,10 +737,7 @@ fprintf("Penalty handling:         passed\n");
 fprintf("\n");
 fprintf("testOptimizationDatabase passed.\n");
 
-%% ========================================================================
-%  Local functions
-%  ========================================================================
-
+%% Local functions
 function state = ...
     circularOrbitState( ...
         orbitRadius, ...

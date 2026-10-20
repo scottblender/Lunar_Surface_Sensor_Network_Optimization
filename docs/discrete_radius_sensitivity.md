@@ -1,6 +1,6 @@
 # Discrete refinement radius-sensitivity study
 
-Use `scripts/runDiscreteRadiusStudy.m` to perform a post-processing
+Use `scripts/refinement/runDiscreteRadiusStudy.m` to perform a post-processing
 radius sweep of any saved lunar surface network, without rerunning its
 global optimizer. The **current canonical database**
 (`results/optimization_database.mat`) is authoritative, regardless
@@ -21,7 +21,7 @@ Select the directory under `results/optimization_runs`:
 
 Then run from the repository root:
 
-    run("scripts/runDiscreteRadiusStudy.m")
+    run("scripts/refinement/runDiscreteRadiusStudy.m")
 
 The runner loads `study_summary.mat`, recovers the saved objective mode
 and best original observer coordinates, and matches those coordinates
@@ -47,7 +47,7 @@ If a newer database is saved somewhere else, set its path using
 
 ## Reuse saved radius sweeps and refresh metrics (no new objective FEs)
 
-The **same** `run("scripts/runDiscreteRadiusStudy.m")` command now detects
+The **same** `run("scripts/refinement/runDiscreteRadiusStudy.m")` command now detects
 completed, compatible `radius_sensitivity_study.mat` files beneath
 `results/local_refinement/radius_sensitivity_*/`. If it finds one
 matching the selected study, requested radii, and unchanged database,
@@ -77,7 +77,7 @@ a new sweep deliberately.
 
 After invoking the runner, both `radiusStudy` (original sweep) and
 `radiusStudyAnalysis` (new metrics) are in the MATLAB workspace.
-Post-processing uses `scripts/analyzeSavedDiscreteRadiusStudy.m`
+Post-processing uses `scripts/refinement/analyzeSavedDiscreteRadiusStudy.m`
 internally; **you do not need to run a second command**. It does not
 call the objective function. The following additional files are saved
 beside the original MAT and CSV, without overwriting them:
@@ -119,7 +119,7 @@ If you prefer not to load a saved summary, set in the runner:
 Or call the study function directly:
 
     addpath("src");
-    addpath("scripts");
+    setupProject;
     cfg = struct();
     cfg.initialSensorIndices = [31 104 587]; % replace
     cfg.objectiveMode = "information";

@@ -1,19 +1,4 @@
-%% testTerrainRayClearance
-% Compares the precomputed terrain-horizon measurement gate against a
-% direct, range-aware terrain clearance calculation.
-%
-% The precomputed database searches terrain out to maximumTerrainRange.
-%
-% The direct calculation searches only terrain that lies:
-%
-%   1. Along the spacecraft azimuth.
-%   2. Within maximumTerrainRange.
-%   3. Before the spacecraft's subpoint angular distance.
-%
-% The test reports:
-%   - Exact agreement epochs.
-%   - Conservative horizon-database rejections.
-%   - False clearances, which should be zero.
+%% Compare horizon screening with direct sensor-to-target terrain rays.
 
 clear;
 close all;
@@ -423,11 +408,7 @@ for timeIndex = 1:numberOfTimes
 
         %% Direct ray radii
 
-        % The radial distance of the sensor-to-spacecraft ray at central
-        % angle delta is:
-        %
-        %   rRay(delta) =
-        %       rSensor*cos(elevation)/cos(elevation + delta)
+        % Use rRay(delta) = rSensor*cos(elevation)/cos(elevation+delta).
 
         rayRadii = ...
             sensorRadius * cos(targetElevation) ./ ...

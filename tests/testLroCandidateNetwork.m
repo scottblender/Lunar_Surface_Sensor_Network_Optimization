@@ -1,15 +1,4 @@
-%% testLroCandidateNetwork
-% Test the complete candidate-network workflow:
-%
-%   1. Generate a representative IOD state and covariance.
-%   2. Hold the IOD state and P0 fixed.
-%   3. Precompute candidate-dependent Jacobians and LOS gates.
-%   4. Evaluate coverage and information objectives.
-%   5. Select the best two-sensor network.
-%   6. Generate noisy measurements and run the full EKF.
-%
-% This test currently uses geometric elevation for LOS. The terrain-horizon
-% database can later replace the geometric availability matrix.
+%% Test single-target candidate-network generation and evaluation.
 
 clear;
 close all;

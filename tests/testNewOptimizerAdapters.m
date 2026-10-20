@@ -1,11 +1,6 @@
 function tests = testNewOptimizerAdapters
-% TESTNEWOPTIMIZERADAPTERS Exercise PSO and surrogate adapters through the
-% same dispatcher used by runGlobalOptimization.
-%
-% Run: runtests("tests/testNewOptimizerAdapters.m")
-%
-% All cases use a cheap synthetic three-sensor objective, not the lunar
-% database. Solvers run serially and never start, restart, or close a pool.
+% TESTNEWOPTIMIZERADAPTERS - Test PSO and surrogate adapters through the common dispatcher.
+
 tests = functiontests(localfunctions);
 end
 

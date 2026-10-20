@@ -1,10 +1,11 @@
 function tests = testNetworkSelectionBins
+% TESTNETWORKSELECTIONBINS - Test geographic selection-frequency bins.
 tests = functiontests(localfunctions);
 end
 
 function testRunFrequencyAndLongitudeWrap(testCase)
 root = fileparts(fileparts(mfilename("fullpath")));
-addpath(fullfile(root,"scripts"));
+addpath(genpath(fullfile(root,"scripts")));
 a = struct("bestSensorLatitudesRad",deg2rad([-89 -89 -1]), ...
     "bestSensorLongitudesRad",deg2rad([0 360 -1]));
 b = struct("bestSensorLatitudesRad",deg2rad(-1), ...
@@ -17,7 +18,7 @@ end
 
 function testCandidateIndexFallbackAndDomainEndpoints(testCase)
 root = fileparts(fileparts(mfilename("fullpath")));
-addpath(fullfile(root,"scripts"));
+addpath(genpath(fullfile(root,"scripts")));
 database.candidates.latitudesRad = deg2rad([-90 0]);
 database.candidates.longitudesRad = deg2rad([0 360]);
 state = struct("bestSensorIndices",[1 2]);

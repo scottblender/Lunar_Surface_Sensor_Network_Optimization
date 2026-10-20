@@ -1,12 +1,12 @@
 function dynamicsJacobian = lunarTwoBodyJacobian(~, state, moonMu)
-% LUNARTWOBODYJACOBIAN Continuous two-body dynamics Jacobian in MCI.
+% LUNARTWOBODYJACOBIAN - Continuous two-body dynamics Jacobian in MCI.
 %
 % Inputs:
-%   state  - 6x1 MCI state [position; velocity], km and km/s
-%   moonMu - Lunar gravitational parameter, km^3/s^2
+%   - state - 6x1 MCI state [position; velocity], km and km/s
+%   - moonMu - Lunar gravitational parameter, km^3/s^2
 %
-% Output:
-%   dynamicsJacobian - 6x6 continuous-time Jacobian df/dx
+% Outputs:
+%   - dynamicsJacobian - 6x6 continuous-time Jacobian df/dx
 
 arguments
     ~

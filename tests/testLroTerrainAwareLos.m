@@ -1,13 +1,4 @@
-%% testLroTerrainAwareLos
-% Terrain-aware LOS test for an LRO-like lunar orbit.
-%
-% The test:
-%   1. Loads the lunar DEM.
-%   2. Builds a 15 km south-polar candidate grid.
-%   3. Computes the terrain-horizon database.
-%   4. Propagates an LRO-like circular polar orbit.
-%   5. Selects a sufficiently visible, terrain-obstructed sensor.
-%   6. Plots elevation profiles and measurement availability.
+%% Terrain-aware LOS test for an LRO-like lunar orbit.
 
 clear;
 close all;
@@ -338,9 +329,7 @@ terrainRejectionFraction(hasGeometricVisibility) = ...
 notExactPole = ...
     abs(candidateLatitudes) < deg2rad(89.9);
 
-% Require at least 50 percent of the best geometric visibility count.
-% This prevents candidates with only a few visibility epochs from being
-% selected solely because they have a large rejection fraction.
+% Require half the best visibility count before ranking terrain rejection fractions.
 
 minimumGeometricEpochs = max( ...
     3, ...

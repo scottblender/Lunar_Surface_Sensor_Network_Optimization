@@ -1,15 +1,15 @@
 function [times, statesMoonInertial] = propagateLunarOrbit( ...
     initialStateMoonInertial, timeSpan, options)
-% Inputs:
-%   initialStateMoonInertial - 6x1 state, km and km/s
-%   timeSpan                 - integration times, seconds
+% PROPAGATELUNARORBIT - Propagate a lunar two-body orbit in the Moon inertial frame.
 %
-% Name-value option:
-%   moonMu                   - km^3/s^2
+% Inputs:
+%   - initialStateMoonInertial - 6x1 state, km and km/s
+%   - timeSpan - Integration times (s).
+%   - options.moonMu - Lunar gravitational parameter (km^3/s^2).
 %
 % Outputs:
-%   times                    - Nx1 integration times
-%   statesMoonInertial       - Nx6 MCI states
+%   - times - Nx1 integration times
+%   - statesMoonInertial - Nx6 MCI states
 
 arguments
     initialStateMoonInertial (6,1) double

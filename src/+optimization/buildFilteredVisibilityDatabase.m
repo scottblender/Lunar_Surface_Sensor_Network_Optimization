@@ -18,41 +18,33 @@ function [filteredAvailability,diagnostics] = ...
         theta0, ...
         angularRate, ...
         earthMinimumAngularSeparation)
-% BUILDFILTEREDVISIBILITYDATABASE Apply terrain and celestial constraints.
+% BUILDFILTEREDVISIBILITYDATABASE - Apply terrain and celestial constraints.
 %
 % Inputs:
-%   times                       - Nx1 observation times, s
-%   targetStateHistories        - 6xNxO target MCI state histories
-%   candidateLatitudes          - Sx1 sensor latitudes, rad
-%   candidateLongitudes         - Sx1 east-positive longitudes, rad
-%   dem                         - Processed lunar griddedInterpolant
-%   horizonAzimuths             - Ax1 terrain-horizon azimuth bins, rad
-%   maximumTerrainElevation     - SxA terrain-horizon angles, rad
-%   earthPositionsMci           - 3xN Earth-center MCI positions, km
-%   sunPositionsMci             - 3xN Sun-center MCI positions, km
-%   instrumentMinimumElevation  - Instrument elevation threshold, rad
-%   horizonMargin               - Additional terrain-horizon margin, rad
-%   earthRadius                 - Earth radius, km
-%   sunRadius                   - Sun radius, km
-%   minimumAngularSeparation    - Sun center keep-out angle, rad
-%   moonRadius                  - Lunar reference radius, km
-%   theta0                      - Initial Moon rotation angle, rad
-%   angularRate                 - Lunar rotation rate, rad/s
-%   earthMinimumAngularSeparation - Optional Earth center keep-out angle,
-%                                   rad. Omit to use the Sun value.
+%   - times - Nx1 observation times, s
+%   - targetStateHistories - 6xNxO target MCI state histories
+%   - candidateLatitudes - Sx1 sensor latitudes, rad
+%   - candidateLongitudes - Sx1 east-positive longitudes, rad
+%   - dem - Processed lunar griddedInterpolant
+%   - horizonAzimuths - Ax1 terrain-horizon azimuth bins, rad
+%   - maximumTerrainElevation - SxA terrain-horizon angles, rad
+%   - earthPositionsMci - 3xN Earth-center MCI positions, km
+%   - sunPositionsMci - 3xN Sun-center MCI positions, km
+%   - instrumentMinimumElevation - Instrument elevation threshold, rad
+%   - horizonMargin - Additional terrain-horizon margin, rad
+%   - earthRadius - Earth radius, km
+%   - sunRadius - Sun radius, km
+%   - minimumAngularSeparation - Sun center keep-out angle, rad
+%   - moonRadius - Lunar reference radius, km
+%   - theta0 - Initial Moon rotation angle, rad
+%   - angularRate - Lunar rotation rate, rad/s
+%   - earthMinimumAngularSeparation - Optional Earth center keep-out angle, rad. Omit to use the Sun value.
 %
 % Outputs:
-%   filteredAvailability - SxNxO fully filtered measurement gate
-%   diagnostics          - Constraint masks and geometry histories
+%   - filteredAvailability - SxNxO fully filtered measurement gate
+%   - diagnostics - Constraint masks and geometry histories
 %
-% For each body, the required separation is the maximum of the physical
-% occultation threshold and its configured center-referenced keep-out angle.
-% The Moon is not included in celestial screening because lunar obstruction
-% is already represented by the terrain/horizon LOS gate.
-%
-% The final gate is
-%
-%   G = Gterrain AND Gcelestial.
+% The final gate combines terrain and Earth/Sun screening.
 
 arguments
     times (:,1) double

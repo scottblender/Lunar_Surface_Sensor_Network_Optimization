@@ -1,0 +1,16 @@
+name: MATLAB optimizer and analysis smoke tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: matlab-actions/setup-matlab@v2
+        with:
+          products: Global_Optimization_Toolbox Parallel_Computing_Toolbox
+      - uses: matlab-actions/run-command@v2
+        with:
+          command: setupProject; results = runtests(["tests/testAnalysisSetup.m", "tests/testABCOptimizer.m", "tests/testOptimizerAdapter.m", "tests/testNewOptimizerAdapters.m", "tests/testRefineDiscreteNetwork.m", "tests/testDiscreteRadiusSensitivity.m", "tests/testAnalyzeSavedDiscreteRadiusStudy.m"]); assertSuccess(results);

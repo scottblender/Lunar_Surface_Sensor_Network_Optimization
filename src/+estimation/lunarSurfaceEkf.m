@@ -1,30 +1,30 @@
 function [stateHistory, covarianceHistory, innovationHistory, measurementInformationHistory, predictedStateHistory] = lunarSurfaceEkf(initialTime, observationTimes, rightAscension, declination, sensorLatitudes, sensorLongitudes, dem, measurementAvailable, initialState, initialCovariance, measurementCovariance, accelerationNoiseIntensity, moonMu, moonRadius, theta0, angularRate)
-% LUNARSURFACEEKF Run an RA/Dec EKF using lunar surface sensors.
+% LUNARSURFACEEKF - Run an RA/Dec EKF using lunar surface sensors.
 %
 % Inputs:
-%   initialTime                - Epoch associated with x0 and P0, s
-%   observationTimes           - Nx1 scheduled observation times, s
-%   rightAscension             - Nx1 right ascension measurements, rad
-%   declination                - Nx1 declination measurements, rad
-%   sensorLatitudes            - Nx1 sensor latitudes, rad
-%   sensorLongitudes           - Nx1 east-positive longitudes, rad
-%   dem                        - Processed lunar griddedInterpolant
-%   measurementAvailable       - Nx1 LOS availability gate
-%   initialState               - 6x1 initial MCI state, km and km/s
-%   initialCovariance          - 6x6 initial covariance
-%   measurementCovariance      - 2x2 RA/Dec covariance, rad^2
-%   accelerationNoiseIntensity - Acceleration-noise PSD, km^2/s^3
-%   moonMu                     - Lunar gravitational parameter, km^3/s^2
-%   moonRadius                 - Lunar reference radius, km
-%   theta0                     - Initial Moon rotation angle, rad
-%   angularRate                - Lunar angular rate, rad/s
+%   - initialTime - Epoch associated with x0 and P0, s
+%   - observationTimes - Nx1 scheduled observation times, s
+%   - rightAscension - Nx1 right ascension measurements, rad
+%   - declination - Nx1 declination measurements, rad
+%   - sensorLatitudes - Nx1 sensor latitudes, rad
+%   - sensorLongitudes - Nx1 east-positive longitudes, rad
+%   - dem - Processed lunar griddedInterpolant
+%   - measurementAvailable - Nx1 LOS availability gate
+%   - initialState - 6x1 initial MCI state, km and km/s
+%   - initialCovariance - 6x6 initial covariance
+%   - measurementCovariance - 2x2 RA/Dec covariance, rad^2
+%   - accelerationNoiseIntensity - Acceleration-noise PSD, km^2/s^3
+%   - moonMu - Lunar gravitational parameter, km^3/s^2
+%   - moonRadius - Lunar reference radius, km
+%   - theta0 - Initial Moon rotation angle, rad
+%   - angularRate - Lunar angular rate, rad/s
 %
 % Outputs:
-%   stateHistory                 - 6xN posterior MCI state history
-%   covarianceHistory            - 6x6xN posterior covariance history
-%   innovationHistory            - 2xN RA/Dec innovation history
-%   measurementInformationHistory- 6x6xN H'*R^(-1)*H history
-%   predictedStateHistory        - 6xN pre-update predicted MCI states
+%   - stateHistory - 6xN posterior MCI state history
+%   - covarianceHistory - 6x6xN posterior covariance history
+%   - innovationHistory - 2xN RA/Dec innovation history
+%   - measurementInformationHistory - 6x6xN H'*R^(-1)*H history
+%   - predictedStateHistory - 6xN pre-update predicted MCI states
 
 arguments
     initialTime (1,1) double

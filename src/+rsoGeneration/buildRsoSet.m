@@ -7,25 +7,20 @@ function [initialStatesMoonInertial,rsoCatalog] = ...
         eccentricityLimits, ...
         moonRadius, ...
         moonMu)
-% BUILDRSOSET Return operational, generated, or combined RSO sets.
+% BUILDRSOSET - Return operational, generated, or combined RSO sets.
 %
 % Inputs:
-%   selection                   - "operational", "generated", or "both"
-%   numberOfGeneratedObjects    - Exact number of generated RSOs
-%   periapsisAltitudeLimitsKm   - Generated altitude limits, km
-%   inclinationLimitsRad        - Generated inclination limits, rad
-%   eccentricityLimits          - Generated eccentricity limits
-%   moonRadius                  - Lunar reference radius, km
-%   moonMu                      - Lunar gravitational parameter, km^3/s^2
+%   - selection - "operational", "generated", or "both"
+%   - numberOfGeneratedObjects - Exact number of generated RSOs
+%   - periapsisAltitudeLimitsKm - Generated altitude limits, km
+%   - inclinationLimitsRad - Generated inclination limits, rad
+%   - eccentricityLimits - Generated eccentricity limits
+%   - moonRadius - Lunar reference radius, km
+%   - moonMu - Lunar gravitational parameter, km^3/s^2
 %
 % Outputs:
-%   initialStatesMoonInertial   - 6xN initial MCI states
-%   rsoCatalog                  - N-row catalog matching state columns
-%
-% With CAPSTONE excluded:
-%   "operational" returns 4 objects.
-%   "generated",10 returns 10 objects.
-%   "both",10 returns 14 objects.
+%   - initialStatesMoonInertial - 6xN initial MCI states
+%   - rsoCatalog - N-row catalog matching state columns
 
 arguments
     selection (1,1) string = "both"

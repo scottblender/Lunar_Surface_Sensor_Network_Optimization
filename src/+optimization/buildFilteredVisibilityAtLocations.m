@@ -1,13 +1,7 @@
 function filteredAvailability = buildFilteredVisibilityAtLocations( ...
     database,sensorLatitudesRad,sensorLongitudesRad,userConfig)
-% BUILDFILTEREDVISIBILITYATLOCATIONS Evaluate the production visibility gate
-% at arbitrary lunar-surface coordinates.
-%
-% Candidate-grid locations reuse the frozen filtered-availability database.
-% Off-grid locations (for example, optimized sites from the 20260915
-% restricted-domain campaign) retain their original latitude/longitude and
-% recompute terrain horizons plus celestial screening using the current
-% frozen physical model. No nearest-grid snapping is performed.
+% BUILDFILTEREDVISIBILITYATLOCATIONS - Evaluate terrain and celestial visibility at supplied coordinates.
+% Reuse frozen gates at candidate sites; recompute off-grid geometry without snapping.
 
 arguments
     database (1,1) struct

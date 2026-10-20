@@ -1,22 +1,22 @@
 function [initialState, initialCovariance, referenceTime, diagnostics] = anglesOnlyIod(times, rightAscension, declination, observerPositionsMci, acquisitionIndices, measurementCovariance, numberOfSamples, randomSeed, moonMu)
-% ANGLESONLYIOD Run Gauss IOD, full refinement, and Monte Carlo P0.
+% ANGLESONLYIOD - Run Gauss IOD, full refinement, and Monte Carlo P0.
 %
 % Inputs:
-%   times                 - Nx1 observation times, s
-%   rightAscension        - Nx1 right ascension measurements, rad
-%   declination           - Nx1 declination measurements, rad
-%   observerPositionsMci  - Nx3 observer positions in MCI, km
-%   acquisitionIndices    - LOS-established acquisition observations
-%   measurementCovariance - 2x2 RA/Dec covariance, rad^2
-%   numberOfSamples       - Number of Monte Carlo samples
-%   randomSeed            - Monte Carlo random-number seed
-%   moonMu                - Lunar gravitational parameter, km^3/s^2
+%   - times - Nx1 observation times, s
+%   - rightAscension - Nx1 right ascension measurements, rad
+%   - declination - Nx1 declination measurements, rad
+%   - observerPositionsMci - Nx3 observer positions in MCI, km
+%   - acquisitionIndices - LOS-established acquisition observations
+%   - measurementCovariance - 2x2 RA/Dec covariance, rad^2
+%   - numberOfSamples - Number of Monte Carlo samples
+%   - randomSeed - Monte Carlo random-number seed
+%   - moonMu - Lunar gravitational parameter, km^3/s^2
 %
 % Outputs:
-%   initialState      - 6x1 refined state at referenceTime
-%   initialCovariance - 6x6 Monte Carlo covariance, P0
-%   referenceTime     - End of the acquisition arc, s
-%   diagnostics       - Gauss, refinement, and Monte Carlo information
+%   - initialState - 6x1 refined state at referenceTime
+%   - initialCovariance - 6x6 Monte Carlo covariance, P0
+%   - referenceTime - End of the acquisition arc, s
+%   - diagnostics - Gauss, refinement, and Monte Carlo information
 
 arguments
     times (:,1) double

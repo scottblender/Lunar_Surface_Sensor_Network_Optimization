@@ -1,26 +1,22 @@
 function measurement = surfaceRaDecMeasurement( ...
     state, time, latitude, longitude, dem, ...
     moonRadius, theta0, angularRate)
-% SURFACERADECMEASUREMENT Topocentric RA/Dec measurement.
+% SURFACERADECMEASUREMENT - Topocentric RA/Dec measurement.
 %
 % Inputs:
-%   state       - 6x1 target state in MCI, km and km/s
-%   time        - Time from the simulation start, s
-%   latitude    - Sensor latitude, rad
-%   longitude   - East-positive sensor longitude, rad
-%   dem         - Processed lunar griddedInterpolant
-%   moonRadius  - Lunar reference radius, km
-%   theta0      - Moon rotation angle at time = 0, rad
-%   angularRate - Lunar rotation rate, rad/s
+%   - state - 6x1 target state in MCI, km and km/s
+%   - time - Time from the simulation start, s
+%   - latitude - Sensor latitude, rad
+%   - longitude - East-positive sensor longitude, rad
+%   - dem - Processed lunar griddedInterpolant
+%   - moonRadius - Lunar reference radius, km
+%   - theta0 - Moon rotation angle at time = 0, rad
+%   - angularRate - Lunar rotation rate, rad/s
 %
-% Output:
-%   measurement - [right ascension; declination], rad
+% Outputs:
+%   - measurement - [right ascension; declination], rad
 %
-% Angle conventions:
-%   Right ascension - Measured from the MCI +X axis toward +Y,
-%                     returned in [0, 2*pi)
-%   Declination     - Measured from the MCI XY plane toward +Z,
-%                     returned in [-pi/2, pi/2]
+% RA is in [0,2*pi); declination is in [-pi/2,pi/2].
 
 arguments
     state (6,1) double

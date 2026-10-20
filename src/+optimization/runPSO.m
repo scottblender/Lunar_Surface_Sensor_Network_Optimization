@@ -1,8 +1,14 @@
 
 function result = runPSO(objectiveFcn,problem,config)
-% RUNPSO Particle swarm optimizer adapter for discrete sensor selection.
-% The objectiveFcn is already wrapped by roundAndPenalize in runOptimizer.
-% Tracks callback FE and best-so-far objective.
+% RUNPSO - Run PSO with a rounded, penalty-based sensor-site objective.
+%
+% Inputs:
+%   - objectiveFcn - Objective already wrapped by roundAndPenalize.
+%   - problem - Candidate bounds and infeasible penalty.
+%   - config - FE budget, swarm size, parallel flag, and display setting.
+%
+% Outputs:
+%   - result - Best feasible particle, callback history, and raw solver FE count.
 
 budget = config.functionEvaluationBudget;
 swarmSize = config.populationSize;

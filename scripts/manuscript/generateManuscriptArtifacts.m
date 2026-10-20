@@ -1,0 +1,229 @@
+function products = generateManuscriptArtifacts(userConfig)
+% GENERATEMANUSCRIPTARTIFACTS - One driver for all manuscript figures/tables.
+
+arguments
+    userConfig (1,1) struct = struct()
+end
+
+close all;
+scriptDirectory=fileparts(mfilename("fullpath"));
+projectRoot=fileparts(fileparts(scriptDirectory));
+sourceDirectory=fullfile(projectRoot,"src");
+addpath(genpath(fullfile(projectRoot,"scripts")));
+addpath(sourceDirectory);
+rehash path;
+
+defaults=struct();
+defaults.outputDirectory=fullfile(projectRoot,"results","manuscript_artifacts");
+defaults.clearOutputDirectory=false;
+defaults.generateStudyDefinition=true;
+defaults.generateDemFigures=true;
+defaults.generateProductionResults=true;
+defaults.generateRsoFamilyFigure=true;
+defaults.generateScreeningBreakdown=true;
+defaults.generateMonteCarlo=true;
+defaults.generateOperationalValidation=true;
+defaults.generateRobustnessValidation=false;
+defaults.generateDemValidation=false;
+defaults.exportDiagnosticTables=false;
+defaults.validateArtifacts=true;
+defaults.strictArtifactValidation=false;
+defaults.productionCampaignDates=["20260918","20260919"];
+defaults.restrictedCampaignDate="20260915";
+defaults.restrictedCampaignAnchor="";
+defaults.restrictedResultsDirectory="";
+defaults.restrictedDatabaseFile="";
+defaults.restrictedStudyName="";
+defaults.comparisonNetworkSize=10;
+defaults.comparisonObjective="information";
+defaults.operationalTableObjective="information";
+defaults.operationalTableNetworkSize=10;
+config=overrideAnalysisConfig(defaults,userConfig);
+config.outputDirectory=string(config.outputDirectory);
+config.productionCampaignDates=string(config.productionCampaignDates(:));
+config.restrictedCampaignDate=string(config.restrictedCampaignDate);
+config.restrictedCampaignAnchor=string(config.restrictedCampaignAnchor);
+config.restrictedResultsDirectory=string(config.restrictedResultsDirectory);
+config.restrictedDatabaseFile=string(config.restrictedDatabaseFile);
+config.restrictedStudyName=string(config.restrictedStudyName);
+
+if config.clearOutputDirectory && isfolder(config.outputDirectory)
+    deleteGenerated(config.outputDirectory);
+end
+if ~isfolder(config.outputDirectory), mkdir(config.outputDirectory); end
+
+if ~config.exportDiagnosticTables && ~config.generateDemValidation
+    archiveNonManuscriptArtifacts(config.outputDirectory);
+end
+
+products=struct();
+products.version="manuscript_artifact_driver_v4";
+products.outputDirectory=config.outputDirectory;
+
+%% Study-definition figures and tables
+
+if config.generateStudyDefinition
+    products.definitionFigures=runJob("study definition figures", ...
+        @()generateStudyDefinitionFigures(config),true);
+    products.clpsFigure=runJob("CLPS/design-domain figure", ...
+        @()plotClpsDesignDomain(config),true);
+end
+
+if config.generateDemFigures
+    products.demFigures=runJob("DEM figures", ...
+        @()plotDemProducts(config),true);
+end
+
+products.optimizationWorkflow=runJob("optimization-workflow TikZ", ...
+    @()writeOptimizationWorkflowTikz(config),true);
+
+%% Load completed production campaign once
+
+campaignConfig=config;
+campaignConfig.outputDirectory=config.outputDirectory;
+campaignConfig.campaignDate="";
+campaignConfig.campaignDates=config.productionCampaignDates;
+campaignConfig.requireDatabaseMatch=true;
+campaign=loadProductionCampaign(campaignConfig);
+products.campaign=campaign;
+
+fprintf("\nFull-domain production campaign dates: %s\n", ...
+    strjoin(config.productionCampaignDates,", "));
+fprintf("Selected full-domain cases:\n");
+for objectiveIndex=1:numel(campaign.configuration.objectiveModes)
+    for networkIndex=1:numel(campaign.configuration.networkSizes)
+        fprintf("  %s, N_s=%d -> %s\n", ...
+            campaign.configuration.objectiveModes(objectiveIndex), ...
+            campaign.configuration.networkSizes(networkIndex), ...
+            campaign.studySummaryFiles(networkIndex,objectiveIndex));
+    end
+end
+
+restrictedCampaign=struct();
+if strlength(config.restrictedCampaignDate)>0 || ...
+        strlength(config.restrictedCampaignAnchor)>0
+    restrictedCampaign=loadRestrictedCampaign(campaign,config);
+    products.restrictedCampaign=restrictedCampaign;
+end
+
+%% Representative design-RSO geometry
+
+if config.generateRsoFamilyFigure
+    products.rsoFamily=runJob("design-RSO MCRF family figure", ...
+        @()plotDesignRsoFamilyMcrf(campaign,config),true);
+end
+
+%% Main production-result figures
+
+if config.generateProductionResults
+    products.convergence=runJob("convergence figures", ...
+        @()plotProductionConvergence(campaign,config),true);
+
+    products.networkLocations=runJob("sensor-selection frequency figures", ...
+        @()plotProductionNetworkLocations(campaign,config),true);
+
+    if config.generateScreeningBreakdown
+        products.screeningBreakdown=runJob("all-RSO constraint-screening figure", ...
+            @()plotMeasurementScreeningBreakdown( ...
+                campaign,restrictedCampaign,config),true);
+    end
+
+    products.designTracking=runJob("design-RSO tracking figure", ...
+        @()plotDesignRsoTrackingHeatmaps(campaign,config),true);
+end
+
+products.tables=runJob("manuscript tables", ...
+    @()buildManuscriptTables(campaign,config),true);
+
+%% Monte Carlo robustness figures
+
+if config.generateMonteCarlo
+    mcConfig=config;
+    mcConfig.optimizationCampaignDates=config.productionCampaignDates;
+    products.monteCarlo=runJob("Monte Carlo robustness figures", ...
+        @()plotMonteCarloConferenceFigure(mcConfig),false);
+end
+
+%% Restricted-domain comparison
+
+if ~isempty(fieldnames(restrictedCampaign))
+    products.domainComparison=runJob("restricted-domain comparison", ...
+        @()generateDomainComparisonProducts( ...
+            campaign,config,restrictedCampaign),false);
+else
+    fprintf("SKIP restricted-domain comparison: no restricted campaign loaded.\n");
+end
+
+%% Operational/legacy spacecraft evaluation
+
+if config.generateOperationalValidation
+    operationalConfig=config;
+    operationalConfig.campaignDates=config.productionCampaignDates;
+    operational=runJob("operational-RSO validation", ...
+        @()evaluateOperationalRsoNetworks(operationalConfig),false);
+    products.operational=operational;
+
+    if isstruct(operational) && isfield(operational,"spacecraftNames")
+        products.operationalFigure=runJob("operational-RSO tracking figure", ...
+            @()plotOperationalRsoTrackingHeatmaps(operational,config),false);
+        products.operationalTable=runJob("operational-RSO manuscript table", ...
+            @()buildOperationalManuscriptTable(operational,config),false);
+    end
+end
+
+%% Validation-only products supporting manuscript discussion
+
+if config.generateRobustnessValidation
+    products.discreteNeighbor=runJob("discrete-neighbor robustness", ...
+        @()evaluateDiscreteNeighborRobustness(campaign,config),false);
+end
+
+if config.generateDemValidation
+    syntheticFile=fullfile(projectRoot,"data","Synthetic_Lunar_DEM.mat");
+    fullFile=fullfile(projectRoot,"data","Full_Resolution_DEM.mat");
+    if isfile(syntheticFile) && isfile(fullFile)
+        products.demValidation=runJob("DEM resolution validation", ...
+            @()evaluateDemResolutionValidation(campaign,config),false);
+    else
+        fprintf("SKIP DEM validation: both DEM files are required.\n");
+    end
+end
+
+%% Artifact-manifest check against the manuscript
+
+if config.validateArtifacts
+    products.artifactManifest=validateManuscriptArtifacts( ...
+        config.outputDirectory,config);
+end
+
+fprintf("\n============================================================\n");
+fprintf("Manuscript artifact generation complete\n");
+fprintf("============================================================\n");
+fprintf("Output directory:\n  %s\n",config.outputDirectory);
+fprintf("Artifact manifest:\n  %s\n", ...
+    fullfile(config.outputDirectory,"manuscript_artifact_manifest.csv"));
+end
+
+function result=runJob(name,job,required)
+fprintf("\n[%s]\n",name);
+try
+    result=job();
+catch ME
+    if required
+        rethrow(ME);
+    end
+    warning("generateManuscriptArtifacts:OptionalJobFailed", ...
+        "%s failed: %s",name,ME.message);
+    result=struct("available",false,"message",string(ME.message));
+end
+end
+
+function deleteGenerated(directoryName)
+extensions=["*.eps","*.png","*.pdf","*.csv","*.fig","*.tex"];
+for k=1:numel(extensions)
+    files=dir(fullfile(directoryName,"**",extensions(k)));
+    for j=1:numel(files)
+        delete(fullfile(files(j).folder,files(j).name));
+    end
+end
+end

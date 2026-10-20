@@ -1,5 +1,4 @@
-%% testRsoGeneration
-% Test operational and element-distributed RSO generation.
+%% Test operational and element-distributed RSO generation.
 
 clear;
 close all;

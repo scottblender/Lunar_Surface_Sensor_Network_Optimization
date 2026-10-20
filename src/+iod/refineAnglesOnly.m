@@ -1,19 +1,19 @@
 function [refinedState, diagnostics] = refineAnglesOnly(referenceTime, times, rightAscension, declination, observerPositionsMci, initialState, measurementCovariance, moonMu)
-% REFINEANGLESONLY Refine an MCI state using all RA/Dec observations.
+% REFINEANGLESONLY - Refine an MCI state using all RA/Dec observations.
 %
 % Inputs:
-%   referenceTime         - Epoch of the estimated state, s
-%   times                 - Nx1 observation times, s
-%   rightAscension        - Nx1 right ascension measurements, rad
-%   declination           - Nx1 declination measurements, rad
-%   observerPositionsMci  - Nx3 observer positions in MCI, km
-%   initialState          - 6x1 initial state estimate at referenceTime
-%   measurementCovariance - 2x2 RA/Dec covariance, rad^2
-%   moonMu                - Lunar gravitational parameter, km^3/s^2
+%   - referenceTime - Epoch of the estimated state, s
+%   - times - Nx1 observation times, s
+%   - rightAscension - Nx1 right ascension measurements, rad
+%   - declination - Nx1 declination measurements, rad
+%   - observerPositionsMci - Nx3 observer positions in MCI, km
+%   - initialState - 6x1 initial state estimate at referenceTime
+%   - measurementCovariance - 2x2 RA/Dec covariance, rad^2
+%   - moonMu - Lunar gravitational parameter, km^3/s^2
 %
 % Outputs:
-%   refinedState - 6x1 refined state at referenceTime
-%   diagnostics  - Least-squares convergence information
+%   - refinedState - 6x1 refined state at referenceTime
+%   - diagnostics - Least-squares convergence information
 %
 % Requires Optimization Toolbox.
 

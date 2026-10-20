@@ -20,7 +20,7 @@ Figure 15's location comparison now uses grayscale elevation.
 ## Global Monte Carlo benchmark
 
 ```matlab
-addpath('scripts');
+setupProject;
 addpath('src');
 runMonteCarloRobustness(struct('numberOfMonteCarloRuns',1000));
 generateManuscriptArtifacts();

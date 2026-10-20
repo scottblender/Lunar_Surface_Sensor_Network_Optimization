@@ -15,11 +15,7 @@ function chunkMetadata = buildFinalCandidateChunks( ...
     useParallel, ...
     maximumParallelWorkers, ...
     reuseExisting)
-% BUILDFINALCANDIDATECHUNKS Build final visibility and full 2x6 Jacobians.
-%
-% Each candidate chunk remains independent from production start to finish.
-% Full Jacobians are written to the v7.3 chunk file one object at a time so
-% no worker needs to hold an entire ~11-GiB chunk Jacobian array in memory.
+% BUILDFINALCANDIDATECHUNKS - Build final visibility and full 2x6 Jacobians.
 
 arguments
     chunkMetadata (:,1) struct

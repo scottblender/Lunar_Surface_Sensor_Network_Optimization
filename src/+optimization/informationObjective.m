@@ -9,26 +9,22 @@ function [objectiveValue,objectScores] = ...
         measurementCovariances, ...
         stateScales, ...
         objectWeights)
-% INFORMATIONOBJECTIVE Evaluate network EKF D-optimality.
+% INFORMATIONOBJECTIVE - Evaluate network EKF D-optimality.
 %
 % Inputs:
-%   selectedSensors             - Sx1 binary/logical selection vector
-%   initialCovariances          - 6x6xO fixed IOD covariances
-%   stateTransitionHistories    - 6x6xNxO interval STMs
-%   processNoiseHistories       - 6x6xNxO process covariances
-%   measurementJacobianHistories- 2x3xSxNxO position-only Jacobians or
-%                                  legacy 2x6xSxNxO full Jacobians
-%   measurementAvailability     - SxNxO LOS gates
-%   measurementCovariances      - 2x2 or 2x2xS measurement covariances
-%   stateScales                 - 6x1 normalization scales
-%   objectWeights               - Ox1 nonnegative weights
+%   - selectedSensors - Sx1 binary/logical selection vector
+%   - initialCovariances - 6x6xO fixed IOD covariances
+%   - stateTransitionHistories - 6x6xNxO interval STMs
+%   - processNoiseHistories - 6x6xNxO process covariances
+%   - measurementJacobianHistories - 2x3xSxNxO position-only Jacobians or legacy 2x6xSxNxO full Jacobians
+%   - measurementAvailability - SxNxO LOS gates
+%   - measurementCovariances - 2x2 or 2x2xS measurement covariances
+%   - stateScales - 6x1 normalization scales
+%   - objectWeights - Ox1 nonnegative weights
 %
 % Outputs:
-%   objectiveValue - Negative weighted information score for minimization
-%   objectScores   - Ox1 mean D-optimality scores
-%
-% A larger D-optimality score is better. The negative weighted score is
-% returned because most MATLAB optimization routines minimize.
+%   - objectiveValue - Negative weighted information score for minimization
+%   - objectScores - Ox1 mean D-optimality scores
 
 arguments
     selectedSensors (:,1)

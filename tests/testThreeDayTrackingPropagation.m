@@ -1,19 +1,10 @@
-%% testThreeDayTrackingPropagation
-% Regression test for the production three-day / ten-minute tracking arc.
-%
-% This specifically protects against numerical drift between the canonical
-% truth propagation and the nominal state history generated while the STM is
-% precomputed. The production database requires these histories to represent
-% the same nominal trajectory.
+%% Regression test for the production three-day / ten-minute tracking arc.
 
 clear;
 close all;
 clc;
 
-%% ========================================================================
-%  Project paths
-%  ========================================================================
-
+%% Project paths
 testDirectory = ...
     fileparts(mfilename("fullpath"));
 
@@ -29,10 +20,7 @@ assert(isfolder(sourceDirectory), ...
 addpath(sourceDirectory);
 rehash path;
 
-%% ========================================================================
-%  Constants and production time grid
-%  ========================================================================
-
+%% Constants and production time grid
 moonRadiusKm = ...
     1737.4;
 
@@ -51,10 +39,7 @@ observationTimes = ...
 assert(numel(observationTimes) == 432, ...
     "Three-day production grid must contain 432 optimization epochs.");
 
-%% ========================================================================
-%  Representative circular lunar orbit
-%  ========================================================================
-
+%% Representative circular lunar orbit
 orbitRadiusKm = ...
     moonRadiusKm + 100;
 
@@ -70,10 +55,7 @@ initialState = [ ...
     0
     ];
 
-%% ========================================================================
-%  Minimal synthetic DEM and one representative sensor
-%  ========================================================================
-
+%% Minimal synthetic DEM and one representative sensor
 latitudeGrid = ...
     deg2rad([-90,0,90]);
 
@@ -96,10 +78,7 @@ candidateLatitudes = ...
 candidateLongitudes = ...
     deg2rad(45);
 
-%% ========================================================================
-%  Canonical truth propagation
-%  ========================================================================
-
+%% Canonical truth propagation
 truthTimes = [ ...
     0
     observationTimes
@@ -117,10 +96,7 @@ assert(max(abs(propagatedTruthTimes-truthTimes)) < 1e-9, ...
 truthObservationStates = ...
     truthStates(2:end,:).';
 
-%% ========================================================================
-%  Tracking / STM precompute
-%  ========================================================================
-
+%% Tracking / STM precompute
 [referenceStates, ...
     stateTransitionHistory, ...
     processNoiseHistory, ...
@@ -139,10 +115,7 @@ truthObservationStates = ...
         0, ...
         2*pi/(27.321661*86400));
 
-%% ========================================================================
-%  Regression checks
-%  ========================================================================
-
+%% Regression checks
 maximumReferenceTruthError = ...
     max(abs(referenceStates-truthObservationStates),[],"all");
 

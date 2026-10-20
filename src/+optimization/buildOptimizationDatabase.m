@@ -1,45 +1,22 @@
 function database = buildOptimizationDatabase(dem,userConfig)
-% BUILDOPTIMIZATIONDATABASE
-% Build the deterministic database used by the lunar-surface global
-% sensor-network optimization study.
-%
-% Architecture:
-%   1. Build the fixed RSO population.
-%   2. Build the complete candidate list and equal-count chunk plan.
-%   3. Build terrain horizons independently by candidate chunk.
-%   4. Propagate RSO truth trajectories.
-%   5. Build fixed Earth and Sun histories.
-%   6. Build truth visibility/prefilter counts independently by chunk.
-%   7. Estimate ONE fixed P0 from an independent reference IOD case.
-%   8. Precompute common dynamics and process noise.
-%   9. Build final visibility and full 2x6 Jacobians independently by chunk.
-%
-% The IOD calibration does NOT determine whether an RSO is retained.
-% One reference IOD case estimates a single fixed initial covariance P0.
-% That same P0 is then applied to every RSO in every network-size,
-% objective, optimizer, and independent-run comparison.
-%
-% The nominal state for each RSO is its truth state at the common
-% optimization reference epoch. This allows the information objective to
-% isolate covariance evolution caused by geometry, visibility, process
-% noise, and the selected sensor network.
+% BUILDOPTIMIZATIONDATABASE - Build the frozen lunar sensor-network optimization database.
 %
 % Inputs:
-%   dem        - Lunar DEM griddedInterpolant using radians and km
-%   userConfig - Optional structure overriding default settings
+%   - dem - Lunar DEM interpolant using radians and kilometers.
+%   - userConfig - Optional overrides for the database settings.
 %
-% Output:
-%   database   - Deterministic optimization database
+% Outputs:
+%   - database - Frozen trajectories, candidate chunks, visibility, and Jacobians.
+%
+% Notes:
+%   - One independently calibrated initial covariance is shared across all RSOs.
 
 arguments
     dem (1,1) griddedInterpolant
     userConfig (1,1) struct = struct()
 end
 
-%% ========================================================================
-%  Configuration
-%  ========================================================================
-
+%% Configuration
 config = mergeStruct( ...
     defaultConfiguration(), ...
     userConfig);
@@ -75,10 +52,7 @@ fprintf("============================================================\n");
 
 buildTimer = tic;
 
-%% ========================================================================
-%  Constants
-%  ========================================================================
-
+%% Constants
 moonRadius = ...
     config.moon.radiusKm;
 
@@ -91,10 +65,7 @@ moonAngularRate = ...
 theta0 = ...
     config.moon.theta0Rad;
 
-%% ========================================================================
-%  1/9 RSO population
-%  ========================================================================
-
+%% 1/9 RSO population
 fprintf("\n1/9 Building RSO population...\n");
 
 if ~isempty(config.rso.customInitialStatesMoonInertial)
@@ -153,10 +124,7 @@ assert(height(rsoCatalog) == numberOfObjects, ...
 
 fprintf("  RSOs: %d\n",numberOfObjects);
 
-%% ========================================================================
-%  Object weights
-%  ========================================================================
-
+%% Object weights
 if isempty(config.estimation.objectWeights)
 
     objectWeights = ...
@@ -177,10 +145,7 @@ else
         "At least one object weight must be positive.");
 end
 
-%% ========================================================================
-%  2/9 Candidate surface locations
-%  ========================================================================
-
+%% 2/9 Candidate surface locations
 fprintf("\n2/9 Building candidate sensor set...\n");
 
 if ~isempty(config.candidates.customLatitudesRad)
@@ -240,10 +205,7 @@ if config.chunking.enabled
     fprintf("\n");
 end
 
-%% ========================================================================
-%  3/9 Terrain-horizon database
-%  ========================================================================
-
+%% 3/9 Terrain-horizon database
 if config.chunking.enabled
     [horizonAzimuths,sensorElevationsAll] = ...
         optimization.buildCandidateTerrainChunks( ...
@@ -282,10 +244,7 @@ else
         "Candidate sensor elevations contain nonfinite values.");
 end
 
-%% ========================================================================
-%  4/9 Propagate fixed RSO truth population
-%  ========================================================================
-
+%% 4/9 Propagate fixed RSO truth population
 fprintf("\n4/9 Propagating RSO truth population...\n");
 
 times = ...
@@ -327,10 +286,7 @@ for objectIndex = 1:numberOfObjects
         propagatedStates.';
 end
 
-%% ========================================================================
-%  5/9 Fixed Earth and Sun histories
-%  ========================================================================
-
+%% 5/9 Fixed Earth and Sun histories
 fprintf("\n5/9 Building Earth and Sun histories...\n");
 
 [earthPositionsMci,sunPositionsMci] = ...
@@ -339,10 +295,7 @@ fprintf("\n5/9 Building Earth and Sun histories...\n");
         moonAngularRate, ...
         config.ephemeris);
 
-%% ========================================================================
-%  6/9 Fully filtered truth visibility
-%  ========================================================================
-
+%% 6/9 Fully filtered truth visibility
 if config.chunking.enabled
     [geometricCountsByObjectAll,filteredCountsByObjectAll] = ...
         optimization.buildTruthVisibilityChunks( ...
@@ -406,10 +359,7 @@ else
             numberOfObjects);
 end
 
-%% ========================================================================
-%  Candidate prefilter
-%  ========================================================================
-
+%% Candidate prefilter
 candidateKeepMask = ...
     true(numberOfCandidatesAll,1);
 
@@ -517,20 +467,14 @@ if config.chunking.enabled
         "A retained candidate is missing a retained-local chunk index.");
 end
 
-%% ========================================================================
-%  Measurement covariance
-%  ========================================================================
-
+%% Measurement covariance
 measurementCovariance = ...
     diag([ ...
         config.measurement.rightAscensionSigmaRad^2
         config.measurement.declinationSigmaRad^2
     ]);
 
-%% ========================================================================
-%  7/9 ONE representative IOD calibration -> fixed P0
-%  ========================================================================
-
+%% 7/9 ONE representative IOD calibration -> fixed P0
 fprintf("\n7/9 Calibrating fixed P0 from reference IOD case...\n");
 
 [fixedInitialCovariance,iodCalibration] = ...
@@ -628,10 +572,7 @@ fprintf( ...
     "  Optimization epochs:        %d\n", ...
     numberOfOptimizationTimes);
 
-%% ========================================================================
-%  8/9 Tracking dynamics and Jacobians
-%  ========================================================================
-
+%% 8/9 Tracking dynamics and Jacobians
 if config.chunking.enabled
     fprintf("\n8/9 Precomputing common tracking dynamics...\n");
 else
@@ -657,11 +598,7 @@ processNoiseHistories = ...
         numberOfObjects);
 
 if config.chunking.enabled
-    % The full production Jacobians are written later as equal-count chunk
-    % files. Avoid allocating one array that exceeds MATLAB's maximum-array
-    % preference. One representative sensor is sufficient here because the
-    % propagated reference states, STMs, and process noise are sensor
-    % independent.
+    % Precompute common dynamics with one sensor; write full Jacobians by chunk later.
     measurementJacobianHistories = [];
     dynamicsCandidateLatitudes = candidateLatitudes(1);
     dynamicsCandidateLongitudes = candidateLongitudes(1);
@@ -738,10 +675,7 @@ for objectIndex = 1:numberOfObjects
     end
 end
 
-%% ========================================================================
-%  Confirm nominal propagation agrees with truth
-%  ========================================================================
-
+%% Confirm nominal propagation agrees with truth
 maximumReferenceTruthError = ...
     max( ...
         abs( ...
@@ -753,10 +687,7 @@ maximumReferenceTruthError = ...
 assert(maximumReferenceTruthError < 1e-6, ...
     "Nominal tracking propagation does not reproduce truth.");
 
-%% ========================================================================
-%  9/9 Final fully filtered nominal availability / Jacobian chunks
-%  ========================================================================
-
+%% 9/9 Final fully filtered nominal availability / Jacobian chunks
 if config.chunking.enabled
     chunkMetadata = optimization.buildFinalCandidateChunks( ...
         chunkMetadata, ...
@@ -842,10 +773,7 @@ else
     clear nominalVisibilityDiagnostics
 end
 
-%% ========================================================================
-%  Final database
-%  ========================================================================
-
+%% Final database
 database = struct();
 
 database.meta = struct();
@@ -1154,10 +1082,7 @@ database.objective.infeasiblePenalty = ...
 database.objective.supportedModes = ...
     config.study.objectiveModes(:).';
 
-%% ========================================================================
-%  Save
-%  ========================================================================
-
+%% Save
 if strlength(string(config.outputFile)) > 0
 
     outputFile = ...
@@ -1208,10 +1133,7 @@ fprintf("\n");
 
 end
 
-%% =========================================================================
-%  Default configuration
-%  =========================================================================
-
+%% Default configuration
 function config = defaultConfiguration()
 
 config = struct();
@@ -1480,10 +1402,7 @@ config.objective.infeasiblePenalty = ...
 
 end
 
-%% =========================================================================
-%  Validate configuration
-%  =========================================================================
-
+%% Validate configuration
 function config = validateConfiguration(config)
 
 config.study.networkSizes = ...
@@ -1582,10 +1501,7 @@ end
 
 end
 
-%% =========================================================================
-%  Fixed-P0 IOD calibration
-%  =========================================================================
-
+%% Fixed-P0 IOD calibration
 function [fixedInitialCovariance,calibration] = ...
     buildFixedIodPrior( ...
         dem, ...
@@ -1595,17 +1511,9 @@ function [fixedInitialCovariance,calibration] = ...
         moonMu, ...
         theta0, ...
         moonAngularRate)
-% BUILDFIXEDIODPRIOR
-% Estimate one fixed P0 from one independent reference IOD acquisition.
-%
-% The IOD time grid is independent of the optimization tracking time grid.
-% The resulting covariance is reused identically for every RSO and every
-% network optimization.
+% BUILDFIXEDIODPRIOR - Calibrate one independent IOD covariance for all RSOs.
 
-%% ========================================================================
-%  Independent IOD time grid
-%  ========================================================================
-
+%% Independent IOD time grid
 iodTimes = ...
     ( ...
     0: ...
@@ -1622,20 +1530,14 @@ end
 numberOfIodTimes = ...
     length(iodTimes);
 
-%% ========================================================================
-%  Celestial histories on IOD time grid
-%  ========================================================================
-
+%% Celestial histories on IOD time grid
 [iodEarthPositionsMci,iodSunPositionsMci] = ...
     buildCelestialHistories( ...
         iodTimes, ...
         moonAngularRate, ...
         config.ephemeris);
 
-%% ========================================================================
-%  Reference orbit
-%  ========================================================================
-
+%% Reference orbit
 if isempty(config.iod.referenceInitialStateMoonInertial)
 
     referenceInitialState = ...
@@ -1669,10 +1571,7 @@ referenceStateHistory = ...
         referenceStates.', ...
         6,numberOfIodTimes,1);
 
-%% ========================================================================
-%  Fixed reference sensor
-%  ========================================================================
-
+%% Fixed reference sensor
 referenceSensorLatitude = ...
     config.iod.referenceSensorLatitudeRad;
 
@@ -1692,10 +1591,7 @@ referenceSensorLongitude = ...
         config.terrain.horizonAzimuthStepRad, ...
         moonRadius);
 
-%% ========================================================================
-%  Fully filtered reference visibility
-%  ========================================================================
-
+%% Fully filtered reference visibility
 [referenceAvailability,referenceVisibilityDiagnostics] = ...
     optimization.buildFilteredVisibilityDatabase( ...
         iodTimes, ...
@@ -1722,10 +1618,7 @@ referenceAvailability = ...
         referenceAvailability, ...
         1,numberOfIodTimes);
 
-%% ========================================================================
-%  Select required acquisition pass
-%  ========================================================================
-
+%% Select required acquisition pass
 iodSearchEndTime = ...
     iodTimes(1) + ...
     config.iod.searchEndFraction* ...
@@ -1764,10 +1657,7 @@ assert( ...
     config.iod.desiredObservationCount, ...
     "Reference IOD did not return exactly the requested observations.");
 
-%% ========================================================================
-%  Simulate fixed noisy reference measurements
-%  ========================================================================
-
+%% Simulate fixed noisy reference measurements
 measurementNoiseFactor = ...
     chol( ...
         measurementCovariance, ...
@@ -1789,10 +1679,7 @@ measurementNoiseFactor = ...
         theta0, ...
         moonAngularRate);
 
-%% ========================================================================
-%  One Monte Carlo IOD
-%  ========================================================================
-
+%% One Monte Carlo IOD
 [iodState, ...
     fixedInitialCovariance, ...
     iodReferenceTime, ...
@@ -1821,10 +1708,7 @@ fixedInitialCovariance = ...
 assert(positiveDefiniteFlag == 0, ...
     "Reference IOD produced a non-positive-definite P0.");
 
-%% ========================================================================
-%  Calibration provenance
-%  ========================================================================
-
+%% Calibration provenance
 calibration = struct();
 
 calibration.outputStepSeconds = ...
@@ -1882,10 +1766,7 @@ calibration.visibility.filteredAvailability = ...
 
 end
 
-%% =========================================================================
-%  Reference IOD pass
-%  =========================================================================
-
+%% Reference IOD pass
 function [acquisitionIndices, ...
     bestConsecutiveRunLength, ...
     acceptedEpochsInSearchWindow] = ...
@@ -1966,10 +1847,7 @@ assert(length(unique(acquisitionIndices)) == desiredCount, ...
 
 end
 
-%% =========================================================================
-%  Simulate fixed IOD measurements
-%  =========================================================================
-
+%% Simulate fixed IOD measurements
 function [observerPositionsMci,rightAscension,declination] = ...
     simulateSingleSensorMeasurements( ...
         times, ...
@@ -2055,10 +1933,7 @@ end
 
 end
 
-%% =========================================================================
-%  Reference orbital state
-%  =========================================================================
-
+%% Reference orbital state
 function state = ...
     referenceOrbitState( ...
         periapsisAltitudeKm, ...
@@ -2127,10 +2002,7 @@ state = [ ...
 
 end
 
-%% =========================================================================
-%  Generic Earth / Sun histories
-%  =========================================================================
-
+%% Generic Earth / Sun histories
 function [earthPositionsMci,sunPositionsMci] = ...
     buildCelestialHistories( ...
         times, ...
@@ -2179,10 +2051,7 @@ sunPositionsMci = ...
 
 end
 
-%% =========================================================================
-%  Visibility summary
-%  =========================================================================
-
+%% Visibility summary
 function summary = ...
     buildVisibilitySummary( ...
         filteredAvailability, ...
@@ -2225,10 +2094,7 @@ summary.acceptedByObject = ...
 
 end
 
-%% =========================================================================
-%  Recursive configuration merge
-%  =========================================================================
-
+%% Recursive configuration merge
 function output = ...
     mergeStruct(defaults,override)
 
@@ -2266,10 +2132,7 @@ end
 
 end
 
-%% =========================================================================
-%  Angle wrapping
-%  =========================================================================
-
+%% Angle wrapping
 function wrappedAngle = wrapAngle(angle)
 
 wrappedAngle = ...

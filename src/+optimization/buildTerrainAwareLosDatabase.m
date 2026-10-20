@@ -16,31 +16,30 @@ function [measurementAvailability, ...
         moonRadius, ...
         theta0, ...
         angularRate)
-% BUILDTERRAINAWARELOSDATABASE Evaluate terrain LOS for an RSO set.
+% BUILDTERRAINAWARELOSDATABASE - Evaluate terrain LOS for an RSO set.
 %
 % Inputs:
-%   times                     - Nx1 common observation times, s
-%   rsoStateHistories         - 6xNxO MCI state histories
-%   candidateLatitudes        - Sx1 candidate latitudes, rad
-%   candidateLongitudes       - Sx1 east-positive longitudes, rad
-%   dem                       - DEM griddedInterpolant
-%   horizonAzimuths           - Ax1 azimuth database grid, rad
-%   maximumTerrainElevation   - SxA terrain horizon database, rad
-%   instrumentMinimumElevation- Instrument mask angle, rad
-%   horizonMargin             - Terrain discretization margin, rad
-%   moonRadius                - Lunar reference radius, km
-%   theta0                    - Initial Moon rotation angle, rad
-%   angularRate               - Lunar rotation rate, rad/s
+%   - times - Nx1 common observation times, s
+%   - rsoStateHistories - 6xNxO MCI state histories
+%   - candidateLatitudes - Sx1 candidate latitudes, rad
+%   - candidateLongitudes - Sx1 east-positive longitudes, rad
+%   - dem - DEM griddedInterpolant
+%   - horizonAzimuths - Ax1 azimuth database grid, rad
+%   - maximumTerrainElevation - SxA terrain horizon database, rad
+%   - instrumentMinimumElevation - Instrument mask angle, rad
+%   - horizonMargin - Terrain discretization margin, rad
+%   - moonRadius - Lunar reference radius, km
+%   - theta0 - Initial Moon rotation angle, rad
+%   - angularRate - Lunar rotation rate, rad/s
 %
 % Outputs:
-%   measurementAvailability - SxNxO terrain LOS gates
-%   targetAzimuths          - SxNxO target azimuths, rad
-%   targetElevations        - SxNxO target elevations, rad
-%   targetRanges            - SxNxO target slant ranges, km
-%   limitingElevations      - SxNxO applied elevation limits, rad
+%   - measurementAvailability - SxNxO terrain LOS gates
+%   - targetAzimuths - SxNxO target azimuths, rad
+%   - targetElevations - SxNxO target elevations, rad
+%   - targetRanges - SxNxO target slant ranges, km
+%   - limitingElevations - SxNxO applied elevation limits, rad
 %
-% The terrain database is static. These outputs are rebuilt whenever the
-% RSO candidate set or observation arc changes.
+% Rebuild when target trajectories or observation times change.
 
 arguments
     times (:,1) double

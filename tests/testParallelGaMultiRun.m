@@ -1,8 +1,6 @@
 function tests = testParallelGaMultiRun
-% TESTPARALLELGAMULTIRUN Function-based test of the shared process pool.
-% Keep setup, all three GA runs, and checks in the SAME function workspace.
-% MATLAB runtests treats sections in a script as independent tests with
-% separate workspaces, so this must not be a section-based script.
+% TESTPARALLELGAMULTIRUN - Function-based test of the shared process pool.
+
 tests = functiontests(localfunctions);
 end
 
@@ -13,7 +11,7 @@ function testSharedPoolAcrossThreeGARuns(testCase)
 testDirectory = fileparts(mfilename("fullpath"));
 projectRoot = fileparts(testDirectory);
 addpath(fullfile(projectRoot,"src"));
-addpath(fullfile(projectRoot,"scripts"));
+addpath(genpath(fullfile(projectRoot,"scripts")));
 rehash path;
 
 % Use the caller's existing process pool. Create one only if absent.
