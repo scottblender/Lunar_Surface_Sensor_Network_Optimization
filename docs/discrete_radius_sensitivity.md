@@ -45,6 +45,69 @@ database update does not require rewriting the script if it replaces
 If a newer database is saved somewhere else, set its path using
 `radiusStudyDatabaseFile` and ensure its chunk files are available.
 
+## Reuse saved radius sweeps and refresh metrics (no new objective FEs)
+
+The **same** `run("scripts/runDiscreteRadiusStudy.m")` command now detects
+completed, compatible `radius_sensitivity_study.mat` files beneath
+`results/local_refinement/radius_sensitivity_*/`. If it finds one
+matching the selected study, requested radii, and unchanged database,
+it **skips the 10–100 km combinatorial search entirely** and
+recalculates the efficiency and displacement metrics from saved
+winning networks. Only if no compatible completed MAT exists does it
+run the expensive radius sweep.
+
+The runner's USER SETTINGS include:
+
+    radiusStudyReuseExistingResults = true;
+    radiusStudyExistingMatFile = "";   % auto-discover newest compatible
+    radiusStudyBoundaryFraction = 0.90;
+
+To explicitly reuse your completed Oct 16 sweep instead of searching:
+
+    radiusStudyExistingMatFile = fullfile("results","local_refinement", ...
+        "radius_sensitivity_20261016_155246_828", ...
+        "radius_sensitivity_study.mat");
+
+An explicit but incompatible MAT causes an error rather than a silent
+rerun. An incompatible auto-discovered file is ignored. Candidate
+winner coordinates are cross-checked against the current database,
+and cached results are rejected when the database file was modified
+after the sweep. Set `radiusStudyReuseExistingResults=false` to force
+a new sweep deliberately.
+
+After invoking the runner, both `radiusStudy` (original sweep) and
+`radiusStudyAnalysis` (new metrics) are in the MATLAB workspace.
+Post-processing uses `scripts/analyzeSavedDiscreteRadiusStudy.m`
+internally; **you do not need to run a second command**. It does not
+call the objective function. The following additional files are saved
+beside the original MAT and CSV, without overwriting them:
+
+    radius_sensitivity_efficiency_summary.csv
+    radius_sensitivity_sensor_displacements.csv
+    radius_sensitivity_postprocessing.mat
+    marginal_efficiency_vs_radius.png
+    relative_improvement_vs_cumulative_fe.png
+    sensor_displacements_vs_radius.png
+
+**Marginal efficiency** is
+`EtaPctPointsPer1000NewFE = MarginalRelativeImprovementPct /
+(NewObjectiveEvaluations/1000)`. Its units are **percentage points of
+relative objective reduction per 1,000 NEW unique FEs**, not percent
+speedup. `EtaPctPointsPer1000NewCombinations` gives the analogous
+quantity using the expansion in raw Cartesian search space.
+`CumulativeEfficiencyPctPointsPer1000FE` measures improvement from
+the original configuration divided by total additional FEs.
+
+Displacements are lunar great-circle distances between the original
+and best network sites. Because candidate indices are sorted and
+sensor labels are not immutable, one-to-one sensor correspondence
+is recovered by minimizing total displacement subject to each original
+sensor's allowed radius neighborhood. `MaxSensorDisplacementKm`,
+`MeanSensorDisplacementKm`, and `SensorsAt90PctRadius` summarize
+whether best sites lie close to the search boundary, which may justify
+extending a radius. All of these quantities can be recovered from the
+existing saved per-radius result objects and candidate coordinates.
+
 ## Direct current-grid candidate indices (alternative)
 
 If you prefer not to load a saved summary, set in the runner:
@@ -166,8 +229,10 @@ To avoid creating any result files during a quick check:
 
     results = runtests("tests/testRefineDiscreteNetwork.m");
     results2 = runtests("tests/testDiscreteRadiusSensitivity.m");
+    results3 = runtests("tests/testAnalyzeSavedDiscreteRadiusStudy.m");
     disp(results);
     disp(results2);
+    disp(results3);
 
 These use small synthetic inputs and do not require a local DEM, production
 database, optimizer toolbox, or visible plots. Run the real radius sweep
