@@ -117,3 +117,9 @@ The remaining scientific source files have repository callers or tests.
 Standalone analysis entry points and non-overlapping numerical, DEM, terrain,
 and saved-production checks are retained. This audit covers tracked repository
 files; it cannot identify calls in untracked local scripts or external projects.
+
+The context-layout regression now checks the current compact-callout contract:
+canvas containment, spacing, connections to targets and box corners, and
+45-degree leaders. Its obsolete outside-disk assertion was removed; normalized
+annotation coordinates use a one-screen-pixel tolerance for figure resizing.
+The plotting implementation is unchanged.

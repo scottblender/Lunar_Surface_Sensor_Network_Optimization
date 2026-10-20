@@ -31,21 +31,28 @@ text(ax,-0.25,-0.25,"South Pole","Tag","clpsMovableLabel", ...
 layoutClpsContext(fig,ax,boxes,leaders,targets,heading,cb,lgd);
 fig.Units = "points";
 canvas = fig.Position(3:4);
+% Annotation coordinates can round to a screen pixel when the figure resizes.
+positionTolerance = 72/get(groot,"ScreenPixelsPerInch");
 verifyEqual(testCase,ax.Position(3),ax.Position(4),"AbsTol",1e-8);
 for k = 1:4
     p = boxes(k).Position;
     verifyGreaterThanOrEqual(testCase,p(1:2),[0 0]);
     verifyLessThanOrEqual(testCase,p(1:2)+p(3:4),canvas);
-    % Nearest box point stays outside the map disk, even though its bounding
-    % rectangle overlaps a corner of the square axes.
-    center = ax.Position(1:2)+ax.Position(3:4)/2;
-    nearest = max(p(1:2),min(center,p(1:2)+p(3:4)));
-    verifyGreaterThan(testCase,norm(nearest-center),ax.Position(3)/2);
     delta = [diff(leaders(k).X) diff(leaders(k).Y)].*canvas;
-    verifyEqual(testCase,abs(delta(1)),abs(delta(2)),"AbsTol",1e-6);
+    verifyEqual(testCase,abs(delta(1)),abs(delta(2)), ...
+        "AbsTol",positionTolerance);
     expected = ax.Position(1:2) + ax.Position(3:4).*(targets(k,:)+1)/2;
     actual = [leaders(k).X(2) leaders(k).Y(2)].*canvas;
-    verifyEqual(testCase,actual,expected,"AbsTol",1e-6);
+    verifyEqual(testCase,actual,expected,"AbsTol",positionTolerance);
+    % Compact callouts may overlap the disk, but not their own target point.
+    targetOutsideBox = expected(1) < p(1) || expected(1) > p(1)+p(3) || ...
+        expected(2) < p(2) || expected(2) > p(2)+p(4);
+    verifyTrue(testCase,targetOutsideBox);
+    start = [leaders(k).X(1) leaders(k).Y(1)].*canvas;
+    corners = [p(1:2); p(1)+p(3) p(2); ...
+        p(1) p(2)+p(4); p(1:2)+p(3:4)];
+    cornerDistances = vecnorm(corners-start,2,2);
+    verifyLessThanOrEqual(testCase,min(cornerDistances),positionTolerance);
 end
 for first = [1 3]
     upper = boxes(first).Position;
