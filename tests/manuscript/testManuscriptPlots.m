@@ -290,3 +290,32 @@ function cleanupDefinitionFigures(folder,oldFigures)
 close(setdiff(findall(groot,"Type","figure"),oldFigures));
 if isfolder(folder), rmdir(folder,"s"); end
 end
+
+function testProductionConvergenceUsesCampaignData(testCase)
+folder = string(tempname); mkdir(folder);
+oldFigures = findall(groot,"Type","figure");
+cleanup = onCleanup(@()cleanupDefinitionFigures(folder,oldFigures)); %#ok<NASGU>
+campaign.configuration = struct("networkSizes",[2 4 6 8 12], ...
+    "objectiveModes","coverage","numberOfRuns",2);
+campaign.outputDirectory = folder;
+campaign.studies = cell(5,1);
+for k=1:5
+    first.history = struct("fe",[5;10;20],"bestJ",[-2;-4;-8]);
+    second.history = struct("fe",[5;15;20],"bestJ",[-3;-5;-9]);
+    study.runStates = {first,second};
+    campaign.studies{k,1} = study;
+end
+products = plotProductionResults(campaign,struct("productionPlots","convergence"));
+verifyEqual(testCase,string(fieldnames(products)),"convergence");
+verifyTrue(testCase,isfile(products.convergence.coverage.outputFile));
+ax = findall(products.convergence.coverage.figure,"Type","axes");
+lines = findall(ax,"Type","line","HandleVisibility","on");
+verifyNumElements(testCase,lines,5);
+for line = lines.'
+    verifyEqual(testCase,line.XData,[5 10 15 20]);
+    verifyEqual(testCase,line.YData,[-2.5 -3.5 -4.5 -8.5]);
+end
+verifyEqual(testCase,ax.XLim,[5 20]);
+verifyLessThanOrEqual(testCase,ax.YLim(1),-8.5);
+verifyGreaterThanOrEqual(testCase,ax.YLim(2),-2.5);
+end

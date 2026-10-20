@@ -45,7 +45,9 @@ output directory and share their drawing helpers; they do not clear or execute
 in the base workspace or temporarily write EPS files into the source tree.
 Production figures share a loaded campaign. Selection bins are configurable,
 convergence supports additional network sizes, and objective limits follow the
-actual data rather than a fixed historical coverage range.
+actual data rather than a fixed historical coverage range. Repeated-run histories
+with different FE checkpoints use step interpolation over their common measured
+interval, without extrapolation.
 
 To plot another population without duplicating a renderer:
 

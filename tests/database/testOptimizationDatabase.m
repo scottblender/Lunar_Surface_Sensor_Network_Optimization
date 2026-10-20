@@ -785,50 +785,6 @@ informationTolerance = 1e-12*max(1,abs(informationObjective));
 assert(abs(informationRepeat-informationObjective) <= informationTolerance, ...
     "Chunked information objective is not deterministic.");
 
-%% Storage summary
-databaseInfo = dir(databaseFile);
-databaseSizeGiB = double(databaseInfo.bytes)/1024^3;
-actualChunkBytes = 0;
-for chunkIndex = 1:6
-    chunkInfo = dir(chunks(chunkIndex).filePath);
-    actualChunkBytes = actualChunkBytes + double(chunkInfo.bytes);
-end
-uncompressedJacobianGiB = (2*6*numberOfCandidates*expectedOptimizationEpochs*numberOfObjects*8) / ...
-    1024^3;
-fprintf("\n");
-fprintf("Production optimization database validation\n");
-fprintf("-------------------------------------------\n");
-fprintf("Candidate domain:          -90 to 0 deg latitude\n");
-fprintf("Grid spacing:              %.1f km\n",expectedSpacingKm);
-fprintf("Initial candidates:        %d\n",expectedInitialCandidates);
-fprintf("Retained candidates:       %d\n",numberOfCandidates);
-fprintf("Original chunk sizes:      ");
-fprintf("%d ",originalChunkCounts);
-fprintf("\n");
-fprintf("Retained chunk sizes:      ");
-fprintf("%d ",retainedChunkCounts);
-fprintf("\n");
-fprintf("Tracking horizon:          %.1f hr\n",expectedFinalTimeSeconds/3600);
-fprintf("Tracking cadence:          %.1f min\n",expectedTrackingStepSeconds/60);
-fprintf("Optimization epochs:       %d\n",expectedOptimizationEpochs);
-fprintf("RSO population:            %d\n",numberOfObjects);
-fprintf("Chunked products:          terrain, visibility, full 2x6 Jacobians\n");
-fprintf("Uncompressed Jacobians:    %.2f GiB\n",uncompressedJacobianGiB);
-fprintf("Chunk files on disk:       %.2f GiB\n",actualChunkBytes/1024^3);
-fprintf("Core MAT-file size:        %.2f GiB\n",databaseSizeGiB);
-fprintf("Max Jacobian error:        %.3e\n",maximumJacobianError);
-fprintf("Information objective:     %.8f\n",informationObjective);
-fprintf("Coverage objective:        %.0f\n",coverageObjective);
-fprintf("Early equal-count chunks:  passed\n");
-fprintf("Global/local index maps:   passed\n");
-fprintf("Terrain partial lookup:    passed\n");
-fprintf("Visibility partial lookup: passed\n");
-fprintf("Jacobian partial lookup:   passed\n");
-fprintf("Analytic Jacobian check:   passed\n");
-fprintf("Objective determinism:     passed\n");
-fprintf("\n");
-fprintf("testProductionOptimizationDatabase passed.\n");
-
 %% Off-grid evaluator agrees at exact frozen candidate locations
 
 %% Resolve DEM

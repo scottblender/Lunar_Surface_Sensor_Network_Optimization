@@ -379,7 +379,7 @@ verifyEqual(testCase,T.RelativeImprovementPct, [0;10;11],"AbsTol",1e-10);
 verifyEqual(testCase,T.MaxSensorDisplacementKm,[0;5;5], "AbsTol",1e-10);
 verifyEqual(testCase,T.MeanSensorDisplacementKm,[0;2.5;5], "AbsTol",1e-10);
 verifyEqual(testCase,T.SensorsAt90PctRadius,[0;0;0]);
-verifyEqual(testCase,analysis.sensorDisplacementTable. RefinedCandidateIndex(5:6),[2;4]);
+verifyEqual(testCase,analysis.sensorDisplacementTable.RefinedCandidateIndex(5:6),[2;4]);
 verifyEqual(testCase,analysis.sourceStudyFile,"");
 verifyEqual(testCase,analysis.outputDirectory,"");
 end

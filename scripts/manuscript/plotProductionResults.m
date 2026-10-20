@@ -28,7 +28,7 @@ end
 end
 
 function plotInfo = plotPopulation(campaign,userConfig)
-% PLOTDESIGNRSOFAMILYMCRF - Plot separated design RSO trajectories in MCRF.
+% PLOTPOPULATION - Plot separated design RSO trajectories in MCRF.
 
 arguments
     campaign (1,1) struct
@@ -195,7 +195,7 @@ fprintf("Design-RSO MCRF family subplot figure:\n  %s\n",outputFile);
 end
 
 function plotInfo = plotConvergence(campaign,userConfig)
-% PLOTPRODUCTIONCONVERGENCE - Generate the two manuscript convergence figures.
+% PLOTCONVERGENCE - Plot repeated-run convergence on the shared FE interval.
 
 arguments
     campaign (1,1) struct
@@ -230,11 +230,13 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     handles = gobjects(numel(config.networkSizes),1);
     labels = strings(numel(config.networkSizes),1);
+    feLimits = [Inf -Inf];
 
     for networkIndex = 1:numel(config.networkSizes)
         studyState = campaign.studies{networkIndex,objectiveIndex};
         [fe,meanHistory,stdHistory] = aggregateConvergence( ...
             studyState,config.numberOfRuns);
+        feLimits = [min(feLimits(1),fe(1)) max(feLimits(2),fe(end))];
         c = networkColors(networkIndex,:);
         % Use an opaque light color for the sigma band in EPS output.
         bandColor = 0.45*c + 0.55*[1 1 1];
@@ -258,10 +260,11 @@ for objectiveIndex = 1:numel(config.objectiveModes)
 
     xlabel(ax,"Function evaluations");
     ylabel(ax,{'Mean best-so-far','objective, J'});
-    xlim(ax,[config.populationSize config.functionEvaluationBudget]);
+    if feLimits(2)==feLimits(1), feLimits(2)=feLimits(1)+1; end
+    xlim(ax,feLimits);
     applyAxesStyle(ax,style);
     % Sparse FE ticks remain legible at the half-page manuscript width.
-    xticks(ax,config.functionEvaluationBudget*(1:3)/3);
+    xticks(ax,linspace(feLimits(1),feLimits(2),4));
     xtickformat(ax,"%.0f");
     lgd = legend(ax,handles,labels, ...
         "Location","none","Orientation","horizontal", ...
@@ -287,15 +290,31 @@ end
 function [fe,meanHistory,stdHistory] = aggregateConvergence(studyState,numberOfRuns)
 assert(numel(studyState.runStates) == numberOfRuns, ...
     "Study contains an unexpected number of run states.");
-fe = double(studyState.runStates{1}.history.fe(:));
+grids = cell(numberOfRuns,1); scores = cell(numberOfRuns,1);
+for runIndex = 1:numberOfRuns
+    history = studyState.runStates{runIndex}.history;
+    grids{runIndex} = double(history.fe(:));
+    scores{runIndex} = double(history.bestJ(:));
+    assert(~isempty(grids{runIndex}) && numel(grids{runIndex})==numel(scores{runIndex}) && ...
+        all(isfinite(grids{runIndex})) && all(isfinite(scores{runIndex})) && ...
+        all(diff(grids{runIndex})>0), ...
+        "plotProductionResults:History","Run %d has an invalid FE history.",runIndex);
+end
+% Step interpolation preserves best-so-far histories; never extrapolate beyond
+% any run's measured interval or invent improvements between checkpoints.
+first = max(cellfun(@(x)x(1),grids));
+last = min(cellfun(@(x)x(end),grids));
+assert(first<=last,"plotProductionResults:HistoryOverlap", ...
+    "The run histories have no common FE interval.");
+fe = unique(vertcat(grids{:}));
+fe = fe(fe>=first & fe<=last);
 allHistories = zeros(numel(fe),numberOfRuns);
 for runIndex = 1:numberOfRuns
-    runState = studyState.runStates{runIndex};
-    currentFe = double(runState.history.fe(:));
-    currentBest = double(runState.history.bestJ(:));
-    assert(isequal(currentFe,fe), ...
-        sprintf('Run %d uses a different FE history grid.',runIndex));
-    allHistories(:,runIndex) = currentBest;
+    if numel(grids{runIndex})==1
+        allHistories(:,runIndex) = scores{runIndex};
+    else
+        allHistories(:,runIndex) = interp1(grids{runIndex},scores{runIndex},fe,"previous");
+    end
 end
 meanHistory = mean(allHistories,2);
 stdHistory = std(allHistories,0,2);
@@ -318,7 +337,7 @@ ax.YLabel.FontWeight = "bold";
 end
 
 function plotInfo = plotSelection(campaign,userConfig)
-% PLOTPRODUCTIONNETWORKLOCATIONS - Geographic selection-frequency heatmaps.
+% PLOTSELECTION - Geographic selection-frequency heatmaps.
 
 arguments
     campaign (1,1) struct
@@ -394,7 +413,7 @@ end
 end
 
 function plotInfo = plotDesignTracking(campaign,userConfig)
-% PLOTDESIGNRSOTRACKINGHEATMAPS - Combined design-RSO RMSE/observability figure.
+% PLOTDESIGNTRACKING - Combined design-RSO RMSE/observability figure.
 
 arguments
     campaign (1,1) struct

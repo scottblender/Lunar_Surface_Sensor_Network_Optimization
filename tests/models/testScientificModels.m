@@ -610,7 +610,6 @@ end
 
 %% Propagate each object for one period
 samplesPerOrbit = 500;
-trajectoryHistories = cell(numberOfObjects,1);
 for objectIndex = 1:numberOfObjects
     orbitPeriod = rsoCatalog.PeriodSeconds(objectIndex);
     propagationTimes = linspace( 0, orbitPeriod, samplesPerOrbit + 1).';
@@ -625,7 +624,6 @@ for objectIndex = 1:numberOfObjects
     closureError = norm( propagatedStates(end,:).' - initialStatesMoonInertial(:,objectIndex));
     assert(closureError < 1e-4, "%s did not close after one two-body period.", ...
         char(rsoCatalog.Name(objectIndex)));
-    trajectoryHistories{objectIndex} = positionHistory;
 end
 end
 
