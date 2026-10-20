@@ -95,7 +95,9 @@ verifyError(testCase,@()optimization.runOptimizer(@sum,problem,config), ...
 end
 
 function testParallelMatchesSerial(testCase)
-assumeTrue(testCase,license('test','Distrib_Computing_Toolbox'));
+% Batch-token licensing can report false from license('test',...) even
+% when the installed toolbox is usable. Let parpool verify execution.
+assumeFalse(testCase,isempty(ver('parallel')));
 previous = rng; cleanup = onCleanup(@()rng(previous)); %#ok<NASGU>
 pool = gcp('nocreate');
 if isempty(pool)
