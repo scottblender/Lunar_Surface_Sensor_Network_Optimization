@@ -7,7 +7,10 @@ end
 function testCalloutsAndLeadersFitCanvas(testCase)
 root = fileparts(fileparts(fileparts(mfilename("fullpath"))));
 addpath(genpath(fullfile(root,"scripts")));
-fig = figure("Visible","off","Units","inches","Position",[1 1 8 6]);
+% Use a standalone figure so docked-container resizing cannot move annotations.
+fig = figure("WindowStyle","normal","Visible","off", ...
+    "Units","inches","Position",[1 1 8 6]);
+drawnow;
 cleanup = onCleanup(@()close(fig)); %#ok<NASGU>
 ax = axes(fig);
 h = plot(ax,[-1 1],[-1 1]);
@@ -29,6 +32,7 @@ targets = [-0.2 0.3; 0 0.1; 0.2 0.2; 0.3 -0.3];
 text(ax,-0.25,-0.25,"South Pole","Tag","clpsMovableLabel", ...
     "FontSize",15,"BackgroundColor","white");
 layoutClpsContext(fig,ax,boxes,leaders,targets,heading,cb,lgd);
+drawnow;
 fig.Units = "points";
 canvas = fig.Position(3:4);
 % Annotation coordinates can round to a screen pixel when the figure resizes.

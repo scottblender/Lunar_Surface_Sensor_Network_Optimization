@@ -123,3 +123,6 @@ canvas containment, spacing, connections to targets and box corners, and
 45-degree leaders. Its obsolete outside-disk assertion was removed; normalized
 annotation coordinates use a one-screen-pixel tolerance for figure resizing.
 The plotting implementation is unchanged.
+
+The layout test creates an explicit standalone (`WindowStyle="normal"`) figure
+and completes rendering before checking positions, avoiding asynchronous figure-container resizing in recent MATLAB releases.
