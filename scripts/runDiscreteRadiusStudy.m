@@ -236,7 +236,9 @@ if radiusStudyReuseExistingResults
             radiusStudyCandidates = radiusStudyCandidates(radiusStudyOrder);
         end
     end
-    for radiusStudyCandidate = radiusStudyCandidates(:).'
+    for radiusStudyCandidateIndex = 1:numel(radiusStudyCandidates)
+        radiusStudyCandidate = ...
+            radiusStudyCandidates(radiusStudyCandidateIndex);
         radiusStudyPossibleMat = fullfile( ...
             radiusStudyCandidate.folder,radiusStudyCandidate.name);
         try
@@ -340,8 +342,7 @@ fprintf("Unique objective evaluations in original sweep: %.0f\n", ...
 if strlength(radiusStudyReusedMatFile) > 0
     fprintf("New objective evaluations in this run: 0 (cached MAT reused)\n");
 end
-fprintf("Per-sensor displacement and efficiency tables are in " + ...
-    "radiusStudyAnalysis.\n");
+fprintf("Eta and sensor displacement tables: radiusStudyAnalysis\n");
 fprintf("Current DB version: %s\n",radiusStudy.currentDatabaseVersion);
 if radiusStudy.mappingApplied
     fprintf("Saved sites were matched to current-grid IDs: %s\n", ...
