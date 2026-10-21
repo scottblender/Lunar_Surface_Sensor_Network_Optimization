@@ -188,3 +188,27 @@ Existing smoke suites verify default preflight skips flatness and explicit opt-i
 objectives, exercise both compact chunk modes and resume markers, preserve view
 index maps, and distinguish sloped/fine/coarse local terrain. Full-scale runtime
 and actual synthetic-DEM results still depend on local input files/hardware.
+
+## Recover a saved database after final validation failed
+
+If the log reaches `Optimization database complete` and then reports
+`Too many input arguments` in the chunk-cap comparison, the physical chunk build
+has already finished. Older launcher JSON lists expanded `domainComparison`
+metadata into multiple structs. Pull the fix, then finalize the saved database:
+
+```matlab
+setupProject;
+finalizeDomainDatabase(fullfile(pwd,"results","domain_databases_compact", ...
+    "shared","optimization_database.mat"));
+```
+
+This validates the saved chunk counts, caps, completion flags, visibility, and
+Jacobian dimensions. It repairs only duplicate metadata whose fields agree
+except for the requested domain names, records physical completion, and writes
+the requested domain views. Terrain and Jacobian chunks are not rebuilt or
+rewritten. Conflicting metadata or incomplete chunks stop recovery before the
+saved manifest is changed. The original `build_request.mat` is preserved.
+
+Use this explicit recovery command for the saved build: rerunning the launcher
+after source edits can correctly trigger its source-signature guard. Do not
+delete the existing manifest, chunks, or request file to work around that guard.

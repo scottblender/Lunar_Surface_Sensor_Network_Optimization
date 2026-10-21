@@ -185,3 +185,101 @@ clps = planDomainDatabase("clps",options);
 verifyEqual(testCase,shared.numberOfCandidates,polar.numberOfCandidates+clps.numberOfCandidates);
 verifyEqual(testCase,shared.latitudesRad(1:polar.numberOfCandidates),polar.latitudesRad);
 end
+
+function testDomainListsFromLauncherJsonAreNormalized(testCase)
+options = jsondecode('{"spacingKm":500,"requestedDomains":["south75","south0"]}');
+actual = planDomainDatabase("shared",options);
+expected = planDomainDatabase("shared",struct("spacingKm",500, ...
+    "requestedDomains",["south75","south0"]));
+verifyEqual(testCase,actual.options.requestedDomains,["south75","south0"]);
+verifyEqual(testCase,actual.latitudesRad,expected.latitudesRad);
+verifyEqual(testCase,actual.longitudesRad,expected.longitudesRad);
+end
+
+function testRecoverSavedDomainDatabaseWithoutRebuilding(testCase)
+[file,chunks] = savedDomainFixture(testCase);
+before = arrayfun(@(chunk)dir(chunk.filePath),chunks);
+request = struct("sourceSignature","original build provenance");
+requestFile = fullfile(fileparts(file),"build_request.mat");
+save(requestFile,"request");
+finalizeDomainDatabase(file);
+saved = load(file,"database");
+verifyTrue(testCase,isscalar(saved.database.config.domainComparison));
+verifyEqual(testCase,saved.database.config.domainComparison.requestedDomains,["south75","south0"]);
+verifyTrue(testCase,isfile(fullfile(fileparts(file),"build_complete.mat")));
+root = fileparts(fileparts(file));
+for domain = ["south75","south0"]
+    view = load(fullfile(root,domain,"optimization_database.mat"),"database");
+    verifyEqual(testCase,view.database.meta.sharedSourceFile,file);
+    expectedIds = (1:2).';
+    if domain=="south75", expectedIds=1; end
+    verifyEqual(testCase,view.database.meta.sharedSourceCandidateIds,expectedIds);
+end
+% An interrupted view phase can be retried after the physical completion marker.
+delete(fullfile(root,"south75","optimization_database.mat"));
+finalizeDomainDatabase(file);
+verifyTrue(testCase,isfile(fullfile(root,"south75","optimization_database.mat")));
+verifyEqual(testCase,arrayfun(@(chunk)dir(chunk.filePath),chunks),before);
+verifyEqual(testCase,load(requestFile,"request"),struct("request",request));
+end
+
+function testDomainRecoveryRejectsConflictingMetadata(testCase)
+[file,~] = savedDomainFixture(testCase);
+saved = load(file,"database"); database = saved.database;
+database.config.domainComparison(2).maximumCandidatesPerChunk = 2;
+save(file,"database","-v7.3");
+verifyError(testCase,@()finalizeDomainDatabase(file), ...
+    "finalizeDomainDatabase:ConflictingMetadata");
+verifyFalse(testCase,isfile(fullfile(fileparts(file),"build_complete.mat")));
+saved = load(file,"database");
+verifyEqual(testCase,[saved.database.config.domainComparison.maximumCandidatesPerChunk],[1 2]);
+end
+
+function testDomainRecoveryRejectsUnfinishedChunksBeforeRepair(testCase)
+[file,chunks] = savedDomainFixture(testCase);
+finalChunkComplete = false;
+save(chunks(1).filePath,"finalChunkComplete","-append");
+verifyError(testCase,@()finalizeDomainDatabase(file),"buildDomainDatabase:IncompleteChunk");
+saved = load(file,"database");
+verifyNumElements(testCase,saved.database.config.domainComparison,2);
+verifyFalse(testCase,isfile(fullfile(fileparts(file),"build_complete.mat")));
+end
+
+function [file,chunks] = savedDomainFixture(testCase)
+root = string(tempname); mkdir(root);
+testCase.addTeardown(@()rmdir(root,'s'));
+folder = fullfile(root,"shared"); mkdir(folder);
+chunkFolder = fullfile(folder,"candidate_chunks"); mkdir(chunkFolder);
+file = fullfile(folder,"optimization_database.mat");
+chunks = optimization.createCandidateChunkPlan(2,2,chunkFolder);
+for k = 1:2
+    chunks(k).numberOfRetainedCandidates = 1;
+    filteredAvailability = true(1,432,2);
+    measurementJacobianHistories = zeros(2,6,1,432,2);
+    finalChunkComplete = true;
+    save(chunks(k).filePath,"filteredAvailability","measurementJacobianHistories", ...
+        "finalChunkComplete","-v7.3");
+end
+database.meta = struct("numberOfOptimizationEpochs",432,"numberOfObjects",2, ...
+    "numberOfCandidatesBeforeFiltering",2,"numberOfCandidates",2, ...
+    "measurementJacobianStorage","full","measurementJacobianStateColumns",6);
+database.config.outputFile = file;
+database.config.chunking.numberOfChunks = 2;
+% Reproduce struct expansion from the launcher's JSON-decoded cell array.
+database.config.domainComparison = struct("domain","shared", ...
+    "requestedDomains",{'south75','south0'},"maximumCandidatesPerChunk",1, ...
+    "prefilterSiteIds",strings(2,1),"sites",table());
+database.study.networkSizes = 1;
+database.config.study.networkSizes = 1;
+database.config.candidates = struct();
+database.candidates = struct("latitudesRad",deg2rad([-80;-10]), ...
+    "longitudesRad",[0;0],"originalIndices",uint32([1;2]), ...
+    "chunkIndex",uint16([1;2]),"chunkLocalIndex",uint32([1;1]));
+database.candidates.prefilter = struct("latitudesRad",database.candidates.latitudesRad, ...
+    "longitudesRad",[0;0],"keepMask",true(2,1));
+database.visibility = struct("candidateChunks",chunks,"filteredAvailability",[], ...
+    "summary",struct("acceptedByCandidateObject",ones(2,2)));
+database.tracking.measurementJacobianHistories = [];
+database.terrain.maximumTerrainElevationRad = [];
+save(file,"database","-v7.3");
+end
