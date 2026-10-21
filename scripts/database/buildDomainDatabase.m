@@ -8,7 +8,7 @@ end
 root = fileparts(fileparts(fileparts(mfilename("fullpath"))));
 defaults = struct("outputRoot",string(fullfile(root,"results","domain_databases")), ...
     "demFile",string(fullfile(root,"data","Synthetic_Lunar_DEM.mat")), ...
-    "planOnly",false);
+    "planOnly",false,"preflightOnly",false,"maximumDemSpacingMeters",[]);
 options = utilities.overrideConfig(defaults,userOptions);
 plan = planDomainDatabase(domain,options);
 options = plan.options;
@@ -20,6 +20,21 @@ fprintf("Uncompressed full Jacobian disk estimate: %.2f GiB\n",plan.estimatedJac
 if options.planOnly, return; end
 assert(isfile(options.demFile),"buildDomainDatabase:DemMissing", ...
     "DEM not found: %s",options.demFile);
+% Validate native coverage and granularity before creating output/chunk directories.
+[dem,demModel] = digitalElevationModel.loadTriaxialLunarDem(options.demFile,1737.4,24,48);
+config = productionDatabaseConfiguration(options.demFile,demModel,folder);
+requirements = struct("candidateSpacingKm",plan.options.spacingKm, ...
+    "maximumDemSpacingMeters",options.maximumDemSpacingMeters, ...
+    "terrainRangeKm",config.terrain.maximumRangeKm, ...
+    "terrainRangeStepKm",config.terrain.rangeStepKm, ...
+    "azimuthStepRad",config.terrain.horizonAzimuthStepRad);
+if domain == "clps", requirements.candidateSpacingKm = plan.options.clpsSpacingKm; end
+demReport = digitalElevationModel.checkDemCompatibility( ...
+    demModel,plan.latitudesRad,plan.longitudesRad,requirements);
+if options.preflightOnly
+    disp(demReport);
+    return
+end
 % Resolve paths before writing the persistent request guard.
 [~,demAttributes] = fileattrib(options.demFile);
 options.demFile = string(demAttributes.Name);
@@ -61,8 +76,6 @@ if isfile(outputFile)
 end
 assert(~isfile(completionFile),"buildDomainDatabase:MissingManifest", ...
     "Completion marker exists but database manifest is missing.");
-[dem,demModel] = digitalElevationModel.loadTriaxialLunarDem(options.demFile,1737.4,24,48);
-config = productionDatabaseConfiguration(options.demFile,demModel,folder);
 config.outputFile = outputFile;
 config.candidates.customLatitudesRad = plan.latitudesRad;
 config.candidates.customLongitudesRad = plan.longitudesRad;
@@ -73,8 +86,8 @@ if domain == "clps"
     assert(max(config.study.networkSizes) <= height(plan.sites), ...
         "buildDomainDatabase:NetworkSize","CLPS network sizes cannot exceed enabled site count.");
     warning("buildDomainDatabase:ClpsGeometryOnly", ...
-        ["CLPS neighborhoods are geometric candidates, not certified flat locations. " ...
-         "Site IDs are metadata; the generic optimizer does not enforce one sensor per site."]);
+        "CLPS neighborhoods are geometric candidates, not certified flat locations. " + ...
+         "Site IDs are metadata; the generic optimizer does not enforce one sensor per site.");
 end
 config.chunking.enabled = true;
 config.chunking.numberOfChunks = plan.numberOfChunks;
@@ -85,7 +98,8 @@ config.chunking.resumeExisting = true;
 config.domainComparison = struct("domain",domain,"sites",plan.sites, ...
     "prefilterSiteIds",plan.siteIds,"clpsRadiusKm",plan.options.clpsRadiusKm, ...
     "flatnessCertified",false,"seed",plan.options.seed, ...
-    "maximumCandidatesPerChunk",plan.options.maximumCandidatesPerChunk);
+    "maximumCandidatesPerChunk",plan.options.maximumCandidatesPerChunk, ...
+    "demCompatibility",demReport);
 % The same population/calibration seed is reset for every domain and retry.
 previousRng = rng;
 cleanup = onCleanup(@()rng(previousRng)); %#ok<NASGU>
