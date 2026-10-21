@@ -829,3 +829,20 @@ report = digitalElevationModel.evaluateLocalFlatness(dem,model,0,deg2rad(10));
 verifyEqual(testCase,report.status,"unresolved");
 verifyTrue(testCase,isnan(report.slopeDeg));
 end
+
+function testFlatnessIsOptionalDuringDomainPreflight(testCase)
+folder = string(tempname); mkdir(folder);
+testCase.addTeardown(@()rmdir(folder,'s'));
+file = fullfile(folder,"global.mat");
+saveSyntheticDem(file,-90:5:90,0:10:360);
+options = struct("demFile",file,"outputRoot",fullfile(folder,"output"), ...
+    "spacingKm",500,"preflightOnly",true);
+normal = evalc('buildDomainDatabase("shared",options);');
+verifyTrue(testCase,contains(normal,"Local flatness not assessed"));
+verifyFalse(testCase,contains(normal,"Local flatness:"));
+verifyFalse(testCase,isfolder(options.outputRoot));
+options.assessLocalFlatness = true;
+explicit = evalc('buildDomainDatabase("shared",options);');
+verifyTrue(testCase,contains(explicit,"Local flatness: 0 pass, 0 fail, 198 unresolved"));
+verifyFalse(testCase,isfolder(options.outputRoot));
+end

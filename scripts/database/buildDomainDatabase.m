@@ -10,7 +10,7 @@ defaults = struct("outputRoot",string(fullfile(root,"results","domain_databases_
     "demFile",string(fullfile(root,"data","Synthetic_Lunar_DEM.mat")), ...
     "planOnly",false,"preflightOnly",false,"maximumDemSpacingMeters",[], ...
     "localDemFile","","flatnessFootprintMeters",10,"maximumSlopeDeg",5, ...
-    "maximumRoughnessMeters",0.1,"jacobianStorage","on_demand");
+    "maximumRoughnessMeters",0.1,"jacobianStorage","on_demand","assessLocalFlatness",false);
 options = utilities.overrideConfig(defaults,userOptions);
 plan = planDomainDatabase(domain,options);
 options = plan.options;
@@ -42,7 +42,9 @@ end
 demReport = digitalElevationModel.checkDemCompatibility( ...
     demModel,plan.latitudesRad,plan.longitudesRad,requirements);
 flatness = table();
-if ~isempty(plan.siteIds)
+validateattributes(options.assessLocalFlatness,{'logical'},{'scalar'});
+assessFlatness = options.assessLocalFlatness || strlength(string(options.localDemFile))>0;
+if assessFlatness && ~isempty(plan.siteIds)
     ids = find(strlength(plan.siteIds)>0);
     localDem = dem; localModel = demModel;
     if strlength(string(options.localDemFile)) > 0
@@ -57,8 +59,11 @@ if ~isempty(plan.siteIds)
         nnz(flatness.status=="pass"),nnz(flatness.status=="fail"), ...
         nnz(flatness.status=="unresolved"),options.flatnessFootprintMeters);
 end
+if ~assessFlatness
+    fprintf("Local flatness not assessed; installation and leveling/site preparation are study assumptions.\n");
+end
 if options.preflightOnly
-    disp(demReport);
+    disp(rmfield(demReport,"flatnessCertified"));
     return
 end
 % Resolve paths before writing the persistent request guard.
@@ -72,7 +77,7 @@ requestFile = fullfile(folder,"build_request.mat");
 completionFile = fullfile(folder,"build_complete.mat");
 demInfo = dir(options.demFile);
 localDemInfo = [];
-if strlength(string(options.localDemFile)) > 0
+if assessFlatness && strlength(string(options.localDemFile)) > 0
     localDemInfo = dir(options.localDemFile);
 end
 request = struct("schemaVersion",1,"domain",domain,"options",options, ...
@@ -132,7 +137,8 @@ config.domainComparison = struct("domain",domain,"sites",plan.sites, ...
     "flatnessCertified",false,"seed",plan.options.seed, ...
     "maximumCandidatesPerChunk",plan.options.maximumCandidatesPerChunk, ...
     "demCompatibility",demReport,"localFlatness",flatness,"enforceSiteGroups",domain=="clps", ...
-    "requestedDomains",plan.options.requestedDomains);
+    "requestedDomains",plan.options.requestedDomains,"flatnessAssessmentEnabled",assessFlatness, ...
+    "installationAssumption","mounting, leveling, and site preparation are feasible");
 % The same population/calibration seed is reset for every domain and retry.
 previousRng = rng;
 cleanup = onCleanup(@()rng(previousRng)); %#ok<NASGU>

@@ -18,6 +18,7 @@ param(
     # Explicit scientific tolerance, in meters. Zero uses the candidate spacing.
     [ValidateRange(0, 10000000)][double]$MaximumDemSpacingMeters = 0,
     [ValidateSet("on_demand", "position", "full")][string]$JacobianStorage = "on_demand",
+    [switch]$AssessLocalFlatness,
     [string]$LocalDemFile = "",
     [ValidateRange(0.01, 10000)][double]$FlatnessFootprintMeters = 10,
     [ValidateRange(0, 89)][double]$MaximumSlopeDeg = 5,
@@ -60,6 +61,7 @@ try {
                 seed = $Seed; networkSizes = @($NetworkSizes); planOnly = [bool]$PlanOnly
                 preflightOnly = ($Phase -eq "preflight"); requestedDomains = @($Domains)
                 jacobianStorage = $JacobianStorage; localDemFile = $LocalDemFile
+                assessLocalFlatness = [bool]$AssessLocalFlatness
                 flatnessFootprintMeters = $FlatnessFootprintMeters
                 maximumSlopeDeg = $MaximumSlopeDeg; maximumRoughnessMeters = $MaximumRoughnessMeters
             }

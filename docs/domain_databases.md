@@ -3,7 +3,7 @@
 Run from the repository root. The synthetic DEM remains the default.
 
 ```powershell
-# Check the synthetic DEM, candidate counts, and flatness support without building.
+# Check synthetic DEM coverage, granularity, candidate counts, and storage without building.
 .\scripts\batch\build_domain_databases.ps1 -PreflightOnly
 
 # Build shared physical chunks and four small domain manifests.
@@ -96,7 +96,14 @@ the geographic spacing (15 km), rather than falsely requiring the 25 m candidate
 spacing to be measured terrain. Explicit `-MaximumDemSpacingMeters` overrides
 remain available and recorded. They never override coverage checks.
 
-The local flatness assessment is independent. Default screening assumptions are:
+Local flatness assessment is **disabled by default**. Ordinary preflight checks
+DEM coverage/granularity and storage planning, and records that mounting,
+leveling, and site preparation are assumed feasible. No local slope requirement
+is imposed on the current domain-comparison study. An empty flatness table means
+it was not assessed, not that sites passed.
+
+To request a separate terrain report, use `-AssessLocalFlatness`. Providing
+`-LocalDemFile` also explicitly enables that report. Optional screening defaults are:
 
 | Parameter | Default |
 | --- | --- |
@@ -112,7 +119,7 @@ samples against physical east/north offsets; small lunar-curvature effects are
 neglected at equipment-footprint scale. No claim is made about subpixel hazards
 or data accuracy beyond the supplied grid metadata.
 
-With the current approximately 1.9 km synthetic DEM, a 10 m footprint is marked
+When optional assessment is requested with the approximately 1.9 km synthetic DEM, a 10 m footprint is marked
 `unresolved`, with NaN slope/roughness. A zero slope is never substituted. This
 does **not** block a geometry-only database build or assert the terrain is flat.
 Resolved samples receive `pass` or `fail` against the configured thresholds.
@@ -177,7 +184,7 @@ is periapsis altitude, not an upper bound on all trajectory altitudes.
 | `optimization.createDomainView` | Restrict candidate IDs without copying physical chunks |
 | `digitalElevationModel.evaluateLocalFlatness` | Supported-footprint plane/roughness screening with explicit unresolved status |
 
-Existing smoke suites compare vectorized/scalar derivatives and information
+Existing smoke suites verify default preflight skips flatness and explicit opt-in runs it; they also compare vectorized/scalar derivatives and information
 objectives, exercise both compact chunk modes and resume markers, preserve view
 index maps, and distinguish sloped/fine/coarse local terrain. Full-scale runtime
 and actual synthetic-DEM results still depend on local input files/hardware.
