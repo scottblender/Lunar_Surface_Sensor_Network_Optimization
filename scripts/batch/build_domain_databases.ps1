@@ -58,7 +58,7 @@ try {
                 spacingKm = $SpacingKm; maximumCandidatesPerChunk = $MaxCandidatesPerChunk
                 clpsRadiusKm = $ClpsRadiusKm; clpsSpacingKm = $ClpsSpacingKm
                 seed = $Seed; networkSizes = @($NetworkSizes); planOnly = [bool]$PlanOnly
-                preflightOnly = ($Phase -eq "preflight")
+                preflightOnly = ($Phase -eq "preflight"); requestedDomains = @($Domains)
                 jacobianStorage = $JacobianStorage; localDemFile = $LocalDemFile
                 flatnessFootprintMeters = $FlatnessFootprintMeters
                 maximumSlopeDeg = $MaximumSlopeDeg; maximumRoughnessMeters = $MaximumRoughnessMeters

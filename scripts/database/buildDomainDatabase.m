@@ -131,15 +131,16 @@ config.domainComparison = struct("domain",domain,"sites",plan.sites, ...
     "prefilterSiteIds",plan.siteIds,"clpsRadiusKm",plan.options.clpsRadiusKm, ...
     "flatnessCertified",false,"seed",plan.options.seed, ...
     "maximumCandidatesPerChunk",plan.options.maximumCandidatesPerChunk, ...
-    "demCompatibility",demReport,"localFlatness",flatness,"enforceSiteGroups",domain=="clps");
+    "demCompatibility",demReport,"localFlatness",flatness,"enforceSiteGroups",domain=="clps", ...
+    "requestedDomains",plan.options.requestedDomains);
 % The same population/calibration seed is reset for every domain and retry.
 previousRng = rng;
 cleanup = onCleanup(@()rng(previousRng)); %#ok<NASGU>
 rng(plan.options.seed,"twister");
 database = optimization.buildOptimizationDatabase(dem,config);
 validateChunks(database);
-if domain == "shared", writeDomainViews(database,options.outputRoot); end
 save(completionFile,"outputFile");
+if domain == "shared", writeDomainViews(database,options.outputRoot); end
 fprintf("Completed: %s\n",outputFile);
 end
 
@@ -183,7 +184,7 @@ end
 function writeDomainViews(shared,outputRoot)
 % Small manifests share the same immutable physical chunks; candidate IDs are local to each view.
 siteIds = shared.config.domainComparison.prefilterSiteIds(shared.candidates.originalIndices);
-for domain = ["clps","south75","south0","global"]
+for domain = string(shared.config.domainComparison.requestedDomains(:)).'
     keep = shared.candidates.latitudesRad<=0;
     if domain == "south75", keep = shared.candidates.latitudesRad<=deg2rad(-75); end
     if domain == "global", keep = true(shared.meta.numberOfCandidates,1); end

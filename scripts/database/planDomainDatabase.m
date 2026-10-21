@@ -9,7 +9,8 @@ root = fileparts(fileparts(fileparts(mfilename("fullpath"))));
 defaults = struct("spacingKm",15,"maximumCandidatesPerChunk",500, ...
     "clpsRadiusKm",0.1,"clpsSpacingKm",0.025, ...
     "siteFile",string(fullfile(root,"config","clps_sites.csv")), ...
-    "seed",1000,"networkSizes",3,"jacobianStorage","on_demand");
+    "seed",1000,"networkSizes",3,"jacobianStorage","on_demand", ...
+    "requestedDomains",["clps","south75","south0","global"]);
 options = utilities.overrideConfig(defaults,userOptions);
 validateattributes(options.spacingKm,{'numeric'},{'scalar','positive','finite'});
 validateattributes(options.maximumCandidatesPerChunk,{'numeric'}, ...
@@ -72,10 +73,20 @@ else
     lat = lat(keep); lon = lon(keep);
 end
 if domain == "shared"
-    clps = planDomainDatabase("clps",options);
-    lat = [lat;clps.latitudesRad]; lon = [lon;clps.longitudesRad];
-    siteIds = [repmat("",numel(lat)-numel(clps.latitudesRad),1);clps.siteIds];
-    sites = clps.sites;
+    requested = string(options.requestedDomains);
+    assert(all(ismember(requested,["clps","south75","south0","global"])), ...
+        "planDomainDatabase:Domains","Unknown shared domain.");
+    keep = false(size(lat));
+    if any(requested=="south75"), keep = keep | lat<=deg2rad(-75); end
+    if any(requested=="south0"), keep = keep | lat<=0; end
+    if any(requested=="global"), keep(:) = true; end
+    lat = lat(keep); lon = lon(keep);
+    siteIds = repmat("",numel(lat),1);
+    if any(requested=="clps")
+        clps = planDomainDatabase("clps",options);
+        lat = [lat;clps.latitudesRad]; lon = [lon;clps.longitudesRad];
+        siteIds = [siteIds;clps.siteIds]; sites = clps.sites;
+    end
 end
 count = numel(lat);
 assert(count > 0,"planDomainDatabase:Empty","No candidates in requested domain.");

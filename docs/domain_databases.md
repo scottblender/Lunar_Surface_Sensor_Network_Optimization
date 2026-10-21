@@ -31,8 +31,8 @@ each view are local to that view; physical chunk maps are preserved. All views
 share exactly the same trajectories, priors, timing, and visibility settings.
 Keep the entire output root together: chunk paths are absolute.
 
-A launch selecting multiple domains uses this shared superset and produces all
-four views. Selecting one domain builds it independently. Use `-SeparateDomains`
+A launch selecting multiple domains builds their candidate union and produces
+only the requested views. Selecting one domain builds it independently. Use `-SeparateDomains`
 to request the earlier independent-build behavior explicitly.
 
 | View | Candidate restriction |

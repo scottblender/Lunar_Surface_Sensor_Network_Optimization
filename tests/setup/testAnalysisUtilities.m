@@ -169,3 +169,19 @@ verifyEqual(testCase,view.visibility.summary.totalAccepted,2*numel(ids));
 verifyEqual(testCase,value,1e12);
 verifyEqual(testCase,details.reason,"duplicate_clps_site");
 end
+
+function testSharedBuildUsesOnlyRequestedCandidateUnion(testCase)
+options = struct("spacingKm",500,"requestedDomains",["south75","south0"]);
+shared = planDomainDatabase("shared",options);
+south = planDomainDatabase("south0",options);
+verifyEqual(testCase,shared.latitudesRad,south.latitudesRad);
+verifyEqual(testCase,shared.longitudesRad,south.longitudesRad);
+verifyTrue(testCase,all(strlength(shared.siteIds)==0));
+verifyTrue(testCase,isempty(shared.sites));
+options.requestedDomains = ["south75","clps"];
+shared = planDomainDatabase("shared",options);
+polar = planDomainDatabase("south75",options);
+clps = planDomainDatabase("clps",options);
+verifyEqual(testCase,shared.numberOfCandidates,polar.numberOfCandidates+clps.numberOfCandidates);
+verifyEqual(testCase,shared.latitudesRad(1:polar.numberOfCandidates),polar.latitudesRad);
+end

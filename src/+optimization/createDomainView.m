@@ -32,6 +32,9 @@ database.meta.numberOfCandidatesBeforeFiltering = nnz(mask);
 database.meta.sharedSourceFile = string(shared.config.outputFile);
 database.meta.sharedSourceCandidateIds = indices;
 database.config.domainComparison.domain = domain;
+if domain == "south75", database.config.candidates.latitudeBandRad = deg2rad([-90 -75]); end
+if domain == "south0", database.config.candidates.latitudeBandRad = deg2rad([-90 0]); end
+if domain == "global", database.config.candidates.latitudeBandRad = deg2rad([-90 90]); end
 database.config.domainComparison.enforceSiteGroups = domain == "clps";
 database.config.domainComparison.prefilterSiteIds = site(mask);
 database.config.candidates.customLatitudesRad = lat(mask);
