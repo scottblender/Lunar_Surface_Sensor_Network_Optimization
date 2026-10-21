@@ -12,7 +12,8 @@ function [dem,triaxialModel] = loadTriaxialLunarDem( ...
 %   - triaxialModel - Reference-surface fit and DEM metadata.
 %
 % Notes:
-%   - Longitude is periodic; the latitude grid reaches both poles.
+%   - Native coverage is retained before any cell-edge pole/seam padding.
+%   - Regional inputs are not extended arbitrarily to the poles.
 
 arguments
     filePath (1,1) string
@@ -78,6 +79,8 @@ if ~isempty(interpolantIndex)
     assert(all(diff(latitudeGrid) > 0), ...
         "DEM latitude grid must be strictly monotonic.");
 
+    nativeGrid = digitalElevationModel.describeDemGrid(latitudeGrid,longitudeGrid);
+
     % Normalize longitude to [0,2*pi), sort it, and remove any duplicate
     % periodic endpoint before rebuilding the explicit seam.
     longitudeWrapped = mod(longitudeGrid,2*pi);
@@ -93,7 +96,7 @@ if ~isempty(interpolantIndex)
 
     % Add exact poles when the source grid is cell-centered. The nearest
     % latitude ring is averaged because all longitudes coincide at a pole.
-    if latitudeGrid(1) > -pi/2 + 1e-12
+    if latitudeGrid(1) > -pi/2 + 1e-12 && nativeGrid.latitudeCoverageRad(1) == -pi/2
         southPoleElevationKm = mean(elevationGrid(1,:),"all");
         latitudeGrid = [-pi/2;latitudeGrid];
         elevationGrid = [ ...
@@ -101,7 +104,7 @@ if ~isempty(interpolantIndex)
             elevationGrid];
     end
 
-    if latitudeGrid(end) < pi/2 - 1e-12
+    if latitudeGrid(end) < pi/2 - 1e-12 && nativeGrid.latitudeCoverageRad(2) == pi/2
         northPoleElevationKm = mean(elevationGrid(end,:),"all");
         latitudeGrid = [latitudeGrid;pi/2];
         elevationGrid = [ ...
@@ -135,17 +138,18 @@ if ~isempty(interpolantIndex)
         {latitudeGrid,longitudeWrapped}, ...
         elevationGrid, ...
         "linear", ...
-        "nearest");
+        "none");
 
     triaxialModel = struct();
+    triaxialModel.nativeGrid = nativeGrid;
     triaxialModel.sourceFile = string(filePath);
     triaxialModel.sourceVariable = sourceVariable;
     triaxialModel.sourceClass = "griddedInterpolant";
-    triaxialModel.rawRasterSize = size(elevationGrid);
+    triaxialModel.rawRasterSize = nativeGrid.sourceGridSize;
     triaxialModel.latitudeSpacingDeg = ...
-        median(diff(rad2deg(latitudeGrid)));
+        rad2deg(nativeGrid.medianLatitudeStepRad);
     triaxialModel.longitudeSpacingDeg = ...
-        median(diff(rad2deg(longitudeWrapped)));
+        rad2deg(nativeGrid.medianLongitudeStepRad);
     triaxialModel.rawMinimumElevationKm = min(elevationGrid,[],"all");
     triaxialModel.rawMaximumElevationKm = max(elevationGrid,[],"all");
     triaxialModel.rawMeanElevationKm = mean(elevationGrid,"all");
@@ -205,6 +209,9 @@ triaxialModel = ...
         rowStride, ...
         columnStride);
 
+triaxialModel.nativeGrid = digitalElevationModel.describeDemGrid( ...
+    flipud(latitudeCentersRadDescending),longitudeCentersRad);
+triaxialModel.nativeGrid.coverageBasis = "legacy_declared_global_2_to_1_raster";
 triaxialModel.sourceFile = string(filePath);
 triaxialModel.sourceVariable = "DEM";
 triaxialModel.sourceClass = "numeric";

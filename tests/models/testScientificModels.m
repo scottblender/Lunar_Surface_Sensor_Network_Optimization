@@ -652,3 +652,113 @@ spacingTolerance = 1e-10*max(1,max(abs(sortedValues)));
 assert(max(abs(spacing - spacing(1))) < spacingTolerance, "%s levels are not evenly spaced.", ...
     description);
 end
+
+function testDemNativeCoverageAndCellEdgePadding(testCase)
+folder = string(tempname); mkdir(folder);
+testCase.addTeardown(@()rmdir(folder,'s'));
+file = fullfile(folder,"cell_global.mat");
+saveSyntheticDem(file,-85:10:85,5:10:355);
+[dem,model] = digitalElevationModel.loadTriaxialLunarDem(file);
+verifyEqual(testCase,model.nativeGrid.sampleLatitudeBoundsRad,deg2rad([-85 85]),'AbsTol',1e-12);
+verifyEqual(testCase,model.nativeGrid.latitudeCoverageRad,[-pi/2 pi/2],'AbsTol',1e-12);
+verifyEqual(testCase,model.rawRasterSize,[18 36]);
+verifyEqual(testCase,model.latitudeSpacingDeg,10,'AbsTol',1e-10);
+verifyEqual(testCase,dem.GridVectors{1}([1 end]),[-pi/2;pi/2],'AbsTol',1e-12);
+report = digitalElevationModel.checkDemCompatibility(model,deg2rad([-89;0;89]), ...
+    deg2rad([359;180;1]),struct("candidateSpacingKm",500));
+verifyTrue(testCase,report.passed);
+verifyEqual(testCase,report.nativeNorthSouthSpacingMeters,1737.4*1000*deg2rad(10),'RelTol',1e-12);
+verifyError(testCase,@()digitalElevationModel.checkDemCompatibility(model,0,0,struct()), ...
+    'checkDemCompatibility:ResolutionTooCoarse');
+end
+
+function testRegionalDemCannotAcquireMissingLatitudeCoverage(testCase)
+folder = string(tempname); mkdir(folder);
+testCase.addTeardown(@()rmdir(folder,'s'));
+file = fullfile(folder,"south.mat");
+saveSyntheticDem(file,-90:5:-70,0:10:360);
+[dem,model] = digitalElevationModel.loadTriaxialLunarDem(file);
+verifyEqual(testCase,model.nativeGrid.latitudeCoverageRad,deg2rad([-90 -70]),'AbsTol',1e-12);
+verifyEqual(testCase,dem.GridVectors{1}(end),deg2rad(-70),'AbsTol',1e-12);
+verifyTrue(testCase,isnan(dem(0,0))); % No nearest extrapolation into the northern domain.
+settings = struct("candidateSpacingKm",500);
+report = digitalElevationModel.checkDemCompatibility(model,deg2rad(-80),0,settings);
+verifyTrue(testCase,report.passed);
+verifyError(testCase,@()digitalElevationModel.checkDemCompatibility(model,0,0,settings), ...
+    'checkDemCompatibility:LatitudeCoverage');
+% Candidate is in bounds but its terrain neighborhood crosses the source boundary.
+verifyError(testCase,@()digitalElevationModel.checkDemCompatibility(model,deg2rad(-72),0,settings), ...
+    'checkDemCompatibility:LatitudeCoverage');
+end
+
+function testDemLongitudeSeamAndTerrainMargin(testCase)
+% A two-column regional patch must not be classified as full longitude.
+grid = digitalElevationModel.describeDemGrid(deg2rad([-20;20]),deg2rad([0;90]));
+verifyFalse(testCase,grid.fullLongitude);
+folder = string(tempname); mkdir(folder);
+testCase.addTeardown(@()rmdir(folder,'s'));
+file = fullfile(folder,"seam.mat");
+saveSyntheticDem(file,-20:5:20,-10:1:10);
+[~,model] = digitalElevationModel.loadTriaxialLunarDem(file);
+verifyFalse(testCase,model.nativeGrid.fullLongitude);
+verifyEqual(testCase,model.nativeGrid.longitudeSpanRad,deg2rad(20),'AbsTol',1e-12);
+settings = struct("candidateSpacingKm",500);
+report = digitalElevationModel.checkDemCompatibility(model,0,deg2rad(359),settings);
+verifyTrue(testCase,report.passed);
+verifyError(testCase,@()digitalElevationModel.checkDemCompatibility(model,0,deg2rad(15),settings), ...
+    'checkDemCompatibility:LongitudeCoverage');
+verifyError(testCase,@()digitalElevationModel.checkDemCompatibility(model,0,deg2rad(8),settings), ...
+    'checkDemCompatibility:LongitudeCoverage');
+file = fullfile(folder,"polar_patch.mat");
+saveSyntheticDem(file,-90:1:-80,10:1:30);
+[~,model] = digitalElevationModel.loadTriaxialLunarDem(file);
+verifyError(testCase,@()digitalElevationModel.checkDemCompatibility(model,deg2rad(-89),deg2rad(20),settings), ...
+    'checkDemCompatibility:LongitudeCoverage');
+end
+
+function testDemResolutionUsesNativeGapsAndLatitude(testCase)
+% Irregular native latitude gaps cannot be hidden by a small median spacing.
+model.nativeGrid = digitalElevationModel.describeDemGrid( ...
+    deg2rad([-10;-9.99;-9.98;10]),deg2rad((0:1:360).'));
+verifyError(testCase,@()digitalElevationModel.checkDemCompatibility(model,0,0, ...
+    struct("candidateSpacingKm",15)), 'checkDemCompatibility:ResolutionTooCoarse');
+% The CLPS default is a 25 m limit, independent of a 100 m radius.
+model.nativeGrid = digitalElevationModel.describeDemGrid( ...
+    deg2rad((-90:1:90).'),deg2rad((0:1:360).'));
+verifyError(testCase,@()digitalElevationModel.checkDemCompatibility(model,deg2rad(-80),0, ...
+    struct("candidateSpacingKm",0.025)), 'checkDemCompatibility:ResolutionTooCoarse');
+% A synthetic fine polar patch passes and reports physical longitudinal convergence.
+model.nativeGrid = digitalElevationModel.describeDemGrid( ...
+    deg2rad((-86:0.0005:-84).'),deg2rad((15:0.0005:25).'));
+report = digitalElevationModel.checkDemCompatibility(model,deg2rad(-85),deg2rad(20), ...
+    struct("candidateSpacingKm",0.025,"terrainRangeKm",1));
+verifyTrue(testCase,report.passed);
+verifyLessThan(testCase,report.nativeMaximumEastWestSpacingMeters,report.nativeNorthSouthSpacingMeters);
+verifyFalse(testCase,report.flatnessCertified);
+end
+
+function testDemPreflightCreatesNoDatabaseOrChunks(testCase)
+folder = string(tempname); mkdir(folder);
+testCase.addTeardown(@()rmdir(folder,'s'));
+file = fullfile(folder,"south.mat");
+saveSyntheticDem(file,-90:5:-65,0:10:360);
+outputRoot = fullfile(folder,"output");
+options = struct("demFile",file,"outputRoot",outputRoot, ...
+    "spacingKm",500,"preflightOnly",true);
+buildDomainDatabase("south75",options);
+verifyFalse(testCase,isfolder(outputRoot));
+verifyError(testCase,@()buildDomainDatabase("global",options), ...
+    'checkDemCompatibility:LatitudeCoverage');
+verifyFalse(testCase,isfolder(outputRoot));
+% The real build path must reject incompatible input before creating any request/chunk files.
+options.preflightOnly = false;
+verifyError(testCase,@()buildDomainDatabase("global",options), ...
+    'checkDemCompatibility:LatitudeCoverage');
+verifyFalse(testCase,isfolder(outputRoot));
+end
+
+function saveSyntheticDem(file,latitudeDeg,longitudeDeg)
+DEM = griddedInterpolant({deg2rad(latitudeDeg(:)),deg2rad(longitudeDeg(:))}, ...
+    zeros(numel(latitudeDeg),numel(longitudeDeg)),"linear","nearest");
+save(file,"DEM","-v7.3");
+end

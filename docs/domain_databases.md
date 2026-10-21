@@ -6,7 +6,11 @@ Run from the repository root in Windows PowerShell 5.1 or PowerShell 7:
 # Preview candidate counts/chunk counts/disk estimates, without loading the DEM.
 .\scripts\batch\build_domain_databases.ps1 -PlanOnly
 
-# All four databases, sequentially in separate MATLAB processes.
+# Check native DEM coverage and granularity only; no database/chunks are built.
+.\scripts\batch\build_domain_databases.ps1 -PreflightOnly `
+  -DemFile '.\data\Full_Resolution_DEM.mat'
+
+# All four databases; every requested domain must pass preflight before any build.
 .\scripts\batch\build_domain_databases.ps1 `
   -MatlabExe 'C:\Program Files\MATLAB\R2026a\bin\matlab.exe' `
   -DemFile '.\data\Synthetic_Lunar_DEM.mat'
@@ -22,9 +26,12 @@ Run from the repository root in Windows PowerShell 5.1 or PowerShell 7:
 
 MATLAB must be installed for the preview too. Supply a DEM covering every requested
 candidate and the terrain search padding (100 km); a southern-only DEM cannot
-build a global database. Missing latitude coverage fails in the terrain builder.
+build a global database. Missing latitude or longitude coverage, including the terrain neighborhood, fails
+during preflight, before build request or chunk files are created.
+Coverage is checked against the original source grid before pole/seam padding.
 The launcher stops on the first failed MATLAB process unless `-ContinueOnError`
-is supplied; any failure still makes the launcher fail overall.
+is supplied; any failure still makes the launcher fail overall. A failed preflight
+prevents the entire build phase, even with `-ContinueOnError`.
 
 | Domain | Definition |
 | --- | --- |
@@ -145,3 +152,63 @@ flatness. Candidate metadata explicitly records `flatnessCertified=false`.
 The existing `testAnalysisUtilities` suite covers domain nesting, chunk bounds,
 CLPS distances/provenance, and interrupted Jacobian recovery; no separate
 single-purpose test file is introduced.
+
+## Native coverage and granularity preflight
+
+Normal launches automatically preflight **all** selected domains before starting
+any build. `-PreflightOnly` runs that same check without building databases.
+`-PlanOnly` remains a candidate-count preview and does not load/check the DEM.
+Each phase has its own log and JSON request. Reports are printed in preflight
+logs and retained in a completed database's domain-comparison metadata.
+
+The loader records original sample bounds, circular longitude footprint, native
+maximum grid gaps, and original raster dimensions before interpolation changes.
+Regional latitude grids are not extended across missing hemispheres. Only a
+missing half-cell at a pole may be padded. Regional longitude footprints are
+checked using circular coordinates, including patches crossing 0/360 degrees.
+A terrain neighborhood reaching a pole requires full longitude coverage. Both
+latitude and longitude checks include the full spherical 100 km search footprint,
+not just the sensor centers. Grid checks do not certify the accuracy of the
+underlying survey or the absence of subpixel hazards.
+
+For the legacy numeric `DEM` format, global coverage, cell-center registration,
+north-to-south rows, radians-independent 0–360 longitude geometry, and kilometer
+heights remain the established input convention. A 2:1 array by itself cannot
+prove geographical coverage: **do not pass a cropped numeric raster as this
+legacy format**. Supply a correctly georeferenced interpolant instead. The report
+labels this legacy global-coverage assumption. Existing interpolants whose grid
+was already artificially expanded by an earlier external workflow cannot reveal
+their lost original footprint; use an unmodified source grid.
+
+The maximum allowed DEM spacing defaults to candidate spacing: 15,000 m for
+geographic domains and 25 m for default CLPS sampling. The check uses maximum
+native gaps, converts latitude/longitude spacing to meters at the relevant
+latitudes, and rejects a DEM exceeding either direction's limit. Interpolating
+coarse elevations onto a fine grid does not satisfy this check. This means a
+roughly 0.0625-degree global DEM (about 1.9 km north/south spacing) can support
+15 km geographic placement, but **fails the default 25 m CLPS requirement**.
+Use appropriate finer data for that study; even a passing grid does not certify
+local flatness. The same DEM must cover every selected site and its terrain
+margin. Separate commands can select different DEM files for different domains.
+
+A deliberate geometry-only sensitivity analysis may set an explicit coarser
+tolerance, for example:
+
+```powershell
+.\scripts\batch\build_domain_databases.ps1 -Domains clps -PreflightOnly `
+  -DemFile '.\data\Full_Resolution_DEM.mat' -MaximumDemSpacingMeters 2000
+```
+
+That override changes the declared scientific tolerance, never the native data or
+flatness claim. It is recorded in the request/report and does not bypass coverage
+checks. Changing candidate spacing changes the default tolerance automatically.
+The report separately lists terrain radial spacing, outer-radius azimuth spacing,
+and radial interpolation factor. Terrain sampling finer than the source grid is
+reported rather than rejected: interpolation can support a horizon calculation,
+but it adds no measured terrain detail.
+
+Data-free smoke tests in `testScientificModels` exercise global cell-center
+padding, preserved regional bounds, longitude seams, polar and terrain-margin
+failures, native-gap/physical-resolution checks, CLPS fine/coarse cases, and
+preflight failure before any output directories exist. Real DEM compatibility
+must still be checked with `-PreflightOnly` on the machine holding those files.
