@@ -395,142 +395,141 @@ files = [string(rightAscensionFile);string(declinationFile)];
 end
 
 function files = drawExclusionGeometry(outputDirectory,style)
+% DRAWEXCLUSIONGEOMETRY - Plot Sun/Earth occultation and sensor keep-out geometry.
+% The shaded gray cone shows physical occultation; pale orange adds the
+% prescribed keep-out region. Angles are measured from the body-center ray.
 fontName = style.fontName;
-objectFontSize = style.annotationFontSize;
-angleFontSize = style.labelFontSize;
-rsoMarkerArea = 360;
+objectFontSize = 12;
+angleFontSize = 12;
 backgroundColor = style.backgroundColor;
 textColor = style.textColor;
 
 sensorColor = style.redColor;
 targetColor = style.magentaColor;
-bodyColor = style.moonColor;
+bodyColor = [0.83 0.84 0.86];
 occultationColor = style.grayColor;
 minimumAngleColor = style.orangeColor;
 targetAngleColor = style.blueColor;
-lineOfSightColor = style.textColor;
-bodyDirectionColor = style.grayColor;
-occultationShade = [0.92 0.92 0.93];
-exclusionShade = [0.98 0.91 0.80];
+lineOfSightColor = style.blueColor;
+bodyDirectionColor = [0.62 0.62 0.64];
+% Use opaque, print-safe pale fills instead of alpha-dependent EPS fills.
+occultationShade = [0.94 0.94 0.95];
+exclusionShade = [0.99 0.95 0.89];
 
-sensor = [-2.20,0.00];
-body = [0.95,0.00];
-bodyRadius = 0.66;
+sensor = [-2.20,-0.05];
+body = [0.85,-0.05];
+bodyRadius = 0.58;
 bodyRange = norm(body-sensor);
 thetaOcc = asin(bodyRadius/bodyRange);
 thetaMin = deg2rad(20);
 thetaRequired = max(thetaOcc,thetaMin);
-thetaTarget = thetaRequired + deg2rad(14);
-targetRange = 4.15;
+thetaTarget = thetaRequired + deg2rad(10);
+targetRange = 3.75;
 target = sensor + targetRange*[cos(thetaTarget),sin(thetaTarget)];
 
+figureWidth = 6.5;
+figureHeight = 4.0;
 fig = figure("Name","Celestial-body exclusion constraint", ...
     "Color",backgroundColor,"Units","inches", ...
-    "Position",[1 1 5.8 4.4],"Renderer","opengl");
-ax = axes(fig,"Units","normalized","Position",[0.03 0.04 0.94 0.92]);
+    "Position",[1 1 figureWidth figureHeight],"Renderer","opengl");
+ax = axes(fig,"Units","normalized","Position",[0.05 0.07 0.90 0.87]);
 hold(ax,"on");
 axis(ax,"equal");
 axis(ax,"off");
 ax.Color = backgroundColor;
 
-sectorRadius = 3.35;
+% Draw exclusion regions first so boundaries and the LOS remain crisp.
+sectorRadius = 3.75;
 occultationAngles = linspace(-thetaOcc,thetaOcc,240);
 patch(ax,[sensor(1),sensor(1)+sectorRadius*cos(occultationAngles),sensor(1)], ...
     [sensor(2),sensor(2)+sectorRadius*sin(occultationAngles),sensor(2)], ...
-    occultationShade,"EdgeColor","none","FaceAlpha",1.0);
-
+    occultationShade,"EdgeColor","none");
 if thetaRequired > thetaOcc
-    upperAngles = linspace(thetaOcc,thetaRequired,160);
-    lowerAngles = linspace(-thetaRequired,-thetaOcc,160);
-    patch(ax,[sensor(1),sensor(1)+sectorRadius*cos(upperAngles),sensor(1)], ...
-        [sensor(2),sensor(2)+sectorRadius*sin(upperAngles),sensor(2)], ...
-        exclusionShade,"EdgeColor","none","FaceAlpha",1.0);
-    patch(ax,[sensor(1),sensor(1)+sectorRadius*cos(lowerAngles),sensor(1)], ...
-        [sensor(2),sensor(2)+sectorRadius*sin(lowerAngles),sensor(2)], ...
-        exclusionShade,"EdgeColor","none","FaceAlpha",1.0);
+    for signValue = [-1 1]
+        excludedAngles = linspace(signValue*thetaOcc, ...
+            signValue*thetaRequired,160);
+        patch(ax,[sensor(1),sensor(1)+sectorRadius*cos(excludedAngles),sensor(1)], ...
+            [sensor(2),sensor(2)+sectorRadius*sin(excludedAngles),sensor(2)], ...
+            exclusionShade,"EdgeColor","none");
+    end
 end
 
+% Body, center ray, occultation tangents, and keep-out boundaries.
 bodyAngle = linspace(0,2*pi,300);
-fill(ax,body(1)+bodyRadius*cos(bodyAngle),body(2)+bodyRadius*sin(bodyAngle), ...
-    bodyColor,"EdgeColor",style.moonEdgeColor,"LineWidth",1.5);
+fill(ax,body(1)+bodyRadius*cos(bodyAngle), ...
+    body(2)+bodyRadius*sin(bodyAngle),bodyColor, ...
+    "EdgeColor",style.moonEdgeColor,"LineWidth",1.0);
+plot(ax,[sensor(1),body(1)],[sensor(2),body(2)], ...
+    ":","Color",bodyDirectionColor,"LineWidth",1.0);
 
-plot(ax,[sensor(1),body(1)],[sensor(2),body(2)],"--", ...
-    "Color",bodyDirectionColor,"LineWidth",1.7);
-
-boundaryLength = 3.52;
+boundaryLength = 3.75;
 for signValue = [-1 1]
-    pointOcc = sensor + boundaryLength*[cos(signValue*thetaOcc),sin(signValue*thetaOcc)];
-    plot(ax,[sensor(1),pointOcc(1)],[sensor(2),pointOcc(2)],":", ...
-        "Color",occultationColor,"LineWidth",2.0);
-
-    pointMin = sensor + boundaryLength*[cos(signValue*thetaRequired),sin(signValue*thetaRequired)];
-    plot(ax,[sensor(1),pointMin(1)],[sensor(2),pointMin(2)],"--", ...
-        "Color",minimumAngleColor,"LineWidth",2.3);
+    pointOcc = sensor + boundaryLength* ...
+        [cos(signValue*thetaOcc),sin(signValue*thetaOcc)];
+    plot(ax,[sensor(1),pointOcc(1)],[sensor(2),pointOcc(2)], ...
+        ":","Color",occultationColor,"LineWidth",1.0);
+    pointMin = sensor + boundaryLength* ...
+        [cos(signValue*thetaRequired),sin(signValue*thetaRequired)];
+    plot(ax,[sensor(1),pointMin(1)],[sensor(2),pointMin(2)], ...
+        "--","Color",minimumAngleColor,"LineWidth",1.5);
 end
 
-plot(ax,[sensor(1),target(1)],[sensor(2),target(2)],"-", ...
-    "Color",lineOfSightColor,"LineWidth",2.4);
+% An unobstructed target LOS is the primary line in the schematic.
+plot(ax,[sensor(1),target(1)],[sensor(2),target(2)], ...
+    "-","Color",lineOfSightColor,"LineWidth",2.0);
+plot(ax,sensor(1),sensor(2),"o","MarkerSize",8, ...
+    "MarkerFaceColor",sensorColor,"MarkerEdgeColor",backgroundColor, ...
+    "LineWidth",0.8);
+plot(ax,target(1),target(2),"p","MarkerSize",11, ...
+    "MarkerFaceColor",targetColor,"MarkerEdgeColor",targetColor, ...
+    "LineWidth",0.9);
 
-plot(ax,sensor(1),sensor(2),"o","MarkerSize",10, ...
-    "MarkerFaceColor",sensorColor,"MarkerEdgeColor",backgroundColor,"LineWidth",1.0);
-scatter(ax,target(1),target(2),rsoMarkerArea,"p", ...
-    "MarkerFaceColor",targetColor,"MarkerEdgeColor",targetColor,"LineWidth",1.2);
+% Disjoint annotation arcs measured from the body-center reference ray.
+drawAngleArc(ax,sensor,0,thetaOcc,0.77,occultationColor,1.3);
+drawAngleArc(ax,sensor,0,thetaRequired,1.44,minimumAngleColor,1.5);
+drawAngleArc(ax,sensor,0,thetaTarget,2.05,targetAngleColor,1.7);
 
-occultationArcRadius = 0.88;
-minimumArcRadius = 1.30;
-targetArcRadius = 1.72;
-drawAngleArc(ax,sensor,0,thetaOcc,occultationArcRadius,occultationColor,2.2);
-drawAngleArc(ax,sensor,0,thetaRequired,minimumArcRadius,minimumAngleColor,2.4);
-drawAngleArc(ax,sensor,0,thetaTarget,targetArcRadius,targetAngleColor,2.4);
-
-text(ax,sensor(1)+0.04,sensor(2)-0.34,"Surface sensor", ...
+% Use consistent object-label typography and unobstructed placements.
+text(ax,-2.70,-0.67,"Surface sensor", ...
     "Color",textColor,"FontName",fontName,"FontSize",objectFontSize, ...
-    "FontWeight","bold","BackgroundColor",backgroundColor,"Margin",1.5, ...
-    "HorizontalAlignment","center","VerticalAlignment","top");
-text(ax,target(1)+0.13,target(2)-0.04,"RSO", ...
+    "FontWeight","normal","HorizontalAlignment","left", ...
+    "VerticalAlignment","top");
+text(ax,target(1)+0.13,target(2)+0.02,"RSO", ...
     "Color",textColor,"FontName",fontName,"FontSize",objectFontSize, ...
-    "FontWeight","bold","BackgroundColor",backgroundColor,"Margin",1.5, ...
-    "HorizontalAlignment","left","VerticalAlignment","middle");
-text(ax,body(1),body(2)-0.94,"Celestial body $b$", ...
-    "Interpreter","latex","Color",textColor,"FontName",fontName, ...
-    "FontSize",objectFontSize,"FontWeight","bold", ...
-    "BackgroundColor",backgroundColor,"Margin",1.8, ...
-    "HorizontalAlignment","center");
+    "FontWeight","normal","HorizontalAlignment","left", ...
+    "VerticalAlignment","middle");
+text(ax,body(1),body(2)-0.84,"Celestial body {\it b}", ...
+    "Interpreter","tex","Color",textColor,"FontName",fontName, ...
+    "FontSize",objectFontSize,"FontWeight","normal", ...
+    "HorizontalAlignment","center","VerticalAlignment","middle");
 
-occLabel = sensor + 1.02*[cos(0.55*thetaOcc),sin(0.55*thetaOcc)];
-minLabel = sensor + 1.48*[cos(0.72*thetaRequired),sin(0.72*thetaRequired)];
-targetLabel = sensor + 1.92*[cos(0.84*thetaTarget),sin(0.84*thetaTarget)];
+% Separate mathematical labels from both one another and the plotted rays.
+text(ax,-1.42,-0.46,"$\theta_{\mathrm{occ},b}$", ...
+    "Interpreter","latex","Color",occultationColor, ...
+    "FontSize",angleFontSize,"HorizontalAlignment","center", ...
+    "VerticalAlignment","middle");
+text(ax,-1.18,0.79,"$\theta_{\min,b}$", ...
+    "Interpreter","latex","Color",minimumAngleColor, ...
+    "FontSize",angleFontSize,"HorizontalAlignment","center", ...
+    "VerticalAlignment","middle");
+text(ax,-0.35,1.43,"$\theta_b$", ...
+    "Interpreter","latex","Color",targetAngleColor, ...
+    "FontSize",angleFontSize,"HorizontalAlignment","center", ...
+    "VerticalAlignment","middle");
 
-text(ax,occLabel(1)+0.22,occLabel(2)-0.27,"$\theta_{\mathrm{occ},b}$", ...
-    "Interpreter","latex","Color",occultationColor,"FontName",fontName, ...
-    "FontSize",angleFontSize,"FontWeight","bold", ...
-    "BackgroundColor",backgroundColor,"Margin",1.4, ...
-    "HorizontalAlignment","center");
-text(ax,minLabel(1)-0.03,minLabel(2)+0.20,"$\theta_{\min}$", ...
-    "Interpreter","latex","Color",minimumAngleColor,"FontName",fontName, ...
-    "FontSize",angleFontSize,"FontWeight","bold", ...
-    "BackgroundColor",backgroundColor,"Margin",1.4, ...
-    "HorizontalAlignment","center");
-text(ax,targetLabel(1)+0.02,targetLabel(2)+0.19,"$\theta_b$", ...
-    "Interpreter","latex","Color",targetAngleColor,"FontName",fontName, ...
-    "FontSize",angleFontSize,"FontWeight","bold", ...
-    "BackgroundColor",backgroundColor,"Margin",1.4, ...
-    "HorizontalAlignment","center");
-
-xlim(ax,[-2.90 1.90]);
-ylim(ax,[-1.32 2.48]);
+xlim(ax,[-2.85 2.30]);
+ylim(ax,[-1.44 2.28]);
 ax.LooseInset = max(ax.TightInset,0.005);
 
 outputFile = fullfile(outputDirectory,"Exclusion_Constraint_Schematic.eps");
 fig.InvertHardcopy = "off";
 fig.PaperUnits = "inches";
-fig.PaperSize = [5.8 4.4];
-fig.PaperPosition = [0 0 5.8 4.4];
+fig.PaperSize = [figureWidth figureHeight];
+fig.PaperPosition = [0 0 figureWidth figureHeight];
 fig.PaperPositionMode = "manual";
 drawnow;
-% Preserve the schematic's original 19/22 pt object/angle typography.
 setappdata(fig,"ManuscriptTypographyFinalized",true);
-exportManuscriptFigure(fig,string(outputFile),5.8,4.4);
+exportManuscriptFigure(fig,string(outputFile),figureWidth,figureHeight);
 
 fprintf("Saved exclusion-constraint schematic:\n  %s\n",outputFile);
 files = string(outputFile);
