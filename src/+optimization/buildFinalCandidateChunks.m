@@ -124,7 +124,7 @@ if reuseExisting && isfile(chunkFile)
     requiredVariables = [ ...
         "retainedOriginalCandidateIndices", ...
         "retainedGlobalCandidateIndices", ...
-        "filteredAvailability"];
+        "filteredAvailability", "finalChunkComplete"];
 
     if numberOfCandidates > 0
         requiredVariables(end+1) = "measurementJacobianHistories";
@@ -142,7 +142,7 @@ if reuseExisting && isfile(chunkFile)
         availabilitySize = ...
             size(chunkMat,"filteredAvailability");
 
-        complete = ...
+        complete = isequal(chunkMat.finalChunkComplete,true) && ...
             isequal(storedOriginal,double(retainedOriginalCandidateIndices)) && ...
             isequal(storedGlobal,double(retainedGlobalCandidateIndices)) && ...
             isequal(availabilitySize, ...
@@ -164,6 +164,10 @@ if reuseExisting && isfile(chunkFile)
         end
     end
 end
+
+% Dimensions alone cannot identify interrupted, preallocated Jacobian writes.
+finalChunkComplete = false; %#ok<NASGU>
+save(chunkFile,"finalChunkComplete","-append");
 
 data = load( ...
     chunkFile, ...
@@ -193,6 +197,8 @@ if numberOfCandidates == 0
         "retainedGlobalCandidateIndices", ...
         "filteredAvailability", ...
         "-append");
+    finalChunkComplete = true; %#ok<NASGU>
+    save(chunkFile,"finalChunkComplete","-append");
     return
 end
 
@@ -257,5 +263,8 @@ for objectIndex = 1:numberOfObjects
     fprintf("    Chunk %d Jacobians: object %d/%d\n", ...
         metadata.chunkNumber,objectIndex,numberOfObjects);
 end
+
+finalChunkComplete = true; %#ok<NASGU>
+save(chunkFile,"finalChunkComplete","-append");
 
 end

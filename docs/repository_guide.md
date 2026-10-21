@@ -105,3 +105,7 @@ outputs, dimensions, or units when useful. Scripts start with a short summary;
 inline comments explain the core steps and non-obvious numerical choices.
 Long workflow examples belong in documentation. This follows a shortened form
 of the [MatNWB docstring format](https://matnwb.readthedocs.io/en/latest/pages/developer/documentation/formatting_docstrings.html).
+
+## Domain database generation
+
+See the [domain database guide](domain_databases.md) for the batch launcher and a file-by-file purpose table. Production physics defaults are shared by the original and multi-domain builders.

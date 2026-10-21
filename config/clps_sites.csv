@@ -1,0 +1,12 @@
+SiteId,Mission,LatitudeDeg,LongitudeDeg,Enabled,CoordinateType,SourceURL,Notes
+IM1,Intuitive Machines IM-1,-80.13,1.44,1,actual_rounded,https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html,Rounded coordinates; not a surveyed 100 m deployment center
+IM2,Intuitive Machines IM-2,-84.7906,29.1957,1,actual,https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html,Actual landing location; does not imply operational sensor infrastructure
+BGM1,Firefly Blue Ghost Mission 1,18.562,61.810,1,actual,https://nssdc.gsfc.nasa.gov/planetary/lunar/lunar_artifact_impacts.html,Actual landing location
+IM3,Intuitive Machines IM-3,7.5,301,0,regional_proxy,https://ntrs.nasa.gov/api/citations/20240012890/downloads/BARS-2024.pdf,Reiner Gamma mission overview; enable only as a hypothetical regional anchor
+BGM2,Firefly Blue Ghost Mission 2,-23.814,182.258,0,planned,https://ideas.esa.int/core/servlet/hype/IMT?documentId=61bb6e6561aee3abdb505e07ee853a80,Published ESA LuSEE-Night planned site; disabled until explicitly selected
+BGM3,Firefly Blue Ghost Mission 3,NaN,NaN,0,unresolved,https://www.nasa.gov/commercial-lunar-payload-services/clps-landing-sites/,Gruithuisen Domes; no precise mission landing coordinate verified
+DRAPER,Team Draper,NaN,NaN,0,unresolved,https://www.nasa.gov/commercial-lunar-payload-services/clps-landing-sites/,Schrodinger Basin; basin center is not a landing site
+GRIFFIN,Astrobotic Griffin Mission-1,NaN,NaN,0,unresolved,https://www.nasa.gov/wp-content/uploads/2023/06/np-2025-03-006-jsc-clps-site-14x20-landing-graphic-2-24-25.jpg,Historical graphic names Mons Mouton; no precise mission landing coordinate verified
+IM4,Intuitive Machines IM-4,NaN,NaN,0,unresolved,https://www.nasa.gov/wp-content/uploads/2023/06/np-2025-03-006-jsc-clps-site-14x20-landing-graphic-2-24-25.jpg,Historical graphic names Mons Mouton; no precise mission landing coordinate verified
+MK1,Blue Origin Blue Moon MK1,NaN,NaN,0,unresolved,https://www.nasa.gov/wp-content/uploads/2023/06/np-2025-03-006-jsc-clps-site-14x20-landing-graphic-2-24-25.jpg,South polar region; no precise mission landing coordinate verified
+PEREGRINE,Astrobotic Peregrine Mission-1,NaN,NaN,0,no_landing,https://www.nasa.gov/reference/commercial-lunar-payload-services/,Did not land; excluded from established-site baseline
