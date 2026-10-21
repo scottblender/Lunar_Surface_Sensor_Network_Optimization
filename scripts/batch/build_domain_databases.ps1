@@ -51,8 +51,12 @@ try {
                 clpsRadiusKm = $ClpsRadiusKm; clpsSpacingKm = $ClpsSpacingKm
                 seed = $Seed; networkSizes = @($NetworkSizes); planOnly = [bool]$PlanOnly
                 preflightOnly = ($Phase -eq "preflight")
-                maximumDemSpacingMeters = $(if ($MaximumDemSpacingMeters -gt 0) { $MaximumDemSpacingMeters } else { @() })
             }
+        }
+        # Omit the optional tolerance when using the default. PowerShell's empty
+        # subexpression can serialize as null, which MATLAB may decode as struct().
+        if ($MaximumDemSpacingMeters -gt 0) {
+            $Request.options.maximumDemSpacingMeters = $MaximumDemSpacingMeters
         }
         # UTF-8 without BOM works with MATLAB jsondecode on Windows and Linux.
         [IO.File]::WriteAllText($RequestFile, ($Request | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding $false))

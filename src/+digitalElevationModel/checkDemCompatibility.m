@@ -24,7 +24,10 @@ validateattributes(settings.terrainRangeKm,{'numeric'},{'scalar','nonnegative','
 validateattributes(settings.terrainRangeStepKm,{'numeric'},{'scalar','positive','finite'});
 validateattributes(settings.azimuthStepRad,{'numeric'},{'scalar','positive','finite'});
 validateattributes(settings.candidateSpacingKm,{'numeric'},{'scalar','positive','finite'});
-if isempty(settings.maximumDemSpacingMeters)
+% Accept older launcher requests whose JSON null decoded as scalar struct().
+nullTolerance = isstruct(settings.maximumDemSpacingMeters) && ...
+    isscalar(settings.maximumDemSpacingMeters) && isempty(fieldnames(settings.maximumDemSpacingMeters));
+if isempty(settings.maximumDemSpacingMeters) || nullTolerance
     settings.maximumDemSpacingMeters = 1000*settings.candidateSpacingKm;
 end
 validateattributes(settings.maximumDemSpacingMeters,{'numeric'},{'scalar','positive','finite'});

@@ -762,3 +762,22 @@ DEM = griddedInterpolant({deg2rad(latitudeDeg(:)),deg2rad(longitudeDeg(:))}, ...
     zeros(numel(latitudeDeg),numel(longitudeDeg)),"linear","nearest");
 save(file,"DEM","-v7.3");
 end
+
+function testDemOptionalToleranceFromLauncherJson(testCase)
+model.nativeGrid = digitalElevationModel.describeDemGrid( ...
+    deg2rad((-90:1:90).'),deg2rad((0:1:360).'));
+requests = {jsondecode('{"candidateSpacingKm":500}'), ...
+    jsondecode('{"candidateSpacingKm":500,"maximumDemSpacingMeters":null}'), ...
+    jsondecode('{"candidateSpacingKm":500,"maximumDemSpacingMeters":[]}'), ...
+    struct("candidateSpacingKm",500,"maximumDemSpacingMeters",struct())};
+for k = 1:numel(requests)
+    report = digitalElevationModel.checkDemCompatibility(model,0,0,requests{k});
+    verifyEqual(testCase,report.maximumAllowedSpacingMeters,500000);
+end
+explicit = jsondecode('{"candidateSpacingKm":500,"maximumDemSpacingMeters":40000}');
+report = digitalElevationModel.checkDemCompatibility(model,0,0,explicit);
+verifyEqual(testCase,report.maximumAllowedSpacingMeters,40000);
+explicit.maximumDemSpacingMeters = 1000;
+verifyError(testCase,@()digitalElevationModel.checkDemCompatibility(model,0,0,explicit), ...
+    'checkDemCompatibility:ResolutionTooCoarse');
+end
