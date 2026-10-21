@@ -43,3 +43,72 @@ verifyTrue(testCase,exact);
 verifyEqual(testCase,ids,1);
 verifyFalse(testCase,exact);
 end
+
+function testDomainPlansAreNestedAndBounded(testCase)
+options = struct("spacingKm",200,"maximumCandidatesPerChunk",17);
+globalPlan = planDomainDatabase("global",options);
+south = planDomainDatabase("south0",options);
+polar = planDomainDatabase("south75",options);
+verifyTrue(testCase,all(ismember([south.latitudesRad south.longitudesRad], ...
+    [globalPlan.latitudesRad globalPlan.longitudesRad],"rows")));
+verifyTrue(testCase,all(ismember([polar.latitudesRad polar.longitudesRad], ...
+    [south.latitudesRad south.longitudesRad],"rows")));
+chunks = optimization.createCandidateChunkPlan(globalPlan.numberOfCandidates, ...
+    globalPlan.numberOfChunks,"unused");
+verifyLessThanOrEqual(testCase,max([chunks.numberOfOriginalCandidates]),17);
+verifyEqual(testCase,sum([chunks.numberOfOriginalCandidates]),globalPlan.numberOfCandidates);
+end
+
+function testClpsNeighborhoodDistancesAndProvenance(testCase)
+plan = planDomainDatabase("clps");
+verifyEqual(testCase,height(plan.sites),3);
+for k = 1:height(plan.sites)
+    ids = plan.siteIds == plan.sites.SiteId(k);
+    lat0 = deg2rad(plan.sites.LatitudeDeg(k));
+    lon0 = deg2rad(plan.sites.LongitudeDeg(k));
+    % Haversine remains accurate for 100 m neighborhoods.
+    a = sin((plan.latitudesRad(ids)-lat0)/2).^2 + ...
+        cos(lat0)*cos(plan.latitudesRad(ids)).*sin((plan.longitudesRad(ids)-lon0)/2).^2;
+    distance = 2*1737.4*asin(sqrt(a));
+    verifyLessThanOrEqual(testCase,max(distance),0.1+1e-9);
+    verifyLessThan(testCase,min(distance),1e-9);
+end
+verifyTrue(testCase,all(strlength(plan.sites.SourceURL)>0));
+end
+
+function testInterruptedJacobianChunkIsRebuilt(testCase)
+folder = string(tempname);
+mkdir(folder);
+testCase.addTeardown(@()rmdir(folder,'s'));
+metadata = optimization.createCandidateChunkPlan(1,1,folder);
+chunkFile = metadata.filePath;
+originalCandidateIndices = uint32(1);
+candidateLatitudesRad = 0;
+candidateLongitudesRad = 0;
+horizonAzimuthsRad = [0;pi;2*pi];
+maximumTerrainElevationRad = zeros(1,3);
+retainedOriginalCandidateIndices = uint32(1);
+retainedGlobalCandidateIndices = uint32(1);
+filteredAvailability = false(1,2,2);
+% Simulate a stopped writer: final dimensions exist but contents are unwritten.
+measurementJacobianHistories = zeros(2,6,1,2,2);
+finalChunkComplete = false;
+save(chunkFile,"originalCandidateIndices","candidateLatitudesRad", ...
+    "candidateLongitudesRad","horizonAzimuthsRad","maximumTerrainElevationRad", ...
+    "retainedOriginalCandidateIndices","retainedGlobalCandidateIndices", ...
+    "filteredAvailability","measurementJacobianHistories","finalChunkComplete","-v7.3");
+dem = griddedInterpolant({[-pi/2;pi/2],[0;2*pi]},zeros(2));
+states = repmat([2000;100;200;0;1;0],1,2,2);
+earth = repmat([0;384400;0],1,2);
+sun = repmat([0;0;149597870],1,2);
+visibility = struct("minimumElevationRad",0,"earthRadiusKm",6378, ...
+    "sunRadiusKm",695700,"sunMinimumAngularSeparationRad",0, ...
+    "earthMinimumAngularSeparationRad",0);
+optimization.buildFinalCandidateChunks(metadata,true,uint32(1),states,[600;1200], ...
+    dem,earth,sun,visibility,struct("horizonMarginRad",0),1737.4,0,0,false,1,true);
+written = load(chunkFile,"finalChunkComplete","measurementJacobianHistories");
+verifyTrue(testCase,written.finalChunkComplete);
+verifyGreaterThan(testCase,nnz(written.measurementJacobianHistories),0);
+expected = measurements.surfaceRaDecJacobian(states(:,1,1),600,0,0,dem,1737.4,0,0);
+verifyEqual(testCase,written.measurementJacobianHistories(:,:,1,1,1),expected,'AbsTol',1e-14);
+end

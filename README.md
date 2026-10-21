@@ -149,3 +149,7 @@ plots = plotProductionResults(campaign,struct("productionPlots",["convergence","
 Use `plotTrackingPerformance` for numerical tracking metrics from any population.
 See the [repository guide](docs/repository_guide.md) for plotting groups and the
 migration table for retired test/plot names.
+
+## Build domain databases
+
+Use [`build_domain_databases.ps1`](scripts/batch/build_domain_databases.ps1) to build CLPS, south-of-75-S, southern-hemisphere, and global databases in separate MATLAB processes. All domains use bounded candidate chunks; see the [domain database guide](docs/domain_databases.md) for commands, coordinate provenance, memory limits, and CLPS deployment constraints.
