@@ -781,3 +781,51 @@ explicit.maximumDemSpacingMeters = 1000;
 verifyError(testCase,@()digitalElevationModel.checkDemCompatibility(model,0,0,explicit), ...
     'checkDemCompatibility:ResolutionTooCoarse');
 end
+
+function testSelectedJacobiansMatchScalarModel(testCase)
+dem = griddedInterpolant({[-pi/2;0;pi/2],[0;pi;2*pi]},zeros(3));
+db.config.moon = struct("radiusKm",1737.4,"theta0Rad",0.4,"siderealPeriodSeconds",27.321661*86400);
+db.candidates.latitudesRad = deg2rad([-85;20]);
+db.candidates.longitudesRad = deg2rad([359;45]);
+db.candidates.sensorElevationsKm = [0;0];
+db.tracking.times = [600;1200;3600];
+db.tracking.referenceStateHistories = repmat([2000;300;600;0;1;0],1,3,2);
+db.meta.numberOfObjects = 2; db.meta.numberOfCandidates = 2;
+db.meta.measurementJacobianStorage = "on_demand";
+actual = optimization.loadChunkedCandidateData(db,[2;1],"measurementJacobianHistories");
+expected = zeros(2,6,2,3,2);
+for object = 1:2
+    for t = 1:3
+        for sensor = 1:2
+            id = 3-sensor;
+            expected(:,:,sensor,t,object) = measurements.surfaceRaDecJacobian( ...
+                db.tracking.referenceStateHistories(:,t,object),db.tracking.times(t), ...
+                db.candidates.latitudesRad(id),db.candidates.longitudesRad(id),dem,1737.4,0.4, ...
+                2*pi/db.config.moon.siderealPeriodSeconds);
+        end
+    end
+end
+verifyEqual(testCase,actual,expected(:,1:3,:,:,:),'AbsTol',1e-15);
+prior = repmat(eye(6),1,1,2); phi = repmat(eye(6),1,1,3,2); q = zeros(6,6,3,2);
+mask = true(2,3,2);
+a = optimization.informationObjective(true(2,1),prior,phi,q,actual,mask,eye(2),ones(6,1),ones(2,1));
+b = optimization.informationObjective(true(2,1),prior,phi,q,expected,mask,eye(2),ones(6,1),ones(2,1));
+verifyEqual(testCase,a,b,'AbsTol',1e-12);
+end
+
+function testLocalFlatnessResolvedAndUnresolved(testCase)
+lat = deg2rad((-.001:.00001:.001).'); lon = deg2rad((10-.001:.00001:10+.001).');
+model.nativeGrid = digitalElevationModel.describeDemGrid(lat,lon);
+% A plane with 3 degree north/south slope, in radial-height km.
+h = repmat(1737.4*tan(deg2rad(3))*lat,1,numel(lon));
+dem = griddedInterpolant({lat,lon},h,"linear","none");
+report = digitalElevationModel.evaluateLocalFlatness(dem,model,0,deg2rad(10));
+verifyEqual(testCase,report.status,"pass");
+verifyEqual(testCase,report.slopeDeg,3,'AbsTol',1e-5);
+report = digitalElevationModel.evaluateLocalFlatness(dem,model,0,deg2rad(10),struct("maximumSlopeDeg",2));
+verifyEqual(testCase,report.status,"fail");
+model.nativeGrid = digitalElevationModel.describeDemGrid(deg2rad((-90:1:90).'),deg2rad((0:1:360).'));
+report = digitalElevationModel.evaluateLocalFlatness(dem,model,0,deg2rad(10));
+verifyEqual(testCase,report.status,"unresolved");
+verifyTrue(testCase,isnan(report.slopeDeg));
+end

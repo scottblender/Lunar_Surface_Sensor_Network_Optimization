@@ -705,7 +705,7 @@ if config.chunking.enabled
         moonAngularRate, ...
         config.chunking.useParallel, ...
         config.chunking.maximumParallelWorkers, ...
-        config.chunking.resumeExisting);
+        config.chunking.resumeExisting,config.chunking.jacobianStorage);
 
     filteredAvailability = [];
     geometricAvailability = [];
@@ -839,6 +839,14 @@ database.meta.numberOfTruthEpochs = ...
 
 database.meta.numberOfOptimizationEpochs = ...
     numberOfOptimizationTimes;
+
+if config.chunking.enabled && config.chunking.jacobianStorage ~= "full"
+    database.meta.measurementJacobianStorage = "chunked_position";
+    database.meta.measurementJacobianStateColumns = 3;
+    if config.chunking.jacobianStorage == "on_demand"
+        database.meta.measurementJacobianStorage = "on_demand";
+    end
+end
 
 %% Study
 
@@ -1215,6 +1223,7 @@ config.candidates.customLongitudesRad = ...
 %% Chunked production Jacobian storage
 
 config.chunking = struct();
+config.chunking.jacobianStorage = "full";
 
 config.chunking.enabled = ...
     false;

@@ -17,12 +17,18 @@ param(
     [switch]$PreflightOnly,
     # Explicit scientific tolerance, in meters. Zero uses the candidate spacing.
     [ValidateRange(0, 10000000)][double]$MaximumDemSpacingMeters = 0,
+    [ValidateSet("on_demand", "position", "full")][string]$JacobianStorage = "on_demand",
+    [string]$LocalDemFile = "",
+    [ValidateRange(0.01, 10000)][double]$FlatnessFootprintMeters = 10,
+    [ValidateRange(0, 89)][double]$MaximumSlopeDeg = 5,
+    [ValidateRange(0, 100)][double]$MaximumRoughnessMeters = 0.1,
+    [switch]$SeparateDomains,
     [switch]$ContinueOnError
 )
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (!$DemFile) { $DemFile = Join-Path $ProjectRoot "data/Synthetic_Lunar_DEM.mat" }
-if (!$OutputRoot) { $OutputRoot = Join-Path $ProjectRoot "results/domain_databases" }
+if (!$OutputRoot) { $OutputRoot = Join-Path $ProjectRoot "results/domain_databases_compact" }
 if (!$SiteFile) { $SiteFile = Join-Path $ProjectRoot "config/clps_sites.csv" }
 $DemFile = [IO.Path]::GetFullPath($DemFile)
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
@@ -32,6 +38,8 @@ $Entry = (Join-Path $PSScriptRoot "run_domain_database_entry.m").Replace("'", "'
 $LogRoot = Join-Path $OutputRoot ("batch_logs/" + (Get-Date -Format "yyyyMMdd_HHmmss_fff"))
 New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null
 if ($PlanOnly -and $PreflightOnly) { throw "Choose PlanOnly or PreflightOnly, not both." }
+$BuildDomains = @($Domains | Select-Object -Unique)
+if (!$SeparateDomains -and $BuildDomains.Count -gt 1) { $BuildDomains = @("shared") }
 $PreviousRequest = $env:LUNAR_DB_REQUEST
 $Failures = @()
 # Validate ALL requested domains before any database process can start.
@@ -40,7 +48,7 @@ if ($PlanOnly) { $Phases = @("plan") }
 if ($PreflightOnly) { $Phases = @("preflight") }
 try {
   foreach ($Phase in $Phases) {
-    foreach ($Domain in ($Domains | Select-Object -Unique)) {
+    foreach ($Domain in $BuildDomains) {
         $RequestFile = Join-Path $LogRoot "$Domain.$Phase.request.json"
         $Request = @{
             projectRoot = $ProjectRoot
@@ -51,6 +59,9 @@ try {
                 clpsRadiusKm = $ClpsRadiusKm; clpsSpacingKm = $ClpsSpacingKm
                 seed = $Seed; networkSizes = @($NetworkSizes); planOnly = [bool]$PlanOnly
                 preflightOnly = ($Phase -eq "preflight")
+                jacobianStorage = $JacobianStorage; localDemFile = $LocalDemFile
+                flatnessFootprintMeters = $FlatnessFootprintMeters
+                maximumSlopeDeg = $MaximumSlopeDeg; maximumRoughnessMeters = $MaximumRoughnessMeters
             }
         }
         # Omit the optional tolerance when using the default. PowerShell's empty

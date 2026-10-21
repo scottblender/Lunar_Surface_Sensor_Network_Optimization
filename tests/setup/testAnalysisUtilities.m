@@ -112,3 +112,60 @@ verifyGreaterThan(testCase,nnz(written.measurementJacobianHistories),0);
 expected = measurements.surfaceRaDecJacobian(states(:,1,1),600,0,0,dem,1737.4,0,0);
 verifyEqual(testCase,written.measurementJacobianHistories(:,:,1,1,1),expected,'AbsTol',1e-14);
 end
+
+function testCompactChunksHaveNoJacobianPayload(testCase)
+folder = string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
+for mode = ["position","on_demand"]
+    target = fullfile(folder,mode); mkdir(target);
+    metadata = optimization.createCandidateChunkPlan(1,1,target);
+    originalCandidateIndices = uint32(1); candidateLatitudesRad = 0; candidateLongitudesRad = 0;
+    horizonAzimuthsRad = [0;pi;2*pi]; maximumTerrainElevationRad = zeros(1,3);
+    save(metadata.filePath,"originalCandidateIndices","candidateLatitudesRad","candidateLongitudesRad", ...
+        "horizonAzimuthsRad","maximumTerrainElevationRad","-v7.3");
+    dem = griddedInterpolant({[-pi/2;pi/2],[0;2*pi]},zeros(2));
+    states = repmat([2000;100;200;0;1;0],1,2,2);
+    visibility = struct("minimumElevationRad",0,"earthRadiusKm",6378,"sunRadiusKm",695700, ...
+        "sunMinimumAngularSeparationRad",0,"earthMinimumAngularSeparationRad",0);
+    metadata = optimization.buildFinalCandidateChunks(metadata,true,uint32(1),states,[600;1200], ...
+        dem,repmat([0;384400;0],1,2),repmat([0;0;149597870],1,2),visibility, ...
+        struct("horizonMarginRad",0),1737.4,0,0,false,1,true,mode);
+    data = load(metadata.filePath);
+    verifyTrue(testCase,data.finalChunkComplete);
+    if mode == "on_demand"
+        verifyFalse(testCase,isfield(data,"measurementJacobianHistories"));
+    else
+        verifySize(testCase,data.measurementJacobianHistories,[2 3 1 2 2]);
+        expected = measurements.surfaceRaDecJacobian(states(:,1,1),600,0,0,dem,1737.4,0,0);
+        verifyEqual(testCase,data.measurementJacobianHistories(:,:,1,1,1),expected(:,1:3),'AbsTol',1e-14);
+    end
+    optimization.buildFinalCandidateChunks(metadata,true,uint32(1),states,[600;1200], ...
+        dem,repmat([0;384400;0],1,2),repmat([0;0;149597870],1,2),visibility, ...
+        struct("horizonMarginRad",0),1737.4,0,0,false,1,true,mode);
+end
+end
+
+function testSharedDomainViewKeepsPhysicalChunkMapping(testCase)
+plan = planDomainDatabase("shared",struct("spacingKm",500));
+n = plan.numberOfCandidates;
+db.meta.numberOfCandidates = n; db.meta.numberOfObjects = 2;
+db.objective.infeasiblePenalty = 1e12;
+db.study.objectiveModes = ["coverage","information"];
+db.config.outputFile = "shared/optimization_database.mat";
+db.config.domainComparison = struct("prefilterSiteIds",plan.siteIds,"sites",plan.sites);
+db.candidates.latitudesRad = plan.latitudesRad; db.candidates.longitudesRad = plan.longitudesRad;
+db.candidates.originalIndices = uint32((1:n).');
+db.candidates.chunkIndex = ones(n,1,"uint16");
+db.candidates.chunkLocalIndex = uint32((1:n).');
+db.candidates.prefilter = struct("latitudesRad",plan.latitudesRad,"longitudesRad",plan.longitudesRad,"keepMask",true(n,1));
+db.study.networkSizes = [3 5]; db.config.study.networkSizes = [3 5]; db.visibility.summary = struct("acceptedByCandidateObject",ones(n,2));
+ids = find(strlength(plan.siteIds)>0);
+view = optimization.createDomainView(db,ids,"clps");
+verifyEqual(testCase,view.candidates.chunkLocalIndex,db.candidates.chunkLocalIndex(ids));
+verifyEqual(testCase,view.candidates.originalIndices,uint32((1:numel(ids)).'));
+verifyEqual(testCase,view.meta.sharedSourceCandidateIds,ids);
+verifyEqual(testCase,view.study.networkSizes,3);
+verifyEqual(testCase,view.visibility.summary.totalAccepted,2*numel(ids));
+[value,details] = optimization.networkObjective([1;2],view,"coverage");
+verifyEqual(testCase,value,1e12);
+verifyEqual(testCase,details.reason,"duplicate_clps_site");
+end

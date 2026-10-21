@@ -152,4 +152,4 @@ migration table for retired test/plot names.
 
 ## Build domain databases
 
-Use [`build_domain_databases.ps1`](scripts/batch/build_domain_databases.ps1) to build CLPS, south-of-75-S, southern-hemisphere, and global databases in separate MATLAB processes. All domains use bounded candidate chunks; see the [domain database guide](docs/domain_databases.md) for commands, coordinate provenance, memory limits, and CLPS deployment constraints.
+Use [`build_domain_databases.ps1`](scripts/batch/build_domain_databases.ps1) to build one shared physical database with CLPS, south-of-75-S, southern-hemisphere, and global views. Default on-demand Jacobians remove the large stored Jacobian arrays. The synthetic DEM remains the default, and local flatness is reported separately as unresolved when source detail is insufficient. All domains use bounded candidate chunks; see the [domain database guide](docs/domain_databases.md) for commands, coordinate provenance, memory limits, and CLPS deployment constraints.

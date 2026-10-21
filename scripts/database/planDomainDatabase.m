@@ -2,14 +2,14 @@ function plan = planDomainDatabase(domain,userOptions)
 % PLANDOMAINDATABASE - Plan nested geographic grids or CLPS neighborhoods without loading a DEM.
 % Outputs include prefilter candidate-to-site IDs and bounded equal-count chunks.
 arguments
-    domain (1,1) string {mustBeMember(domain,["clps","south75","south0","global"])}
+    domain (1,1) string {mustBeMember(domain,["clps","south75","south0","global","shared"])}
     userOptions (1,1) struct = struct()
 end
 root = fileparts(fileparts(fileparts(mfilename("fullpath"))));
 defaults = struct("spacingKm",15,"maximumCandidatesPerChunk",500, ...
     "clpsRadiusKm",0.1,"clpsSpacingKm",0.025, ...
     "siteFile",string(fullfile(root,"config","clps_sites.csv")), ...
-    "seed",1000,"networkSizes",3);
+    "seed",1000,"networkSizes",3,"jacobianStorage","on_demand");
 options = utilities.overrideConfig(defaults,userOptions);
 validateattributes(options.spacingKm,{'numeric'},{'scalar','positive','finite'});
 validateattributes(options.maximumCandidatesPerChunk,{'numeric'}, ...
@@ -71,6 +71,12 @@ else
     keep = lat >= deg2rad(band(1))-1e-12 & lat <= deg2rad(band(2))+1e-12;
     lat = lat(keep); lon = lon(keep);
 end
+if domain == "shared"
+    clps = planDomainDatabase("clps",options);
+    lat = [lat;clps.latitudesRad]; lon = [lon;clps.longitudesRad];
+    siteIds = [repmat("",numel(lat)-numel(clps.latitudesRad),1);clps.siteIds];
+    sites = clps.sites;
+end
 count = numel(lat);
 assert(count > 0,"planDomainDatabase:Empty","No candidates in requested domain.");
 plan = struct("domain",domain,"options",options,"latitudeBandDeg",band, ...
@@ -79,5 +85,12 @@ plan = struct("domain",domain,"options",options,"latitudeBandDeg",band, ...
     "numberOfChunks",max(1,ceil(count/options.maximumCandidatesPerChunk)));
 % Arrays that scale with candidates stay within the cap. The DEM and fixed RSO arrays
 % are additional resident memory; this estimate is not a whole-process RAM guarantee.
-plan.estimatedJacobianDiskGiB = 12*8*count*432*20/2^30;
+plan.legacyJacobianDiskGiB = 12*8*count*432*20/2^30;
+plan.estimatedJacobianDiskGiB = 0;
+mode = string(options.jacobianStorage);
+assert(ismember(mode,["on_demand","position","full"]),"planDomainDatabase:Storage","Unknown Jacobian storage mode.");
+if mode == "full", plan.estimatedJacobianDiskGiB = plan.legacyJacobianDiskGiB; end
+if mode == "position", plan.estimatedJacobianDiskGiB = plan.legacyJacobianDiskGiB/2; end
+plan.estimatedVisibilityDiskGiB = count*432*20/2^30;
+plan.estimatedTerrainDiskGiB = count*3601*8/2^30;
 end

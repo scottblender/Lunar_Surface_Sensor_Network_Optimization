@@ -14,7 +14,7 @@ function chunkMetadata = buildFinalCandidateChunks( ...
     moonAngularRate, ...
     useParallel, ...
     maximumParallelWorkers, ...
-    reuseExisting)
+    reuseExisting,jacobianStorage)
 % BUILDFINALCANDIDATECHUNKS - Build final visibility and full 2x6 Jacobians.
 
 arguments
@@ -34,6 +34,7 @@ arguments
     useParallel (1,1) logical = false
     maximumParallelWorkers (1,1) double {mustBeInteger,mustBePositive} = 2
     reuseExisting (1,1) logical = false
+    jacobianStorage (1,1) string {mustBeMember(jacobianStorage,["full","position","on_demand"])} = "full"
 end
 
 numberOfChunks = numel(chunkMetadata);
@@ -70,7 +71,7 @@ if useParallel
             moonRadius, ...
             theta0, ...
             moonAngularRate, ...
-            reuseExisting);
+            reuseExisting,jacobianStorage);
     end
 else
     for chunkIndex = 1:numberOfChunks
@@ -88,7 +89,7 @@ else
             moonRadius, ...
             theta0, ...
             moonAngularRate, ...
-            reuseExisting);
+            reuseExisting,jacobianStorage);
     end
 end
 
@@ -98,7 +99,7 @@ function buildOneFinalChunk( ...
     metadata,candidateKeepMask,retainedIndexByOriginal, ...
     referenceStateHistories,optimizationTimes,dem,earthPositionsMci, ...
     sunPositionsMci,visibilityConfig,terrainConfig,moonRadius,theta0, ...
-    moonAngularRate,reuseExisting)
+    moonAngularRate,reuseExisting,jacobianStorage)
 
 chunkFile = string(metadata.filePath);
 
@@ -117,6 +118,9 @@ retainedGlobalCandidateIndices = ...
 numberOfCandidates = numel(retainedGlobalCandidateIndices);
 numberOfTimes = numel(optimizationTimes);
 numberOfObjects = size(referenceStateHistories,3);
+columns = 6;
+if jacobianStorage == "position", columns = 3; end
+
 
 if reuseExisting && isfile(chunkFile)
     variableNames = string(who("-file",chunkFile));
@@ -126,7 +130,7 @@ if reuseExisting && isfile(chunkFile)
         "retainedGlobalCandidateIndices", ...
         "filteredAvailability", "finalChunkComplete"];
 
-    if numberOfCandidates > 0
+    if numberOfCandidates > 0 && jacobianStorage ~= "on_demand"
         requiredVariables(end+1) = "measurementJacobianHistories";
     end
 
@@ -142,19 +146,21 @@ if reuseExisting && isfile(chunkFile)
         availabilitySize = ...
             size(chunkMat,"filteredAvailability");
 
-        complete = isequal(chunkMat.finalChunkComplete,true) && ...
+        storedMode = "full";
+        if ismember("jacobianStorageMode",variableNames), storedMode = string(chunkMat.jacobianStorageMode); end
+        complete = storedMode == jacobianStorage && isequal(chunkMat.finalChunkComplete,true) && ...
             isequal(storedOriginal,double(retainedOriginalCandidateIndices)) && ...
             isequal(storedGlobal,double(retainedGlobalCandidateIndices)) && ...
             isequal(availabilitySize, ...
                 [numberOfCandidates,numberOfTimes,numberOfObjects]);
 
-        if complete && numberOfCandidates > 0
+        if complete && numberOfCandidates > 0 && jacobianStorage ~= "on_demand"
             jacobianSize = ...
                 size(chunkMat,"measurementJacobianHistories");
 
             complete = isequal( ...
                 jacobianSize, ...
-                [2,6,numberOfCandidates,numberOfTimes,numberOfObjects]);
+                [2,columns,numberOfCandidates,numberOfTimes,numberOfObjects]);
         end
 
         if complete
@@ -164,6 +170,12 @@ if reuseExisting && isfile(chunkFile)
         end
     end
 end
+
+if jacobianStorage == "on_demand" && ismember("measurementJacobianHistories",string(who("-file",chunkFile)))
+    error("buildFinalCandidateChunks:StorageChanged","Use a fresh chunk directory when switching to on-demand storage.");
+end
+jacobianStorageMode = jacobianStorage; %#ok<NASGU>
+save(chunkFile,"jacobianStorageMode","-append");
 
 % Dimensions alone cannot identify interrupted, preallocated Jacobian writes.
 finalChunkComplete = false; %#ok<NASGU>
@@ -229,22 +241,27 @@ save( ...
     "filteredAvailability", ...
     "-append");
 
+if jacobianStorage == "on_demand"
+    finalChunkComplete = true; %#ok<NASGU>
+    save(chunkFile,"finalChunkComplete","-append");
+    return
+end
 chunkMat = matfile(chunkFile,"Writable",true);
 
 % Preallocate the on-disk full-state Jacobian array without allocating the
 % complete chunk in worker memory.
 chunkMat.measurementJacobianHistories( ...
-    2,6,numberOfCandidates,numberOfTimes,numberOfObjects) = 0;
+    2,columns,numberOfCandidates,numberOfTimes,numberOfObjects) = 0;
 
 for objectIndex = 1:numberOfObjects
-    objectJacobians = zeros(2,6,numberOfCandidates,numberOfTimes);
+    objectJacobians = zeros(2,columns,numberOfCandidates,numberOfTimes);
 
     for timeIndex = 1:numberOfTimes
         targetState = referenceStateHistories(:,timeIndex,objectIndex);
         observationTime = optimizationTimes(timeIndex);
 
         for localIndex = 1:numberOfCandidates
-            objectJacobians(:,:,localIndex,timeIndex) = ...
+            fullJacobian = ...
                 measurements.surfaceRaDecJacobian( ...
                     targetState, ...
                     observationTime, ...
@@ -254,6 +271,7 @@ for objectIndex = 1:numberOfObjects
                     moonRadius, ...
                     theta0, ...
                     moonAngularRate);
+            objectJacobians(:,:,localIndex,timeIndex) = fullJacobian(:,1:columns);
         end
     end
 

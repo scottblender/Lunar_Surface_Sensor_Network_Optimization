@@ -77,6 +77,8 @@ config.candidates.spacingKm = ...
 %% Equal-count candidate chunks
 % Partition candidates before building terrain, visibility, and Jacobian chunks.
 
+config.chunking.jacobianStorage = "on_demand";
+
 config.chunking.enabled = ...
     true;
 

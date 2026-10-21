@@ -195,6 +195,19 @@ if length(unique(sensorIndicesInput)) ~= networkSize
     return
 end
 
+% Deterministic CLPS deployment views allow at most one sensor per anchor site.
+if isfield(database,"config") && isfield(database.config,"domainComparison") && ...
+        isfield(database.config.domainComparison,"enforceSiteGroups") && ...
+        database.config.domainComparison.enforceSiteGroups
+    groups = database.config.domainComparison.prefilterSiteIds( ...
+        database.candidates.originalIndices(sensorIndicesInput));
+    if any(strlength(groups)==0) || numel(unique(groups))~=networkSize
+        details.reason = "duplicate_clps_site";
+        objectiveValue = infeasiblePenalty;
+        return
+    end
+end
+
 %% Canonicalize network
 sensorIndices = ...
     sort(sensorIndicesInput);
