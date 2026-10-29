@@ -43,7 +43,9 @@ try
     for index=1:numel(domains)
         domain=domains(index); n=caseSizes(index);
         name=sprintf("%s_n%d",domain,n); folder=fullfile(out,name); mkdir(folder);
-        db=views.(domain); database=db; %#ok<NASGU>
+        db=views.(domain);
+        db.study.networkSizes=n; db.config.study.networkSizes=n;
+        database=db; %#ok<NASGU>
         databaseFile=fullfile(folder,"domain_manifest.mat"); save(databaseFile,"database","-v7.3");
         optimizationState=[];
         if domain=="clps_fixed"

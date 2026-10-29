@@ -91,3 +91,25 @@ verifyEqual(testCase,a.declination,b.declination);
 verifyEqual(testCase,a.stateHistories,b.stateHistories,'AbsTol',1e-12);
 verifyEqual(testCase,a.noisePolicy,"physical_candidate_and_object_stream_v2");
 end
+function testPlanAndFinalizeCreateReusablePaperManifests(testCase)
+folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
+options=struct("spacingKm",1800,"planOnly",true,"outputRoot",fullfile(folder,"unbuilt"));
+plan=planDomainDatabase("paper_shared",options);
+verifyEqual(testCase,plan.domain,"paper_shared");
+buildDomainDatabase("paper_shared",options);
+verifyFalse(testCase,isfolder(options.outputRoot));
+masterFolder=fullfile(folder,"paper_shared"); mkdir(masterFolder);
+[db,file]=createRevisedStudyFixture(masterFolder,(600:600:3*86400).');
+before=dir(db.visibility.candidateChunks.filePath);
+finalizeDomainDatabase(file);
+verifyTrue(testCase,isfile(fullfile(folder,"polar_selection.mat")));
+for domain=["clps_fixed","clps","global"]
+    manifest=fullfile(folder,domain,"optimization_database.mat");
+    verifyTrue(testCase,isfile(manifest));
+    saved=load(manifest,"database");
+    verifyEqual(testCase,saved.database.meta.sharedSourceFile,file);
+    verifyEqual(testCase,saved.database.visibility.candidateChunks.filePath,db.visibility.candidateChunks.filePath);
+end
+finalizeDomainDatabase(file); % Idempotent view recovery; physical chunks untouched.
+verifyEqual(testCase,dir(db.visibility.candidateChunks.filePath),before);
+end
