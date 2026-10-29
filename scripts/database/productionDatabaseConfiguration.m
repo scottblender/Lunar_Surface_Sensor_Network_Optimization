@@ -30,7 +30,7 @@ config.study.networkSizes = ...
     [3,5,7,10];
 
 config.study.objectiveModes = ...
-    ["information","coverage"];
+    "information";
 
 %% Lunar constants
 
@@ -63,10 +63,10 @@ config.rso.inclinationLimitsRad = ...
 config.rso.eccentricityLimits = ...
     [0,0.8];
 
-%% Southern-hemisphere candidate network
+%% Global candidate network
 
 config.candidates.latitudeBandRad = ...
-    deg2rad([-90,0]);
+    deg2rad([-90,90]);
 
 config.candidates.longitudeBandRad = ...
     deg2rad([0,360]);

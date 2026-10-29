@@ -1,155 +1,100 @@
 # Lunar Surface Sensor Network Optimization
 
-MATLAB tools for selecting lunar surface sensor sites using terrain-aware
-visibility, RA/Dec measurements, and coverage or estimation objectives.
+MATLAB tools for information-gain-only selection of lunar surface sensor networks.
+The scientific core uses two-body dynamics, terrain-aware optical visibility,
+RA/Dec measurement Jacobians, and covariance-based information gain. Coverage
+and EKF RMSE/uncertainty characterize selected networks after the search.
+There is no network local-refinement step. Angles-only IOD refinement in
+`src/+iod/` calibrates estimation and is retained; it does not relocate sensors.
 
-## Start here
+## Revised paper domains
+
+| Case | Entry point | Status |
+| --- | --- | --- |
+| Fixed CLPS sites, three sensors selected sequentially across nearside/farside | `planDomainDatabase("clps_fixed")`, `runFixedClpsSequential(database,sideOrder)` | Fixed coordinates and greedy sequential selection implemented. Caller explicitly supplies three side stages containing both sides. Default CSV has three enabled nearside sites and **cannot support a farside stage**. |
+| CLPS-constrained placement within 100 km of each enabled anchor | `planDomainDatabase("clps")`, `runGlobalOptimization` on its database | Spherical 100-km rings, 15-km default sampling, at most one sensor per anchor. Discrete candidate search, not continuous placement. |
+| Global surface, multiple network sizes | `planDomainDatabase("global")`, repeated `runGlobalOptimization` calls | Global candidate grid; caller supplies network sizes. |
+
+The CSV retains provenance and disabled unresolved/planned sites. No coordinates
+or historical mission status were reverified in this cleanup. Review and enable
+appropriate sourced anchors before scientific production. Fixed selection is a
+greedy stage-by-stage search, not a joint global-optimality guarantee. Terrain and
+visibility filtering may remove anchors; selection fails if retained sites cannot
+satisfy the requested side order. Neither a completed three-domain campaign nor
+near-optimality against a global random benchmark is claimed.
+
+## Setup and database build
 
 From the repository root in MATLAB:
 
 ```matlab
 setupProject;
+fixedPlan = planDomainDatabase("clps_fixed");
+clpsPlan = planDomainDatabase("clps");
+globalPlan = planDomainDatabase("global");
 ```
 
-This adds `src/` and all analysis folders under `scripts/` to the MATLAB path.
-Data and results are excluded from the path. Local DEMs and generated databases
-are not distributed in Git.
+`setupProject` adds only `src/` and `scripts/`; `archive/`, data and results stay
+off the path. Supply local DEMs under `data/`. Generated databases/results are
+ignored by Git. See [database details](docs/domain_databases.md).
 
-## Find an analysis
-
-| Folder | Purpose | Main entry points |
-| --- | --- | --- |
-| `scripts/database/` | Build frozen tracking/visibility databases and sample candidate sites | `buildProductionOptimizationDatabase.m`, `sampleGlobalCandidateNetwork` |
-| `scripts/optimization/` | Global search, pilot studies, and optimizer comparisons | `runGlobalOptimization`, `runOptimizationPilot`, `runOptimizerComparisonTrial` |
-| `scripts/refinement/` | Post-process saved networks and study geographic neighborhoods | `runDiscreteRadiusStudy.m`, `runDiscreteRadiusSensitivity`, `analyzeSavedDiscreteRadiusStudy`, `evaluateDiscreteNeighborRobustness` |
-| `scripts/validation/` | EKF, Monte Carlo, operational RSO, and DEM checks | `validateOptimizationStudy`, `runMonteCarloRobustness`, `evaluateOperationalRsoNetworks`, `evaluateDemResolutionValidation` |
-| `scripts/manuscript/` | Figures, tables, schematics, and export validation | `generateManuscriptArtifacts`, `generateStudyDefinitionFigures`, `plotProductionResults`, `exportQuadChartFigures` |
-| `scripts/domain_comparison/` | Existing full/restricted-domain result products | `generateDomainComparisonProducts`, `loadRestrictedCampaign` |
-| `scripts/shared/` | Campaign loading and reusable numerical plotting/style/layout | `loadProductionCampaign`, `publicationPlotStyle` |
-| `scripts/batch/` | PowerShell campaign launcher and MATLAB batch entry | `run_full_optimization_study.ps1` |
-| `tests/` | Tests grouped by analysis, plus a smoke-suite runner | [Test guide](tests/README.md) |
-| `docs/` | Workflow details, adapter contract, and figure audit | [Repository guide](docs/repository_guide.md) |
-
-Run script entry points by path; call function entry points after setup:
-
-```matlab
-run("scripts/database/buildProductionOptimizationDatabase.m");
-run("scripts/refinement/runDiscreteRadiusStudy.m");
+```powershell
+./scripts/batch/build_domain_databases.ps1 -PlanOnly
+./scripts/batch/build_domain_databases.ps1 -OutputRoot results/paper_domains
 ```
 
-## Shared scientific functions
+The default launcher builds `clps_fixed`, `clps`, and `global` separately, with
+identical population/calibration seeds. Use a new output root after code or input
+changes; existing chunk request guards prevent unsafe reuse. Fixed sites are
+built independently. CLPS/global alone may share physical chunks. Low-level
+`south75`/`south0` support remains for existing database recovery and meaningful
+regressions; these are not revised-paper comparison cases.
 
-| MATLAB package in `src/` | Responsibility |
-| --- | --- |
-| `+digitalElevationModel` | DEM loading, ellipsoid fitting, candidate grids, terrain horizons |
-| `+orbitDynamics` | Lunar two-body propagation, Jacobian, and state transition matrix |
-| `+referenceFrames` | Moon-rotating and topographic frames |
-| `+constraints` | Terrain-independent body occultation and Earth/Sun exclusions |
-| `+measurements` | Surface RA/Dec observations and Jacobians |
-| `+rsoGeneration` | Operational and element-distributed target populations |
-| `+iod` | Gauss angles-only IOD and optional nonlinear refinement |
-| `+estimation` | EKF and covariance propagation |
-| `+utilities` | Shallow overrides and recursive scalar-struct configuration merging |
-| `+optimization` | Frozen databases, terrain-aware visibility, network objectives, solver adapters, and discrete refinement |
-
-These packages support multiple analyses, so they remain shared rather than
-being copied into individual workflow folders.
-
-## Run an optimizer
+## Select and evaluate networks
 
 ```matlab
 setupProject;
-config = struct();
-config.optimizer = "ABC";  % "GA", "SURROGATE", "PSO", or "ABC"
-config.networkSize = 3;
-config.objectiveMode = "information"; % or "coverage"
-config.functionEvaluationBudget = 1200;
-config.populationSize = 60;
-config.abcLimit = 20;
-config.numberOfRuns = 1;
-config.useParallel = false;
-config.studyName = "lunar_optimizer_comparison";
-studyState = runGlobalOptimization(config);
+saved = load("results/paper_domains/clps_fixed/optimization_database.mat","database");
+% Requires sufficient enabled, retained sites on both sides:
+fixed = runFixedClpsSequential(saved.database,["nearside","nearside","farside"]);
+save("results/fixed_clps_selection.mat","fixed");
+
+config = struct("databaseFile","results/paper_domains/clps/optimization_database.mat", ...
+    "objectiveMode","information","networkSize",3,"optimizer","ABC");
+study = runGlobalOptimization(config);
+% For global comparisons change databaseFile to the global manifest and repeat
+% with the desired networkSize. Supply run count/budget according to your study.
 ```
 
-All methods use the same frozen `results/optimization_database.mat`, objective,
-seed sequence, result format, and post-search diagnostic evaluation. GA, PSO,
-and SURROGATE require Global Optimization Toolbox. ABC needs no optimizer
-toolbox for serial execution; parallel evaluation needs Parallel Computing
-Toolbox. `iod.refineAnglesOnly` requires Optimization Toolbox.
+The sequential function returns stage candidate IDs/objectives and final coverage
+and information diagnostics. `runGlobalOptimization` saves seeds, selected IDs,
+coordinates, objective history, and post-search coverage diagnostics. It rejects
+coverage as a selection objective. Use `optimization.validateNetworkEkf` or
+`validateOptimizationStudy` for saved-network estimation checks; inspect their
+configuration and data requirements first. No selected locations are refined.
 
-ABC adapts the employed/onlooker/scout structure from the
-[cislunar optimizer repository](https://github.com/scottblender/Gradient-Free-Optimization-for-Cislunar-SDA-2/blob/e0ccf9e1b18409f74348c42bf559efdfb2852103/src/optimization/abc_discrete.m)
-to sorted, distinct sensor-site IDs. `populationSize` is the total even colony
-size; half are food sources. `abcLimit` controls scout replacement after failed
-improvement attempts. The FE budget must cover the initial food sources and
-may end partway through a later phase. Each batch is truncated before evaluation,
-so ABC's actual and reported search FEs both equal the requested budget.
+The low-level `optimization.networkObjective(...,"coverage")` API is retained
+for diagnostics, scientific regression tests, and historical data compatibility;
+production search entry points accept information only. GA, PSO and SURROGATE
+require Global Optimization Toolbox. Serial ABC does not. Parallel evaluation
+requires Parallel Computing Toolbox; IOD nonlinear refinement requires
+Optimization Toolbox. See [optimizer adapters](docs/optimizer_adapter_guide.md).
 
-GA/PSO/SURROGATE retain their existing callback-based FE accounting and separate
-raw solver counts. See the [adapter guide](docs/optimizer_adapter_guide.md) before
-making strict equal-budget comparisons.
+Existing run-count and function-evaluation defaults are unchanged. They have not
+been tuned or established as converged. `sampleGlobalCandidateNetwork` remains
+available, but a matched global Monte Carlo comparison/report pipeline remains
+future work. Archived perturbation Monte Carlo is not that benchmark.
 
-`runOptimizerComparisonTrial("information")` runs GA, SURROGATE, PSO, and ABC
-with three seeds and 1200 FE per method/run, using one shared process pool.
-The production manuscript loader continues to select the existing GA campaigns.
-
-## Validation
-
-Run the data-free function-based smoke suite from the repository root:
+## Validation and history
 
 ```matlab
 addpath("tests");
 results = runSmokeTests;
-```
-
-This is the same suite used by GitHub Actions. It includes optimizer, refinement,
-scientific-model, utility, and manuscript regressions. Global Optimization Toolbox is needed
-for GA/PSO/SURROGATE; the ABC parallel case needs Parallel Computing Toolbox.
-
-Five data-free suites group related behaviors rather than individual plotting
-changes. Local DEM/database checks have a separate runner:
-
-```matlab
 results = runIntegrationTests(["dem","database","terrain","estimation"]);
 ```
 
-See [the test guide](tests/README.md) for purpose, inputs, and selection commands.
-Saved campaign checks are analysis functions: `validateProductionResults` and
-`analyzeProductionConvergence`. No diagnostic plots run during numerical testing.
-
-The four-optimizer real-database trial is
-`tests/optimization/testLunarSurfaceObserver1200Fe.m`. It requires the local
-production database and solver toolboxes.
-
-## Data and manuscript outputs
-
-Place local DEMs in `data/` (normally `Synthetic_Lunar_DEM.mat` and
-`Full_Resolution_DEM.mat`). Generated databases and studies remain in `results/`.
-Both directories retain their original defaults and ignore rules.
-
-```matlab
-setupProject;
-products = generateManuscriptArtifacts(struct("clearOutputDirectory",true));
-```
-
-Manuscript products go to `results/manuscript_artifacts/`. Existing campaign
-selection remains full southern hemisphere `20260918`/`20260919` and restricted
-south pole `20260915`. Rerun Monte Carlo whenever nominal networks change.
-See [the figure/table audit](docs/FIGURE_TABLE_AUDIT.md) and
-[the discrete radius guide](docs/discrete_radius_sensitivity.md).
-
-Plot a subset without regenerating all manuscript products:
-
-```matlab
-campaign = loadProductionCampaign;
-plots = plotProductionResults(campaign,struct("productionPlots",["convergence","selection"]));
-```
-
-Use `plotTrackingPerformance` for numerical tracking metrics from any population.
-See the [repository guide](docs/repository_guide.md) for plotting groups and the
-migration table for retired test/plot names.
-
-## Build domain databases
-
-Use [`build_domain_databases.ps1`](scripts/batch/build_domain_databases.ps1) to build one shared physical database with CLPS, south-of-75-S, southern-hemisphere, and global views. Default on-demand Jacobians remove the large stored Jacobian arrays. The synthetic DEM remains the default, and local flatness is reported separately as unresolved when source detail is insufficient. All domains use bounded candidate chunks; see the [domain database guide](docs/domain_databases.md) for commands, coordinate provenance, memory limits, and CLPS deployment constraints.
+See [tests](tests/README.md). Core scientific, optimizer, domain/chunk/recovery,
+terrain, estimation and reproducibility tests are retained. Historical plotting
+and refinement suites are preserved under `archive/tests/` and excluded from CI.
+[Archive inventory](archive/README.md) explains retired workflows. Do not add the
+whole repository recursively to the MATLAB path.

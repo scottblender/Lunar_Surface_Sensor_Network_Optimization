@@ -2,7 +2,7 @@ function comparison = runOptimizerComparisonTrial(objectiveMode)
 % RUNOPTIMIZERCOMPARISONTRIAL - Compare four optimizers using three seeds and 1200 FE per run.
 %
 % Inputs:
-%   - objectiveMode - "information" (default) or "coverage".
+%   - objectiveMode - "information" only.
 %
 % Outputs:
 %   - comparison - Per-run metrics and saved CSV/MAT report paths.
@@ -15,8 +15,8 @@ arguments
 end
 
 objectiveMode = lower(strtrim(objectiveMode));
-assert(ismember(objectiveMode,["information","coverage"]), ...
-    'objectiveMode must be "information" or "coverage".');
+assert(objectiveMode == "information", ...
+    'Only information gain is supported for optimization.');
 
 projectRoot = fileparts(fileparts(fileparts(mfilename("fullpath"))));
 addpath(genpath(fullfile(projectRoot,"scripts")));

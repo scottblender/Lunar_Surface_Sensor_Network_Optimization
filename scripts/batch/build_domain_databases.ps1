@@ -2,15 +2,15 @@
 [CmdletBinding()]
 param(
     [string]$MatlabExe = "matlab",
-    [ValidateSet("clps", "south75", "south0", "global")]
-    [string[]]$Domains = @("clps", "south75", "south0", "global"),
+    [ValidateSet("clps_fixed", "clps", "global")]
+    [string[]]$Domains = @("clps_fixed", "clps", "global"),
     [string]$DemFile = "",
     [string]$OutputRoot = "",
     [string]$SiteFile = "",
     [ValidateRange(0.001, 10000)][double]$SpacingKm = 15,
     [ValidateRange(1, 100000)][int]$MaxCandidatesPerChunk = 500,
-    [ValidateRange(0.001, 0.1)][double]$ClpsRadiusKm = 0.1,
-    [ValidateRange(0.001, 0.1)][double]$ClpsSpacingKm = 0.025,
+    [ValidateRange(100, 100)][double]$ClpsRadiusKm = 100,
+    [ValidateRange(0.001, 100)][double]$ClpsSpacingKm = 15,
     [ValidateRange(0, 2147483647)][int]$Seed = 1000,
     [ValidateRange(1, 10000)][int[]]$NetworkSizes = @(3),
     [switch]$PlanOnly,
@@ -40,7 +40,9 @@ $LogRoot = Join-Path $OutputRoot ("batch_logs/" + (Get-Date -Format "yyyyMMdd_HH
 New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null
 if ($PlanOnly -and $PreflightOnly) { throw "Choose PlanOnly or PreflightOnly, not both." }
 $BuildDomains = @($Domains | Select-Object -Unique)
-if (!$SeparateDomains -and $BuildDomains.Count -gt 1) { $BuildDomains = @("shared") }
+if (!$SeparateDomains -and $BuildDomains.Count -gt 1 -and $BuildDomains -notcontains "clps_fixed") { $BuildDomains = @("shared") }
+$RequestedViews = @($Domains | Where-Object { $_ -ne "clps_fixed" })
+if (!$RequestedViews.Count) { $RequestedViews = @("global") }
 $PreviousRequest = $env:LUNAR_DB_REQUEST
 $Failures = @()
 # Validate ALL requested domains before any database process can start.
@@ -59,7 +61,7 @@ try {
                 spacingKm = $SpacingKm; maximumCandidatesPerChunk = $MaxCandidatesPerChunk
                 clpsRadiusKm = $ClpsRadiusKm; clpsSpacingKm = $ClpsSpacingKm
                 seed = $Seed; networkSizes = @($NetworkSizes); planOnly = [bool]$PlanOnly
-                preflightOnly = ($Phase -eq "preflight"); requestedDomains = @($Domains)
+                preflightOnly = ($Phase -eq "preflight"); requestedDomains = @($RequestedViews)
                 jacobianStorage = $JacobianStorage; localDemFile = $LocalDemFile
                 assessLocalFlatness = [bool]$AssessLocalFlatness
                 flatnessFootprintMeters = $FlatnessFootprintMeters
