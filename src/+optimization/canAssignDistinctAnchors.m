@@ -8,8 +8,8 @@ for sensor = 1:size(membership,1)
     visited = false(1,size(membership,2));
     if ~augment(sensor), return; end
 end
-for anchor=1:numel(owner)
-    if owner(anchor)>0, assignment(owner(anchor))=anchor; end
+for column=1:numel(owner)
+    if owner(column)>0, assignment(owner(column))=column; end
 end
 feasible = true;
     function found = augment(sensor)

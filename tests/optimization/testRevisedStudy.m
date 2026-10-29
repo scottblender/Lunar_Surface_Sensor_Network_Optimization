@@ -80,3 +80,14 @@ verifyEqual(testCase,a.objectives,b.objectives);
 for k=1:20, verifyEqual(testCase,numel(unique(a.masterCandidateIds(k,:))),3); end
 verifyEqual(testCase,a.numberRandomStrictlyBetter,nnz(a.objectives<a.selectedObjective));
 end
+function testEkfNoiseUsesPhysicalIdsAcrossViews(testCase)
+folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
+[db,~]=createRevisedStudyFixture(folder); [views,~]=derivePaperDomains(db);
+ids=(1:3).'; masterIds=views.clps.meta.sharedSourceCandidateIds(ids);
+a=optimization.validateNetworkEkf(views.clps,ids);
+b=optimization.validateNetworkEkf(views.global,masterIds);
+verifyEqual(testCase,a.rightAscension,b.rightAscension);
+verifyEqual(testCase,a.declination,b.declination);
+verifyEqual(testCase,a.stateHistories,b.stateHistories,'AbsTol',1e-12);
+verifyEqual(testCase,a.noisePolicy,"physical_candidate_and_object_stream_v2");
+end

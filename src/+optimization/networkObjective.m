@@ -205,16 +205,16 @@ if isfield(database,"config") && isfield(database.config,"domainComparison") && 
             details.reason="duplicate_clps_site"; objectiveValue=infeasiblePenalty; return;
         end
     else
-    groups = database.config.domainComparison.prefilterSiteIds( ...
-        database.candidates.originalIndices(sensorIndicesInput));
-    if any(strlength(groups)==0) || numel(unique(groups))~=networkSize
-        details.reason = "duplicate_clps_site";
-        objectiveValue = infeasiblePenalty;
-        return
+        groups = database.config.domainComparison.prefilterSiteIds( ...
+            database.candidates.originalIndices(sensorIndicesInput));
+        if any(strlength(groups)==0) || numel(unique(groups))~=networkSize
+            details.reason = "duplicate_clps_site";
+            objectiveValue = infeasiblePenalty;
+            return
+        end
     end
 end
 
-    end
 %% Canonicalize network
 sensorIndices = ...
     sort(sensorIndicesInput);

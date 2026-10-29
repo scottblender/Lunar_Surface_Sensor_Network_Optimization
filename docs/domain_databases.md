@@ -1,30 +1,34 @@
-# Domain databases
+# Shared paper database
 
-`planDomainDatabase` plans candidate coordinates without a DEM. The production
-launcher defaults to `clps_fixed`, `clps`, `global`; `-PlanOnly` previews them.
-`buildDomainDatabase` requires a local DEM and checks native coverage/resolution
-before building bounded chunks. Visibility, terrain and on-demand Jacobian
-metadata share frozen two-body truth, measurement noise and IOD calibration.
+The default launcher builds `paper_shared`, a global grid augmented by the exact
+coordinates in `config/paper_clps_sites.csv`. The grid spacing controls the
+common discrete search space; fixed anchors are present even between grid nodes.
+Cartesian coordinate keys deduplicate poles and longitude seams. Zero-visibility
+candidates remain in this master and in the global random-network population.
 
-- `clps_fixed`: one candidate at each enabled CSV coordinate, no displacement.
-- `clps`: center and geodesic rings out to 100 km; default spacing 15 km;
-  candidates carry site IDs to enforce at most one selected sensor per anchor.
-- `global`: global latitude/longitude rings with default 15-km spacing.
+`buildDomainDatabase("paper_shared",options)` uses the existing production
+physics and chunk builder with candidate filtering disabled. It checks DEM
+coverage/resolution and uses immutable request/source signatures for safe resume.
+After physical construction, `finalizeDomainDatabase` derives three views and
+saves the visibility comparison of the two authorized polar proxies. Existing
+unrelated view files are rejected. Keep the entire output root together because
+chunk paths are absolute. Use a fresh root after source/configuration changes.
 
-100 km is a spherical surface distance with radius 1737.4 km. Ring discretization
-is not continuous optimization. CSV sources and coordinate classifications are
-retained; unresolved/nonlanding rows cannot be enabled. Default enabled anchors
-are all nearside. A farside selection requires reviewed, explicitly enabled
-coordinates and a new database build.
+Each view records local-to-master IDs in `meta.sharedSourceCandidateIds` and
+retains physical chunk indices. Fixed sites are exact anchor candidates; CLPS
+membership is an N-by-anchor geodesic-distance mask with 100-km cutoff; global
+includes all master candidates. The objective uses matching for overlapping
+CLPS circles, allowing at most one sensor per assigned anchor. Physical data are
+not recomputed when selecting a view or changing network size.
 
-The launcher builds the three cases separately when fixed sites are requested.
-CLPS/global-only requests can share immutable physical chunks and generate views.
-Legacy south75/south0 views remain supported by low-level APIs for recovery.
-Existing outputs retain their build_request provenance; use a fresh OutputRoot
-when settings or code change. finalizeDomainDatabase validates saved chunks and
-can recover interrupted view generation without rebuilding physics.
+The polar proxies (-84,37) and (-75,132), in latitude/east-longitude degrees, are
+approximate study choices near Mons Mouton and Schrodinger Basin. They are not
+verified lander coordinates or certified terrain. Higher accepted visibility at
+the exact proxy determines the active polar anchor; ties follow CSV order. Both
+scores, the criterion and selected SiteId are saved. The comparison applies to
+the frozen population/epochs/gates only. The losing proxy remains in the global
+master but is not an active CLPS anchor.
 
-Native DEM resolution, mounting/leveling and optional local flatness assessment
-are separate concerns. Candidates are not certified installation locations.
-Local DEMs and generated databases are not distributed. No full production
-rebuild or scientific comparison is implied by data-free tests.
+Legacy `shared`, `clps`, `clps_fixed`, `south75` and `south0` builders/views remain
+for historical compatibility. Their separate/ring-sampling behavior is distinct
+from the paper workflow and is not used by `runRevisedPaperStudy`.
