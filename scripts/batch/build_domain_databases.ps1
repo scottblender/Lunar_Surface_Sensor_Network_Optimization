@@ -2,8 +2,8 @@
 [CmdletBinding()]
 param(
     [string]$MatlabExe = "matlab",
-    [ValidateSet("clps_fixed", "clps", "global")]
-    [string[]]$Domains = @("clps_fixed", "clps", "global"),
+    [ValidateSet("paper_shared", "clps_fixed", "clps", "global")]
+    [string[]]$Domains = @("paper_shared"),
     [string]$DemFile = "",
     [string]$OutputRoot = "",
     [string]$SiteFile = "",
@@ -29,8 +29,11 @@ param(
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (!$DemFile) { $DemFile = Join-Path $ProjectRoot "data/Synthetic_Lunar_DEM.mat" }
-if (!$OutputRoot) { $OutputRoot = Join-Path $ProjectRoot "results/domain_databases_compact" }
-if (!$SiteFile) { $SiteFile = Join-Path $ProjectRoot "config/clps_sites.csv" }
+if (!$OutputRoot) { $OutputRoot = Join-Path $ProjectRoot "results/paper_domains" }
+if (!$SiteFile) {
+    $SiteFile = Join-Path $ProjectRoot "config/clps_sites.csv"
+    if ($Domains -contains "paper_shared") { $SiteFile = Join-Path $ProjectRoot "config/paper_clps_sites.csv" }
+}
 $DemFile = [IO.Path]::GetFullPath($DemFile)
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $SiteFile = [IO.Path]::GetFullPath($SiteFile)
@@ -40,8 +43,9 @@ $LogRoot = Join-Path $OutputRoot ("batch_logs/" + (Get-Date -Format "yyyyMMdd_HH
 New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null
 if ($PlanOnly -and $PreflightOnly) { throw "Choose PlanOnly or PreflightOnly, not both." }
 $BuildDomains = @($Domains | Select-Object -Unique)
+if ($BuildDomains -contains "paper_shared" -and $BuildDomains.Count -ne 1) { throw "paper_shared already creates all three views; use it alone." }
 if (!$SeparateDomains -and $BuildDomains.Count -gt 1 -and $BuildDomains -notcontains "clps_fixed") { $BuildDomains = @("shared") }
-$RequestedViews = @($Domains | Where-Object { $_ -ne "clps_fixed" })
+$RequestedViews = @($Domains | Where-Object { $_ -notin @("clps_fixed", "paper_shared") })
 if (!$RequestedViews.Count) { $RequestedViews = @("global") }
 $PreviousRequest = $env:LUNAR_DB_REQUEST
 $Failures = @()

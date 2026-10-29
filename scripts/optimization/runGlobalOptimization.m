@@ -37,6 +37,7 @@ end
 defaultConfig = struct();
 defaultConfig.databaseFile = ...
     fullfile(resultsDirectory,"optimization_database.mat");
+defaultConfig.outputDirectory = "";
 defaultConfig.optimizer = "GA";
 defaultConfig.networkSize = 3;
 defaultConfig.objectiveMode = "information";
@@ -161,6 +162,7 @@ timestamp = string(datetime("now","Format","yyyyMMdd_HHmmss"));
 studyTag = sprintf("%s_%s_n%d_%s", ...
     lower(config.optimizer),config.objectiveMode,config.networkSize,timestamp);
 studyDirectory = fullfile(resultsDirectory,"optimization_runs",studyTag);
+if strlength(string(config.outputDirectory))>0, studyDirectory=string(config.outputDirectory); end
 
 assert(~isfolder(studyDirectory), ...
     "Study output directory already exists.");

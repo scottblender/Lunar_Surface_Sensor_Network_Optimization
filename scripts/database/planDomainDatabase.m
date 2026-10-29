@@ -2,9 +2,10 @@ function plan = planDomainDatabase(domain,userOptions)
 % PLANDOMAINDATABASE - Plan nested geographic grids or CLPS neighborhoods without loading a DEM.
 % Outputs include prefilter candidate-to-site IDs and bounded equal-count chunks.
 arguments
-    domain (1,1) string {mustBeMember(domain,["clps_fixed","clps","south75","south0","global","shared"])}
+    domain (1,1) string {mustBeMember(domain,["clps_fixed","clps","south75","south0","global","shared","paper_shared"])}
     userOptions (1,1) struct = struct()
 end
+if domain=="paper_shared", plan=planPaperDatabase(userOptions); return; end
 root = fileparts(fileparts(fileparts(mfilename("fullpath"))));
 defaults = struct("spacingKm",15,"maximumCandidatesPerChunk",500, ...
     "clpsRadiusKm",100,"clpsSpacingKm",15, ...

@@ -114,11 +114,17 @@ randomStateCleanup = onCleanup(@() rng(previousRandomState)); %#ok<NASGU>
 rng(config.measurementNoiseSeed,"twister");
 
 for objectIndex = 1:numberOfObjects
-    fullNoise = measurementNoiseFactor * ...
-        randn(2,numberOfCandidates*numberOfTimes);
-    fullNoise = reshape(fullNoise,2,numberOfCandidates,numberOfTimes);
-    selectedNoise = reshape(fullNoise(:,sensorIndices,:), ...
-        2,numberOfScheduledObservations);
+    physicalIds=sensorIndices;
+    if isfield(database.meta,"sharedSourceCandidateIds")
+        physicalIds=database.meta.sharedSourceCandidateIds(sensorIndices);
+    end
+    noise=zeros(2,numberOfSelectedSensors,numberOfTimes);
+    for sensor=1:numberOfSelectedSensors
+        seed=mod(double(config.measurementNoiseSeed)+104729*objectIndex+1009*double(physicalIds(sensor)),2^32-1);
+        stream=RandStream('mt19937ar','Seed',seed);
+        noise(:,sensor,:)=reshape(measurementNoiseFactor*randn(stream,2,numberOfTimes),2,1,numberOfTimes);
+    end
+    selectedNoise=reshape(noise,2,numberOfScheduledObservations);
 
     objectAvailability = reshape( ...
         selectedFilteredAvailability(:,:,objectIndex), ...
@@ -200,6 +206,7 @@ validation.sensorIndices = sensorIndices;
 validation.sensorLatitudesRad = database.candidates.latitudesRad(sensorIndices);
 validation.sensorLongitudesRad = database.candidates.longitudesRad(sensorIndices);
 validation.measurementNoiseSeed = config.measurementNoiseSeed;
+validation.noisePolicy = "physical_candidate_and_object_stream_v2";
 validation.initialPerturbationScale = config.initialPerturbationScale;
 validation.initialPerturbationDirection = perturbationDirection;
 validation.initialError = initialError;

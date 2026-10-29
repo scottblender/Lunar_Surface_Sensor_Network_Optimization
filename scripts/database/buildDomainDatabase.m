@@ -116,6 +116,7 @@ config.candidates.customLongitudesRad = plan.longitudesRad;
 config.candidates.latitudeBandRad = deg2rad(plan.latitudeBandDeg);
 config.candidates.spacingKm = plan.options.spacingKm;
 config.study.networkSizes = plan.options.networkSizes;
+if domain=="paper_shared", config.candidateFilter.enabled=false; end
 if ismember(domain,["clps_fixed","clps"])
     assert(max(config.study.networkSizes) <= height(plan.sites), ...
         "buildDomainDatabase:NetworkSize","CLPS network sizes cannot exceed enabled site count.");
