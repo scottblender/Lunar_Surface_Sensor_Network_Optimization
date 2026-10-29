@@ -4,7 +4,7 @@ arguments
     database (1,1) struct
     networkSize (1,1) double {mustBeInteger,mustBePositive}
     numberOfSamples (1,1) double {mustBeInteger,mustBePositive}
-    seed (1,1) double {mustBeInteger,mustBeNonnegative,mustBeLessThan(seed,2^32)}
+    seed (1,1) double {mustBeInteger,mustBeNonnegative,mustBeLessThan(seed,4294967296)}
     selectedMasterIds (:,1) double
 end
 assert(database.config.domainComparison.domain=="global", ...
