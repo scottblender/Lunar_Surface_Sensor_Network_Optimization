@@ -199,12 +199,19 @@ end
 if isfield(database,"config") && isfield(database.config,"domainComparison") && ...
         isfield(database.config.domainComparison,"enforceSiteGroups") && ...
         database.config.domainComparison.enforceSiteGroups
-    groups = database.config.domainComparison.prefilterSiteIds( ...
-        database.candidates.originalIndices(sensorIndicesInput));
-    if any(strlength(groups)==0) || numel(unique(groups))~=networkSize
-        details.reason = "duplicate_clps_site";
-        objectiveValue = infeasiblePenalty;
-        return
+    if isfield(database.config.domainComparison,"anchorMembership")
+        membership=database.config.domainComparison.anchorMembership(sensorIndicesInput,:);
+        if ~optimization.canAssignDistinctAnchors(membership)
+            details.reason="duplicate_clps_site"; objectiveValue=infeasiblePenalty; return;
+        end
+    else
+        groups = database.config.domainComparison.prefilterSiteIds( ...
+            database.candidates.originalIndices(sensorIndicesInput));
+        if any(strlength(groups)==0) || numel(unique(groups))~=networkSize
+            details.reason = "duplicate_clps_site";
+            objectiveValue = infeasiblePenalty;
+            return
+        end
     end
 end
 

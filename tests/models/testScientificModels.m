@@ -843,6 +843,8 @@ verifyFalse(testCase,contains(normal,"Local flatness:"));
 verifyFalse(testCase,isfolder(options.outputRoot));
 options.assessLocalFlatness = true;
 explicit = evalc('buildDomainDatabase("shared",options);');
-verifyTrue(testCase,contains(explicit,"Local flatness: 0 pass, 0 fail, 198 unresolved"));
+plan = planDomainDatabase("shared",options);
+expected = sprintf("Local flatness: 0 pass, 0 fail, %d unresolved",nnz(strlength(plan.siteIds)>0));
+verifyTrue(testCase,contains(explicit,expected));
 verifyFalse(testCase,isfolder(options.outputRoot));
 end

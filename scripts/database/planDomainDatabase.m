@@ -2,15 +2,16 @@ function plan = planDomainDatabase(domain,userOptions)
 % PLANDOMAINDATABASE - Plan nested geographic grids or CLPS neighborhoods without loading a DEM.
 % Outputs include prefilter candidate-to-site IDs and bounded equal-count chunks.
 arguments
-    domain (1,1) string {mustBeMember(domain,["clps","south75","south0","global","shared"])}
+    domain (1,1) string {mustBeMember(domain,["clps_fixed","clps","south75","south0","global","shared","paper_shared"])}
     userOptions (1,1) struct = struct()
 end
+if domain=="paper_shared", plan=planPaperDatabase(userOptions); return; end
 root = fileparts(fileparts(fileparts(mfilename("fullpath"))));
 defaults = struct("spacingKm",15,"maximumCandidatesPerChunk",500, ...
-    "clpsRadiusKm",0.1,"clpsSpacingKm",0.025, ...
+    "clpsRadiusKm",100,"clpsSpacingKm",15, ...
     "siteFile",string(fullfile(root,"config","clps_sites.csv")), ...
     "seed",1000,"networkSizes",3,"jacobianStorage","on_demand", ...
-    "requestedDomains",["clps","south75","south0","global"]);
+    "requestedDomains",["clps","global"]);
 options = utilities.overrideConfig(defaults,userOptions);
 % jsondecode returns cell arrays for JSON string lists. A cell-valued argument
 % to struct() would expand the saved domain metadata into a struct array.
@@ -21,14 +22,14 @@ assert(~isempty(options.requestedDomains) && ...
 validateattributes(options.spacingKm,{'numeric'},{'scalar','positive','finite'});
 validateattributes(options.maximumCandidatesPerChunk,{'numeric'}, ...
     {'scalar','integer','positive','finite'});
-validateattributes(options.clpsRadiusKm,{'numeric'},{'scalar','positive','finite','<=',0.1});
+validateattributes(options.clpsRadiusKm,{'numeric'},{'scalar','positive','finite','<=',100});
 validateattributes(options.clpsSpacingKm,{'numeric'},{'scalar','positive','finite'});
 validateattributes(options.seed,{'numeric'},{'scalar','integer','nonnegative','<=',2^32-1});
 validateattributes(options.networkSizes,{'numeric'},{'vector','integer','positive','finite'});
 moonRadiusKm = 1737.4;
 siteIds = strings(0,1);
 sites = table();
-if domain == "clps"
+if ismember(domain,["clps_fixed","clps"])
     sites = readtable(options.siteFile,"TextType","string");
     required = ["SiteId","Mission","LatitudeDeg","LongitudeDeg","Enabled","CoordinateType","SourceURL"];
     assert(all(ismember(required,string(sites.Properties.VariableNames))), ...
@@ -47,6 +48,7 @@ if domain == "clps"
     lat = []; lon = [];
     radii = (options.clpsSpacingKm:options.clpsSpacingKm:options.clpsRadiusKm).';
     radii = unique([radii;options.clpsRadiusKm]);
+    if domain == "clps_fixed", radii = []; end
     for k = 1:height(sites)
         centerLat = deg2rad(sites.LatitudeDeg(k));
         centerLon = deg2rad(sites.LongitudeDeg(k));

@@ -37,6 +37,7 @@ end
 defaultConfig = struct();
 defaultConfig.databaseFile = ...
     fullfile(resultsDirectory,"optimization_database.mat");
+defaultConfig.outputDirectory = "";
 defaultConfig.optimizer = "GA";
 defaultConfig.networkSize = 3;
 defaultConfig.objectiveMode = "information";
@@ -84,8 +85,8 @@ end
 
 assert(ismember(config.optimizer,["GA","SURROGATE","PSO","ABC"]), ...
     "optimizer must be GA, SURROGATE, PSO, or ABC.");
-assert(ismember(config.objectiveMode,["information","coverage"]), ...
-    "objectiveMode must be information or coverage.");
+assert(config.objectiveMode == "information", "runGlobalOptimization:Objective", ...
+    "Only information gain may select production networks; coverage is a diagnostic.");
 
 
 %% Load frozen production database
@@ -99,6 +100,11 @@ databaseData = load(config.databaseFile,"database");
 assert(isfield(databaseData,"database"), ...
     "MAT file does not contain database.");
 database = databaseData.database;
+if isfield(database,"config") && isfield(database.config,"domainComparison")
+    assert(database.config.domainComparison.domain ~= "clps_fixed", ...
+        "runGlobalOptimization:FixedSequence", ...
+        "Use runFixedClpsSequential for the three-sensor fixed CLPS case.");
+end
 
 numberOfCandidates = database.meta.numberOfCandidates;
 numberOfObjects = database.meta.numberOfObjects;
@@ -156,6 +162,7 @@ timestamp = string(datetime("now","Format","yyyyMMdd_HHmmss"));
 studyTag = sprintf("%s_%s_n%d_%s", ...
     lower(config.optimizer),config.objectiveMode,config.networkSize,timestamp);
 studyDirectory = fullfile(resultsDirectory,"optimization_runs",studyTag);
+if strlength(string(config.outputDirectory))>0, studyDirectory=string(config.outputDirectory); end
 
 assert(~isfolder(studyDirectory), ...
     "Study output directory already exists.");
@@ -613,62 +620,9 @@ end
 %% Local helpers
 
 function objectiveDatabase = buildObjectiveDatabase(database)
-% BUILDOBJECTIVEDATABASE - Retain only fields required by networkObjective.
-
-objectiveDatabase = struct();
-objectiveDatabase.meta = database.meta;
-objectiveDatabase.study = database.study;
-objectiveDatabase.objective = database.objective;
-
-objectiveDatabase.visibility = struct();
-objectiveDatabase.tracking = struct();
-
-isChunked = ...
-    isfield(database.tracking,"measurementJacobianChunks") && ...
-    ~isempty(database.tracking.measurementJacobianChunks);
-
-if isChunked
-    objectiveDatabase.visibility.candidateChunks = ...
-        database.visibility.candidateChunks;
-
-    objectiveDatabase.tracking.measurementJacobianChunks = ...
-        database.tracking.measurementJacobianChunks;
-
-    objectiveDatabase.candidates = struct();
-    objectiveDatabase.candidates.chunkIndex = ...
-        database.candidates.chunkIndex;
-    objectiveDatabase.candidates.chunkLocalIndex = ...
-        database.candidates.chunkLocalIndex;
-    objectiveDatabase.candidates.originalChunkLocalIndex = ...
-        database.candidates.originalChunkLocalIndex;
-else
-    objectiveDatabase.visibility.filteredAvailability = ...
-        database.visibility.filteredAvailability;
-    objectiveDatabase.visibility.candidateChunks = struct([]);
-
-    objectiveDatabase.tracking.measurementJacobianHistories = ...
-        database.tracking.measurementJacobianHistories;
-    objectiveDatabase.tracking.measurementJacobianChunks = struct([]);
-end
-
-objectiveDatabase.tracking.stateTransitionHistories = ...
-    database.tracking.stateTransitionHistories;
-objectiveDatabase.tracking.processNoiseHistories = ...
-    database.tracking.processNoiseHistories;
-
-objectiveDatabase.prior = struct();
-objectiveDatabase.prior.initialCovariances = ...
-    database.prior.initialCovariances;
-
-objectiveDatabase.measurement = struct();
-objectiveDatabase.measurement.covariance = ...
-    database.measurement.covariance;
-
-objectiveDatabase.estimation = struct();
-objectiveDatabase.estimation.stateScales = ...
-    database.estimation.stateScales;
-objectiveDatabase.estimation.objectWeights = ...
-    database.estimation.objectWeights;
+% Preserve on-demand Jacobian inputs and CLPS site-group metadata.
+% Physical candidate arrays stay in the frozen chunks.
+objectiveDatabase = database;
 end
 
 function [pool,poolWasCreated] = ensureProcessPool(forceRestart)

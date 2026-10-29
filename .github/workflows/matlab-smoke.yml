@@ -1,4 +1,4 @@
-name: MATLAB optimizer and analysis smoke tests
+name: MATLAB scientific and paper workflow smoke tests
 on:
   pull_request:
   push:
@@ -10,8 +10,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: matlab-actions/setup-matlab@v2
         with:
+          cache: true
           products: Global_Optimization_Toolbox Parallel_Computing_Toolbox
-      - name: Start display for graphics regressions
+      - name: Start virtual display for figure export tests
         run: |
           sudo apt-get install -y xvfb x11-utils
           Xvfb :99 -screen 0 2560x1600x24 -nolisten tcp > /tmp/lunar-xvfb.log 2>&1 &
@@ -22,6 +23,9 @@ jobs:
           done
           cat /tmp/lunar-xvfb.log
           exit 1
+      - uses: matlab-actions/run-command@v2
+        with:
+          command: setupProject; addpath('tests/fixtures'); r = runtests('tests/optimization/testRevisedStudy.m'); assertSuccess(r);
       - uses: matlab-actions/run-command@v2
         with:
           command: addpath('tests'); results = runSmokeTests;

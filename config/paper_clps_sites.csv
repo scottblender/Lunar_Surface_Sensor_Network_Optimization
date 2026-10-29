@@ -1,0 +1,7 @@
+SiteId,Mission,LatitudeDeg,LongitudeDeg,Enabled,CoordinateType,Role,SourceURL,Notes
+IM3,Intuitive Machines IM-3,7.585,301.275,1,planned_science_target,anchor,https://www.hou.usra.edu/meetings/lpsc2025/pdf/1233.pdf,Lunar Vertex published target; not an as-landed location
+BGM1,Firefly Blue Ghost Mission 1,18.5623,61.8103,1,actual,anchor,https://lroc.im-ldi.com/images/1407,Published LROC as-landed coordinate
+BGM2,Firefly Blue Ghost Mission 2,-23.814,182.258,1,published_planned,anchor,https://ideas.esa.int/core/servlet/hype/IMT?documentId=61bb6e6561aee3abdb505e07ee853a80,Published ESA LuSEE-Night planned anchor; not as-landed or a schedule assertion
+BGM3,Firefly Blue Ghost Mission 3,36.45715,319.20398,1,selected_ellipse_center,anchor,https://www.usgs.gov/publications/lunar-vise-landing-site-selection-and-characterization-mons-gruithuisen-gamma,Lunar-VISE selected ellipse center published 2026
+POLE_MOUTON,South-polar study proxy near Mons Mouton,-84,37,1,regional_study_proxy,south_pole_option,https://svs.gsfc.nasa.gov/4075,Approximate feature anchor authorized for study; not a mission landing point
+POLE_SCHRODINGER,South-polar study proxy near Schrodinger Basin,-75,132,1,regional_study_proxy,south_pole_option,https://repository.si.edu/server/api/core/bitstreams/f416d8fe-18bd-432d-9b5f-f15460fcb022/content,Approximate basin center authorized for study; not a mission landing point

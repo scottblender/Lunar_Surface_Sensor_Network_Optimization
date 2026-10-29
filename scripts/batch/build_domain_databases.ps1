@@ -2,15 +2,15 @@
 [CmdletBinding()]
 param(
     [string]$MatlabExe = "matlab",
-    [ValidateSet("clps", "south75", "south0", "global")]
-    [string[]]$Domains = @("clps", "south75", "south0", "global"),
+    [ValidateSet("paper_shared", "clps_fixed", "clps", "global")]
+    [string[]]$Domains = @("paper_shared"),
     [string]$DemFile = "",
     [string]$OutputRoot = "",
     [string]$SiteFile = "",
     [ValidateRange(0.001, 10000)][double]$SpacingKm = 15,
     [ValidateRange(1, 100000)][int]$MaxCandidatesPerChunk = 500,
-    [ValidateRange(0.001, 0.1)][double]$ClpsRadiusKm = 0.1,
-    [ValidateRange(0.001, 0.1)][double]$ClpsSpacingKm = 0.025,
+    [ValidateRange(100, 100)][double]$ClpsRadiusKm = 100,
+    [ValidateRange(0.001, 100)][double]$ClpsSpacingKm = 15,
     [ValidateRange(0, 2147483647)][int]$Seed = 1000,
     [ValidateRange(1, 10000)][int[]]$NetworkSizes = @(3),
     [switch]$PlanOnly,
@@ -29,8 +29,11 @@ param(
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (!$DemFile) { $DemFile = Join-Path $ProjectRoot "data/Synthetic_Lunar_DEM.mat" }
-if (!$OutputRoot) { $OutputRoot = Join-Path $ProjectRoot "results/domain_databases_compact" }
-if (!$SiteFile) { $SiteFile = Join-Path $ProjectRoot "config/clps_sites.csv" }
+if (!$OutputRoot) { $OutputRoot = Join-Path $ProjectRoot "results/paper_domains" }
+if (!$SiteFile) {
+    $SiteFile = Join-Path $ProjectRoot "config/clps_sites.csv"
+    if ($Domains -contains "paper_shared") { $SiteFile = Join-Path $ProjectRoot "config/paper_clps_sites.csv" }
+}
 $DemFile = [IO.Path]::GetFullPath($DemFile)
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $SiteFile = [IO.Path]::GetFullPath($SiteFile)
@@ -40,7 +43,10 @@ $LogRoot = Join-Path $OutputRoot ("batch_logs/" + (Get-Date -Format "yyyyMMdd_HH
 New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null
 if ($PlanOnly -and $PreflightOnly) { throw "Choose PlanOnly or PreflightOnly, not both." }
 $BuildDomains = @($Domains | Select-Object -Unique)
-if (!$SeparateDomains -and $BuildDomains.Count -gt 1) { $BuildDomains = @("shared") }
+if ($BuildDomains -contains "paper_shared" -and $BuildDomains.Count -ne 1) { throw "paper_shared already creates all three views; use it alone." }
+if (!$SeparateDomains -and $BuildDomains.Count -gt 1 -and $BuildDomains -notcontains "clps_fixed") { $BuildDomains = @("shared") }
+$RequestedViews = @($Domains | Where-Object { $_ -notin @("clps_fixed", "paper_shared") })
+if (!$RequestedViews.Count) { $RequestedViews = @("global") }
 $PreviousRequest = $env:LUNAR_DB_REQUEST
 $Failures = @()
 # Validate ALL requested domains before any database process can start.
@@ -59,7 +65,7 @@ try {
                 spacingKm = $SpacingKm; maximumCandidatesPerChunk = $MaxCandidatesPerChunk
                 clpsRadiusKm = $ClpsRadiusKm; clpsSpacingKm = $ClpsSpacingKm
                 seed = $Seed; networkSizes = @($NetworkSizes); planOnly = [bool]$PlanOnly
-                preflightOnly = ($Phase -eq "preflight"); requestedDomains = @($Domains)
+                preflightOnly = ($Phase -eq "preflight"); requestedDomains = @($RequestedViews)
                 jacobianStorage = $JacobianStorage; localDemFile = $LocalDemFile
                 assessLocalFlatness = [bool]$AssessLocalFlatness
                 flatnessFootprintMeters = $FlatnessFootprintMeters

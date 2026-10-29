@@ -66,11 +66,11 @@ for k = 1:height(plan.sites)
     ids = plan.siteIds == plan.sites.SiteId(k);
     lat0 = deg2rad(plan.sites.LatitudeDeg(k));
     lon0 = deg2rad(plan.sites.LongitudeDeg(k));
-    % Haversine remains accurate for 100 m neighborhoods.
+    % Haversine remains accurate for 100 km neighborhoods.
     a = sin((plan.latitudesRad(ids)-lat0)/2).^2 + ...
         cos(lat0)*cos(plan.latitudesRad(ids)).*sin((plan.longitudesRad(ids)-lon0)/2).^2;
     distance = 2*1737.4*asin(sqrt(a));
-    verifyLessThanOrEqual(testCase,max(distance),0.1+1e-9);
+    verifyEqual(testCase,max(distance),100,'AbsTol',1e-9);
     verifyLessThan(testCase,min(distance),1e-9);
 end
 verifyTrue(testCase,all(strlength(plan.sites.SourceURL)>0));

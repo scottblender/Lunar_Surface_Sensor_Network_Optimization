@@ -47,7 +47,22 @@ if repaired
     fprintf("Repaired duplicated domain metadata: %s\n",outputFile);
 end
 save(fullfile(fileparts(outputFile),"build_complete.mat"),"outputFile");
-if comparison.domain == "shared"
+if comparison.domain == "paper_shared"
+    [views,polarSelection] = derivePaperDomains(database);
+    outputRoot=fileparts(fileparts(outputFile));
+    for domain=["clps_fixed","clps","global"]
+        folder=fullfile(outputRoot,domain); if ~isfolder(folder), mkdir(folder); end
+        database=views.(domain); %#ok<NASGU>
+        file=fullfile(folder,"optimization_database.mat");
+        if isfile(file)
+            old=load(file,"database");
+            assert(isfield(old.database.meta,"sharedSourceFile") && old.database.meta.sharedSourceFile==outputFile, ...
+                "finalizeDomainDatabase:ViewConflict","Use a fresh output root; an unrelated view exists.");
+        end
+        save(file,"database","-v7.3");
+    end
+    save(fullfile(outputRoot,"polar_selection.mat"),"polarSelection");
+elseif comparison.domain == "shared"
     writeDomainViews(database,fileparts(fileparts(outputFile)));
 end
 fprintf("Validated saved database and completed domain manifests: %s\n",outputFile);

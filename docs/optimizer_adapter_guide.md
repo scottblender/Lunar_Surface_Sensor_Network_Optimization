@@ -61,8 +61,7 @@ For ABC, `populationSize` must be even and the budget at least
 range with enough unique sites; only the common strict-ordering linear
 constraints are supported. Single-sensor and full-candidate-set networks are
 supported. Neighborhood moves perturb a sensor ID or replace it with an unused
-ID; they do not measure geographic distance. Geographic refinement remains a
-separate post-processing analysis.
+ID; they do not measure geographic distance. Geographic network refinement is archived and excluded from the active workflow.
 
 The implementation adapts
 [`abc_discrete.m`](https://github.com/scottblender/Gradient-Free-Optimization-for-Cislunar-SDA-2/blob/e0ccf9e1b18409f74348c42bf559efdfb2852103/src/optimization/abc_discrete.m)
@@ -73,7 +72,7 @@ replaced for lunar site selection, including odd network sizes.
 
 Match requested budgets, frozen databases, objectives, seeds, and network sizes
 when comparing methods. Use a separate comparison `studyName`; manuscript
-campaign discovery intentionally remains GA-only.
+historical campaign discovery is archived.
 
 ## Tests
 
