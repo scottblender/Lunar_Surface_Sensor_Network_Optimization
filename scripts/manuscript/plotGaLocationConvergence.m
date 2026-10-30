@@ -84,8 +84,11 @@ for mode=["samples","evaluations"]
     title(ax,'Small distance and concentrated maps indicate repeatable locations; a broad plateau does not');
     legend(ax,'Location','best'); grid(ax,'on'); xticks(ax,settings);
     if numel(settings)>1, xlim(ax,[min(settings) max(settings)]); end
+    fprintf("Exporting %s.png...\n",name);
     exportgraphics(f,fullfile(config.outputDirectory,name+".png"),'Resolution',180);
+    fprintf("Exporting %s.pdf...\n",name);
     exportgraphics(f,fullfile(config.outputDirectory,name+".pdf"),'ContentType','vector');
+    fprintf("Finished %s exports.\n",name);
     clear cleanup;
 end
 end

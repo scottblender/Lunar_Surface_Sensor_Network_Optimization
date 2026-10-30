@@ -5,6 +5,7 @@ on:
     branches: [main]
 jobs:
   smoke:
+    timeout-minutes: 25
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -24,10 +25,12 @@ jobs:
           cat /tmp/lunar-xvfb.log
           exit 1
       - uses: matlab-actions/run-command@v2
+        name: Validate sweep and export polar previews
+        timeout-minutes: 6
         env:
           LUNAR_GA_PLOT_ARTIFACTS: ${{ github.workspace }}/results/ga_plot_preview
         with:
-          command: setupProject; addpath('tests/fixtures'); r = runtests('tests/optimization/testGaConvergenceStudy.m'); assertSuccess(r);
+          command: setupProject; addpath('tests/fixtures'); s = testsuite('tests/optimization/testGaConvergenceStudy.m'); s = s(~endsWith(string({s.Name}),'/testIndependentRunParallelismMatchesSerial')); r = run(s); assertSuccess(r);
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -35,5 +38,11 @@ jobs:
           path: results/ga_plot_preview/
           if-no-files-found: ignore
       - uses: matlab-actions/run-command@v2
+        name: Validate independent-run parallelism
+        timeout-minutes: 6
+        with:
+          command: setupProject; addpath('tests/fixtures'); s = testsuite('tests/optimization/testGaConvergenceStudy.m'); r = run(s(endsWith(string({s.Name}),'/testIndependentRunParallelismMatchesSerial'))); assertSuccess(r);
+      - uses: matlab-actions/run-command@v2
+        timeout-minutes: 8
         with:
           command: addpath('tests'); results = runSmokeTests;
