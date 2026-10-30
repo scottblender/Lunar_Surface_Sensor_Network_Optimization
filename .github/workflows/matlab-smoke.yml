@@ -25,7 +25,7 @@ jobs:
           exit 1
       - uses: matlab-actions/run-command@v2
         with:
-          command: setupProject; addpath('tests/fixtures'); r = runtests('tests/optimization/testRevisedStudy.m'); assertSuccess(r);
+          command: setupProject; addpath('tests/fixtures'); r = runtests('tests/optimization/testGaConvergenceStudy.m'); assertSuccess(r);
       - uses: matlab-actions/run-command@v2
         with:
           command: addpath('tests'); results = runSmokeTests;

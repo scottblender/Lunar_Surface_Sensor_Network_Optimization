@@ -9,6 +9,7 @@ testFiles = [
     "tests/optimization/testOptimizers.m"
     "tests/optimization/testPaperWorkflow.m"
     "tests/optimization/testRevisedStudy.m"
+    "tests/optimization/testGaConvergenceStudy.m"
     "tests/models/testScientificModels.m"
 
 ];
