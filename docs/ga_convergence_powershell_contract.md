@@ -79,6 +79,9 @@ that no MATLAB process is still using that output. Never delete completed runs.
 ## The two figures
 
 Both reuse `plotPolarSelectionMap`, the existing conference-paper plotting helper.
+They also reuse `binNetworkSelectionFrequency`, `publicationPlotStyle` and
+`exportManuscriptFigure`. The shared exporter adds PNG/PDF support while keeping
+its historical EPS path intact; frequency binning is not duplicated.
 They show north and south hemispheres because this is a global study. Blue bins
 show the percentage of runs selecting each 10-degree latitude by 30-degree
 longitude bin. Colored markers identify matched observers 1/2/3; marker size

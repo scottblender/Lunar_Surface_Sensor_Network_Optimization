@@ -7,7 +7,8 @@ terrain=[];
 if isfield(database.meta,"demSource") && isfile(database.meta.demSource)
     [terrain,~]=digitalElevationModel.loadTriaxialLunarDem(string(database.meta.demSource));
 end
-colors=[0.78 0.16 0.18;0.10 0.50 0.20;0.50 0.20 0.72];
+style=publicationPlotStyle(); style.axisFontSize=style.manuscriptFontSize;
+colors=[style.redColor;style.greenColor;style.magentaColor];
 for mode=["samples","evaluations"]
     if mode=="samples"
         settings=config.runCounts; name="independent_samples_location_convergence";
@@ -32,18 +33,18 @@ for mode=["samples","evaluations"]
         for hemisphere=1:2
             ax=nexttile(layout,(hemisphere-1)*n+column); lastAx=ax;
             north=hemisphere==1; latitudeEdges=-90:10:0; longitudeEdges=0:30:360;
-            frequency=zeros(9,12);
+            runStates=cell(numel(selected),1);
             for run=1:numel(selected)
                 sites=selected(run).locations; keep=sites(:,1)<0;
                 if north, keep=sites(:,1)>=0; end
-                mapped=-abs(sites(keep,1));
-                frequency=frequency+(histcounts2(mapped,mod(sites(keep,2),360),latitudeEdges,longitudeEdges)>0);
+                runStates{run}=struct("bestSensorLatitudesRad",deg2rad(-abs(sites(keep,1))), ...
+                    "bestSensorLongitudesRad",deg2rad(sites(keep,2)));
             end
-            frequency=100*frequency/numel(selected);
+            frequency=binNetworkSelectionFrequency(runStates,database,latitudeEdges,longitudeEdges);
             if isempty(terrain), dem=@(lat,lon)zeros(size(lat));
             elseif north, dem=@(lat,lon)terrain(-lat,lon);
             else, dem=@(lat,lon)terrain(lat,lon); end
-            plotPolarSelectionMap(ax,frequency,latitudeEdges,longitudeEdges,dem,struct("axisFontSize",9));
+            plotPolarSelectionMap(ax,frequency,latitudeEdges,longitudeEdges,dem,style);
             if north
                 texts=findall(ax,'Type','text');
                 for t=1:numel(texts), texts(t).String=strrep(texts(t).String,'S','N'); end
@@ -60,8 +61,9 @@ for mode=["samples","evaluations"]
                 location=analysis.reference(observer,:);
                 if (north && location(1)>=0) || (~north && location(1)<0)
                     radius=1-abs(location(1))/90;
-                    text(ax,radius*sind(location(2)),radius*cosd(location(2)),5,sprintf(" O%d",observer), ...
-                        'Color',colors(observer,:),'FontWeight','bold','FontSize',10,'Clipping','on');
+                    text(ax,radius*sind(location(2)),radius*cosd(location(2)),4,sprintf(" O%d",observer), ...
+                        'Color',colors(observer,:),'FontWeight','bold','FontSize',10,'Clipping','on', ...
+                        'BackgroundColor','white','Margin',0.5);
                 end
             end
             side="South"; if north, side="North"; end
@@ -85,9 +87,9 @@ for mode=["samples","evaluations"]
     legend(ax,'Location','best'); grid(ax,'on'); xticks(ax,settings);
     if numel(settings)>1, xlim(ax,[min(settings) max(settings)]); end
     fprintf("Exporting %s.png...\n",name);
-    exportgraphics(f,fullfile(config.outputDirectory,name+".png"),'Resolution',180);
+    exportManuscriptFigure(f,fullfile(config.outputDirectory,name+".png"));
     fprintf("Exporting %s.pdf...\n",name);
-    exportgraphics(f,fullfile(config.outputDirectory,name+".pdf"),'ContentType','image','Resolution',300);
+    exportManuscriptFigure(f,fullfile(config.outputDirectory,name+".pdf"));
     fprintf("Finished %s exports.\n",name);
     clear cleanup;
 end

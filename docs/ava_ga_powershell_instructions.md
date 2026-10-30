@@ -66,6 +66,8 @@ if MATLAB fails. Restore the working directory and environment variable afterwar
 MATLAB performs the sweep, seed handling, checkpointing and plotting. You do not
 need to change the GA adapter, objective or MATLAB driver, or write another
 parallel loop. Test only three observers on the global database.
+Reuse existing repository helpers wherever possible; do not copy MATLAB logic
+into the PowerShell script.
 
 5. Check the script
 
