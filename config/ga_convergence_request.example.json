@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "databaseFile": "results/paper_domains/global/optimization_database.mat",
+  "outputDirectory": "results/ga_location_sweep",
+  "runCounts": [5, 10, 20],
+  "functionEvaluationBudgets": [1200, 6000, 12000],
+  "populationSize": 60,
+  "baseSeed": 1000,
+  "parallelMode": "serial",
+  "maxWorkers": 2,
+  "resume": true,
+  "makePlots": true,
+  "validateOnly": false
+}

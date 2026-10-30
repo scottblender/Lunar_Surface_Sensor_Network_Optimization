@@ -1,5 +1,11 @@
 # Lunar Surface Sensor Network Optimization
 
+For the three-observer global GA location-repeatability sweep, see the
+[PowerShell interface](docs/ga_convergence_powershell_contract.md) and
+[Ava's launcher assignment](docs/ava_ga_powershell_instructions.md). The MATLAB
+backend is provided; Ava implements the PowerShell launcher. The sweep creates
+two polar figures comparing independent-run counts and FE budgets.
+
 MATLAB study workflow for information-gain-only selection of lunar surface
 sensor networks. All cases use the same frozen two-body population, prior,
 measurement model, terrain/bright-body visibility gates and physical candidate

@@ -41,9 +41,9 @@ assert(isfield(saved,"database"),"gaConvergence:Database","MAT file must contain
 assert(isfield(database.config,"domainComparison") && database.config.domainComparison.domain=="global" && ...
     ~database.config.domainComparison.enforceSiteGroups && database.meta.numberOfCandidates>=3, ...
     "gaConvergence:Domain","Use a global domain manifest with at least three candidates.");
-assert(license('test','gads_toolbox'),"gaConvergence:Toolbox","Global Optimization Toolbox is required.");
+assert(~isempty(ver('globaloptim')),"gaConvergence:Toolbox","Global Optimization Toolbox is required.");
 if config.parallelMode~="serial"
-    assert(license('test','Distrib_Computing_Toolbox'),"gaConvergence:Toolbox","Parallel Computing Toolbox is required.");
+    assert(~isempty(ver('parallel')),"gaConvergence:Toolbox","Parallel Computing Toolbox is required.");
 end
 chunks=struct('path',{},'bytes',{},'modified',{});
 if isfield(database.visibility,"candidateChunks")

@@ -45,6 +45,11 @@ for name=["independent_samples_location_convergence","function_evaluations_locat
 end
 verifyTrue(testCase,isfile(fullfile(config.outputDirectory,"observer_locations.csv")));
 verifyFalse(testCase,isfile(fullfile(config.outputDirectory,"ga_sweep.lock")));
+artifacts=string(getenv('LUNAR_GA_PLOT_ARTIFACTS'));
+if strlength(artifacts)>0
+    if ~isfolder(artifacts), mkdir(artifacts); end
+    for extension=["*.png","*.pdf"], copyfile(fullfile(config.outputDirectory,extension),artifacts); end
+end
 b=runGaConvergenceStudy(config);
 verifyEqual(testCase,b.reusedRuns,6); verifyEqual(testCase,[a.records.objective],[b.records.objective]);
 verifyEqual(testCase,b.analysis.locations,a.analysis.locations);
@@ -62,7 +67,7 @@ run(which('run_ga_convergence_entry.m'));
 verifyEqual(testCase,gaConvergenceResult.status,"validated");
 end
 function testIndependentRunParallelismMatchesSerial(testCase)
-assumeTrue(testCase,license('test','Distrib_Computing_Toolbox'));
+assumeFalse(testCase,isempty(ver('parallel')));
 [config,folder]=fixture(testCase); config.makePlots=false; config.runCounts=2; config.functionEvaluationBudgets=8;
 a=runGaConvergenceStudy(config);
 config.parallelMode="runs"; config.outputDirectory=fullfile(folder,"parallel");

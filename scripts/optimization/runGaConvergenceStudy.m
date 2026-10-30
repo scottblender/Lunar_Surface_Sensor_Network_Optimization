@@ -29,12 +29,13 @@ lockCleanup=onCleanup(@()delete(fullfile(out,"ga_sweep.lock"))); %#ok<NASGU>
 oldRng=rng; rngCleanup=onCleanup(@()rng(oldRng)); %#ok<NASGU>
 manifest=struct("status","running","config",config,"signature",signature,"completedRuns",0);
 saveManifest(manifestFile,manifest);
-pool=[]; owned=false; poolCleanup=onCleanup(@closeOwnedPool); %#ok<NASGU>
+pool=[]; poolCleanup=[]; %#ok<NASGU>
 try
     if config.parallelMode~="serial"
         pool=gcp('nocreate');
         if isempty(pool)
-            pool=parpool('Processes',config.maxWorkers); owned=true;
+            pool=parpool('Processes',config.maxWorkers);
+            poolCleanup=onCleanup(@()closeSweepPool(pool));
         else
             assert(~isa(pool,'parallel.ThreadPool') && pool.NumWorkers==config.maxWorkers, ...
                 "gaConvergence:Pool","Use a process pool with maxWorkers workers, or close the current pool first.");
@@ -72,15 +73,15 @@ try
     reference=table((1:3).',analysis.referenceCandidateIds,analysis.reference(:,1),analysis.reference(:,2), ...
         'VariableNames',{'Observer','CandidateId','LatitudeDeg','LongitudeDeg'});
     writetable(reference,fullfile(out,"reference_observers.csv"));
-    histories=struct([]);
+    histories={};
     for k=1:numel(records)
         for h=1:numel(records(k).history.fe)
-            histories(end+1)=struct("RequestedFE",records(k).requestedBudget,"RunIndex",records(k).runIndex, ...
+            histories{end+1}=struct("RequestedFE",records(k).requestedBudget,"RunIndex",records(k).runIndex, ...
                 "Seed",records(k).seed,"ComparisonFE",records(k).history.fe(h), ...
                 "BestObjective",records(k).history.bestJ(h)); %#ok<AGROW>
         end
     end
-    writetable(struct2table(histories),fullfile(out,"objective_histories.csv"));
+    writetable(struct2table(vertcat(histories{:})),fullfile(out,"objective_histories.csv"));
     result=struct("status","complete","config",config,"records",records,"analysis",analysis, ...
         "gaWallSeconds",gaWallSeconds,"analysisSeconds",toc(analysisTimer), ...
         "summedRunSeconds",sum([records.runtimeSeconds]),"reusedRuns",nnz([records.reused]), ...
@@ -96,9 +97,9 @@ catch err
     manifest.status="failed"; manifest.errorIdentifier=string(err.identifier); manifest.errorMessage=string(err.message);
     saveManifest(manifestFile,manifest); rethrow(err);
 end
-    function closeOwnedPool
-        if owned && ~isempty(pool) && isvalid(pool), delete(pool); end
-    end
+end
+function closeSweepPool(pool)
+if ~isempty(pool) && isvalid(pool), delete(pool); end
 end
 function saveManifest(file,manifest)
 temporary=string(tempname(fileparts(file)))+".mat";
