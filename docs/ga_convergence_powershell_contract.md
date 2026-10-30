@@ -78,7 +78,7 @@ that no MATLAB process is still using that output. Never delete completed runs.
 
 ## The two figures
 
-Both are inspired by the conference paper's polar selection-frequency maps.
+Both reuse `plotPolarSelectionMap`, the existing conference-paper plotting helper.
 They show north and south hemispheres because this is a global study. Blue bins
 show the percentage of runs selecting each 10-degree latitude by 30-degree
 longitude bin. Colored markers identify matched observers 1/2/3; marker size
@@ -102,7 +102,8 @@ not consistent locations. No automatic convergence threshold is claimed.
 
 ## Outputs
 
-- Exactly two figures, each exported as PNG and PDF.
+- Exactly two figures, each exported as PNG and 300-dpi image-based PDF. Raster
+  PDF export avoids the slow vector conversion of the existing terrain surfaces.
 - `observer_locations.csv`: aligned latitude/longitude, candidate ID and distance
   for every observer/run/budget.
 - `observer_location_summary.csv`: median/P90/maximum distances and exact

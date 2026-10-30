@@ -87,7 +87,7 @@ for mode=["samples","evaluations"]
     fprintf("Exporting %s.png...\n",name);
     exportgraphics(f,fullfile(config.outputDirectory,name+".png"),'Resolution',180);
     fprintf("Exporting %s.pdf...\n",name);
-    exportgraphics(f,fullfile(config.outputDirectory,name+".pdf"),'ContentType','vector');
+    exportgraphics(f,fullfile(config.outputDirectory,name+".pdf"),'ContentType','image','Resolution',300);
     fprintf("Finished %s exports.\n",name);
     clear cleanup;
 end
