@@ -63,7 +63,7 @@ Support validation-only and resume options. Write one UTF-8 JSON request, set
 root using the entry command in the contract. Preserve logs and return an error
 if MATLAB fails. Restore the working directory and environment variable afterward.
 
-MATLAB performs the sweep, seed handling, checkpointing and plotting. You do not
+MATLAB performs the sweep, seed handling, checkpointing and data export. You do not
 need to change the GA adapter, objective or MATLAB driver, or write another
 parallel loop. Test only three observers on the global database.
 Reuse existing repository helpers wherever possible; do not copy MATLAB logic
@@ -77,9 +77,9 @@ Rerun the same request to check that checkpoints are reused. Check paths contain
 spaces and a missing database. Compare parallel modes only after the serial case
 works, using separate output folders.
 
-Confirm that MATLAB produces the two polar figures: location consistency versus
-independent runs, and versus FE budget. The observer coordinate CSV files should
-also be present. Example budgets are test settings, not convergence conclusions.
+Confirm that the CSV and MAT files contain FE counts, observer coordinates, seeds
+and independent-run counts as described in the contract. Plotting is deferred.
+Example budgets are test settings, not convergence conclusions.
 
 6. Save and submit your work
 

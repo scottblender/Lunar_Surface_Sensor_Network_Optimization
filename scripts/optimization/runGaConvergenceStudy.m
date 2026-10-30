@@ -88,7 +88,6 @@ try
         "totalElapsedSeconds",toc(totalTimer), ...
         "feAccounting","requested/capped callback counts and raw GA counts are distinct; raw overshoot is flagged", ...
         "interpretation","a stable broad spread is not consistent locations; reference is empirical, not an optimum");
-    if config.makePlots, plotGaLocationConvergence(result,database); end
     result.totalElapsedSeconds=toc(totalTimer);
     save(fullfile(out,"ga_convergence_study.mat"),"result","-v7.3");
     manifest.status="complete"; manifest.completedRuns=numel(records); saveManifest(manifestFile,manifest);

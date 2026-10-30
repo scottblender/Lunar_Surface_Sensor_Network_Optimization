@@ -1,7 +1,5 @@
 function exportManuscriptFigure(fig,outputFile,widthInches,heightInches)
-% EXPORTMANUSCRIPTFIGURE - Shared EPS, PNG and raster-PDF manuscript exports.
-% EPS uses the historical dimensions/typography below. PNG/PDF preserve the
-% existing figure layout; raster PDF avoids costly terrain-surface vectorization.
+% EXPORTMANUSCRIPTFIGURE - Export a manuscript figure through one EPS pipeline.
 
 arguments
     fig (1,1) matlab.ui.Figure
@@ -13,12 +11,6 @@ end
 outputDirectory = fileparts(outputFile);
 if strlength(string(outputDirectory)) > 0 && ~isfolder(outputDirectory)
     mkdir(outputDirectory);
-end
-[~,~,extension]=fileparts(outputFile);
-if lower(extension)==".png"
-    exportgraphics(fig,outputFile,"Resolution",180); return;
-elseif lower(extension)==".pdf"
-    exportgraphics(fig,outputFile,"ContentType","image","Resolution",300); return;
 end
 
 fig.Color = [1 1 1];

@@ -9,6 +9,5 @@
   "parallelMode": "serial",
   "maxWorkers": 2,
   "resume": true,
-  "makePlots": true,
   "validateOnly": false
 }

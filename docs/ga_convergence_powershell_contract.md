@@ -38,7 +38,6 @@ whole sweep and parallel pool. Do not create another outer parallel loop in PS.
 | `parallelMode` | `serial` (default), `runs`, or `population` |
 | `maxWorkers` | Positive worker limit; default 2; applies to parallel modes |
 | `resume` | Boolean, default true |
-| `makePlots` | Boolean, default true |
 | `validateOnly` | Boolean, default false; checks request/data/toolboxes, creates no output folders and runs no GA |
 
 Unknown fields and incorrect types fail. Relative paths resolve against the
@@ -76,37 +75,19 @@ remain stored. A lock prevents simultaneous processes writing the same sweep.
 After a machine/process crash, remove only the stale `ga_sweep.lock` after checking
 that no MATLAB process is still using that output. Never delete completed runs.
 
-## The two figures
+## Data for later plotting
 
-Both reuse `plotPolarSelectionMap`, the existing conference-paper plotting helper.
-They also reuse `binNetworkSelectionFrequency`, `publicationPlotStyle` and
-`exportManuscriptFigure`. The shared exporter adds PNG/PDF support while keeping
-its historical EPS path intact; frequency binning is not duplicated.
-They show north and south hemispheres because this is a global study. Blue bins
-show the percentage of runs selecting each 10-degree latitude by 30-degree
-longitude bin. Colored markers identify matched observers 1/2/3; marker size
-reflects exact candidate recurrence. All panels use the same 0-100% frequency
-scale. Terrain is contextual when the source DEM is available; otherwise the
-background is flat gray.
+Plotting is deferred. This backend creates no figures. Existing repository
+plotting helpers remain available for later reuse.
 
-1. `independent_samples_location_convergence`: columns vary independent-run count
-   at the largest requested FE budget.
-2. `function_evaluations_location_convergence`: columns vary FE budget using the
-   largest independent-run count, with identical seed sets across budgets.
-
-Each includes the 90th-percentile geographic distance for each observer below
-the maps. A reference is chosen as the location medoid among the largest-budget
-runs. All six permutations of three locations are considered when matching a run
-to that same reference, so swapping observer labels does not imply movement.
-Reference labels are ordered by latitude then longitude. This is an empirical
-reference, not a known optimum. Exact coordinates and candidate recurrence are
-also saved; coarse bins alone do not establish convergence. A broad plateau is
-not consistent locations. No automatic convergence threshold is claimed.
+Observer locations are matched to one empirical reference network, the location
+medoid among largest-budget runs. All six permutations are considered so label
+swaps do not imply movement. Labels are ordered by latitude then longitude.
+This reference is not a known optimum, and a broad plateau does not establish
+consistent locations.
 
 ## Outputs
 
-- Exactly two figures, each exported as PNG and 300-dpi image-based PDF. Raster
-  PDF export avoids the slow vector conversion of the existing terrain surfaces.
 - `observer_locations.csv`: aligned latitude/longitude, candidate ID and distance
   for every observer/run/budget.
 - `observer_location_summary.csv`: median/P90/maximum distances and exact
@@ -123,3 +104,10 @@ solver counts can differ or exceed the nominal requested budget. Inspect
 diagnostics are outside search FE counts. This sweep does not run coverage/EKF
 validation or global Monte Carlo benchmarks; it measures optimizer location
 repeatability and records objectives for context.
+
+Join observer_locations.csv (RequestedFE, RunIndex, Seed) to ga_runs.csv
+(requestedBudget, runIndex, seed) for actual raw and callback FE counts.
+RunIndex <= IndependentRuns selects each nested sample prefix requested in
+observer_location_summary.csv. The full requested count/budget lists and
+unaligned as well as aligned coordinates are retained in the MAT result.
+No rerun is needed to create either convergence plot later.

@@ -25,18 +25,10 @@ jobs:
           cat /tmp/lunar-xvfb.log
           exit 1
       - uses: matlab-actions/run-command@v2
-        name: Validate sweep and export polar previews
+        name: Validate saved sweep data and resume
         timeout-minutes: 6
-        env:
-          LUNAR_GA_PLOT_ARTIFACTS: ${{ github.workspace }}/results/ga_plot_preview
         with:
           command: setupProject; addpath('tests/fixtures'); s = testsuite('tests/optimization/testGaConvergenceStudy.m'); s = s(~endsWith(string({s.Name}),'/testIndependentRunParallelismMatchesSerial')); r = run(s); assertSuccess(r);
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ga-location-plot-preview
-          path: results/ga_plot_preview/
-          if-no-files-found: ignore
       - uses: matlab-actions/run-command@v2
         name: Validate independent-run parallelism
         timeout-minutes: 6
