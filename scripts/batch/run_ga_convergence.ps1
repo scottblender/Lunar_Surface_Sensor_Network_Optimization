@@ -23,7 +23,7 @@ param(
     [int]$ConfirmationRuns = 1000,
     [int]$PopulationSize = 60,
     [long]$BaseSeed = 1000,
-    [ValidateSet('serial','runs','population')][string]$ParallelMode = 'serial',
+    [ValidateSet('serial','runs','population','gpu')][string]$ParallelMode = 'serial',
     [int]$MaxWorkers = 2,
     [bool]$Resume = $true,
     [switch]$ValidateOnly,

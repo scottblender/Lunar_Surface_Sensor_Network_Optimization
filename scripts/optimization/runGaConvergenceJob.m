@@ -1,5 +1,6 @@
-function record = runGaConvergenceJob(job)
+function record = runGaConvergenceJob(job,objectiveOverride)
 % RUNGACONVERGENCEJOB - One seeded three-observer GA run, with a durable checkpoint.
+if nargin<2, objectiveOverride=[]; end
 checkpoint=fullfile(job.folder,"ga_checkpoint.mat");
 if isfile(checkpoint)
     saved=load(checkpoint,"record","identity");
@@ -19,7 +20,10 @@ config=struct("databaseFile",job.databaseFile,"outputDirectory",fullfile(job.fol
     "populationSize",job.populationSize,"functionEvaluationBudget",job.budget, ...
     "numberOfRuns",1,"baseSeed",job.seed,"useParallel",job.parallelMode=="population", ...
     "display","off","studyName","ga_global_location_convergence");
-state=runGlobalOptimization(config); run=state.runStates{1};
+if job.parallelMode=="gpu"
+    config.useVectorizedObjective=true; config.objectiveAgreementTolerance=1e-8;
+end
+state=runGlobalOptimization(config,objectiveOverride); run=state.runStates{1};
 assert(run.seed==job.seed && run.networkSize==3 && run.functionEvaluationBudget==job.budget, ...
     "gaConvergence:RunMismatch","Driver returned inconsistent run metadata.");
 record=struct("runIndex",job.runIndex,"seed",job.seed,"requestedBudget",job.budget, ...

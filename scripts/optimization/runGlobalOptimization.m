@@ -1,4 +1,4 @@
-function studyState = runGlobalOptimization(userConfig)
+function studyState = runGlobalOptimization(userConfig,objectiveOverride)
 % RUNGLOBALOPTIMIZATION - Optimize sensor-site indices using a frozen database.
 %
 % Inputs:
@@ -12,6 +12,7 @@ function studyState = runGlobalOptimization(userConfig)
 
 arguments
     userConfig (1,1) struct = struct()
+    objectiveOverride = []
 end
 
 %% Project paths
@@ -47,6 +48,8 @@ defaultConfig.abcLimit = 20;
 defaultConfig.numberOfRuns = 1;
 defaultConfig.baseSeed = 1000;
 defaultConfig.useParallel = false;
+defaultConfig.useVectorizedObjective = false;
+defaultConfig.objectiveAgreementTolerance = 1e-10;
 defaultConfig.parallelRestartEachRun = false;
 defaultConfig.parallelRetryOnFailure = true;
 defaultConfig.closeParallelPoolAtEnd = false;
@@ -71,6 +74,7 @@ validateattributes(config.baseSeed,{'numeric'}, ...
 
 logicalFields = [ ...
     "useParallel", ...
+    "useVectorizedObjective", ...
     "parallelRestartEachRun", ...
     "parallelRetryOnFailure", ...
     "closeParallelPoolAtEnd", ...
@@ -88,6 +92,13 @@ assert(ismember(config.optimizer,["GA","SURROGATE","PSO","ABC"]), ...
 assert(config.objectiveMode == "information", "runGlobalOptimization:Objective", ...
     "Only information gain may select production networks; coverage is a diagnostic.");
 
+
+assert(isempty(objectiveOverride) || isa(objectiveOverride,'function_handle'), ...
+    "runGlobalOptimization:Override","Objective override must be a function handle.");
+assert(~config.useVectorizedObjective || (~isempty(objectiveOverride) && ...
+    config.optimizer=="GA" && config.networkSize==3 && ~config.useParallel), ...
+    "runGlobalOptimization:Vectorized","Vectorized objective requires an override and serial three-observer GA dispatch.");
+validateattributes(config.objectiveAgreementTolerance,{'numeric'},{'scalar','positive','finite','<=',1e-8});
 
 %% Load frozen production database
 
@@ -124,6 +135,7 @@ fprintf("RSOs:                  %d\n",numberOfObjects);
 fprintf("FE budget / run:       %d\n",config.functionEvaluationBudget);
 fprintf("Independent runs:      %d\n",config.numberOfRuns);
 fprintf("Parallel objective:    %d\n",config.useParallel);
+fprintf("Vectorized objective:  %d\n",config.useVectorizedObjective);
 
 if config.useParallel
     fprintf("Restart pool each run: %d\n",config.parallelRestartEachRun);
@@ -367,7 +379,7 @@ for runIndex = 1:config.numberOfRuns
         optimization.networkObjective( ...
             bestSensorIndices,database,config.objectiveMode);
 
-    objectiveTolerance = 1e-10*max(1,abs(bestObjective));
+    objectiveTolerance = config.objectiveAgreementTolerance*max(1,abs(bestObjective));
     assert(abs(diagnosticObjective-bestObjective) <= objectiveTolerance, ...
         "Final diagnostic objective does not match the optimizer incumbent.");
 
@@ -589,7 +601,9 @@ fprintf("Results saved to:\n  %s\n",studyDirectory);
     function objectiveFunctionHandle = ...
             buildObjectiveFunction(databaseConstant)
 
-        if config.useParallel && config.useParallelDatabaseConstant
+        if ~isempty(objectiveOverride)
+            objectiveFunctionHandle = objectiveOverride;
+        elseif config.useParallel && config.useParallelDatabaseConstant
             assert(~isempty(databaseConstant), ...
                 "Parallel objective database constant is unavailable.");
 

@@ -35,14 +35,14 @@ whole sweep and parallel pool. Do not create another outer parallel loop in PS.
 | `functionEvaluationBudgets` | Required positive integer array; each >= populationSize and divisible by it |
 | `populationSize` | Required integer >= 2 |
 | `baseSeed` | Required nonnegative integer; baseSeed + max(runCounts) - 1 must fit uint32 |
-| `parallelMode` | `serial` (default), `runs`, or `population` |
+| `parallelMode` | `serial` (default), `runs`, `population`, or `gpu` |
 | `maxWorkers` | Positive worker limit; default 2; applies to parallel modes |
 | `resume` | Boolean, default true |
 | `validateOnly` | Boolean, default false; checks request/data/toolboxes, creates no output folders and runs no GA |
 
 Unknown fields and incorrect types fail. Relative paths resolve against the
 repository root. Keep numeric lists as JSON arrays even when they have one item.
-Use actual JSON booleans, not strings. No network-size or GPU switch is supported.
+Use actual JSON booleans, not strings. No network-size switch is supported. GPU mode is described in [GPU benchmark instructions](gpu_ga_benchmark.md).
 The example run counts/budgets are editable starting points, not proven settings.
 
 ## Work allocation and runtime
@@ -56,12 +56,15 @@ budgets can reuse existing checkpoints when the frozen inputs/settings match.
 - `runs`: process workers execute independent serial GAs concurrently.
 - `population`: one GA at a time, evaluating its population across CPU workers.
 
+- `gpu`: vectorized population batches use one selected NVIDIA GPU; exactly three
+  global observers and the existing `on_demand` database are required.
+
 Parallel modes require Parallel Computing Toolbox. Choose one level only.
 An existing pool must be a process pool with exactly maxWorkers workers; an owned
 pool is closed on completion. Start with a small serial test, then time the two
 parallel modes on representative data in separate output folders. More workers
 can increase RAM and chunk-I/O pressure, so speedup is measured, not assumed.
-MATLAB GPU computing exists, but this backend does not implement a GPU objective.
+GPU mode uses the batched double-precision information objective and creates no CPU pool.
 
 ## Checkpoints and ownership
 

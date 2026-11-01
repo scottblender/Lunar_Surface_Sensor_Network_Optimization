@@ -27,8 +27,8 @@ assert(all(config.functionEvaluationBudgets>=config.populationSize & ...
     mod(config.functionEvaluationBudgets,config.populationSize)==0), ...
     "gaConvergence:Budget","Each GA budget must be at least one population and divisible by populationSize.");
 config.parallelMode=lower(string(config.parallelMode));
-assert(isscalar(config.parallelMode) && ismember(config.parallelMode,["serial","runs","population"]), ...
-    "gaConvergence:ParallelMode","Use serial, runs, or population. GPU execution is not implemented.");
+assert(isscalar(config.parallelMode) && ismember(config.parallelMode,["serial","runs","population","gpu"]), ...
+    "gaConvergence:ParallelMode","Use serial, runs, population, or gpu.");
 for field=["databaseFile","outputDirectory"]
     value=string(config.(field));
     assert(isscalar(value) && strlength(value)>0,"gaConvergence:Path","Paths must be nonempty strings.");
@@ -44,6 +44,11 @@ assert(isfield(database.config,"domainComparison") && database.config.domainComp
 assert(~isempty(ver('globaloptim')),"gaConvergence:Toolbox","Global Optimization Toolbox is required.");
 if config.parallelMode~="serial"
     assert(~isempty(ver('parallel')),"gaConvergence:Toolbox","Parallel Computing Toolbox is required.");
+end
+if config.parallelMode=="gpu"
+    assert(database.meta.measurementJacobianStorage=="on_demand", ...
+        "gpuInformation:Storage","GPU mode requires the existing on_demand database.");
+    assert(canUseGPU,"gpuInformation:Unavailable","A supported NVIDIA GPU is required.");
 end
 chunks=struct('path',{},'bytes',{},'modified',{});
 if isfield(database.visibility,"candidateChunks")

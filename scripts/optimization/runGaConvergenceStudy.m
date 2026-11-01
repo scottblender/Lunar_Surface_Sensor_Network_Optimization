@@ -31,7 +31,7 @@ manifest=struct("status","running","config",config,"signature",signature,"comple
 saveManifest(manifestFile,manifest);
 pool=[]; poolCleanup=[]; %#ok<NASGU>
 try
-    if config.parallelMode~="serial"
+    if ismember(config.parallelMode,["runs","population"])
         pool=gcp('nocreate');
         if isempty(pool)
             pool=parpool('Processes',config.maxWorkers);
@@ -41,6 +41,16 @@ try
                 "gaConvergence:Pool","Use a process pool with maxWorkers workers, or close the current pool first.");
         end
     end
+    objectiveOverride=[]; gpuMetadata=struct(); preparationTimer=tic;
+    if config.parallelMode=="gpu"
+        [objectiveOverride,gpuMetadata]=createBatchedInformationObjective(database,"gpu");
+        % Compile/warm up and gate the frozen objective before starting any GA.
+        probe=[1 2 3]; observed=objectiveOverride(probe);
+        expected=optimization.networkObjective(probe,database,"information");
+        assert(abs(observed-expected)<=1e-8*max(1,abs(expected)), ...
+            "gpuInformation:Agreement","GPU warm-up does not match the CPU objective.");
+    end
+    preparationSeconds=toc(preparationTimer);
     jobs=cell(0,1);
     for budget=config.functionEvaluationBudgets
         for runIndex=1:max(config.runCounts)
@@ -59,7 +69,7 @@ try
         parfor k=1:numel(jobs), records{k}=runGaConvergenceJob(jobs{k}); end
     else
         for k=1:numel(jobs)
-            records{k}=runGaConvergenceJob(jobs{k});
+            records{k}=runGaConvergenceJob(jobs{k},objectiveOverride);
             manifest.completedRuns=k; saveManifest(manifestFile,manifest);
         end
     end
@@ -84,6 +94,7 @@ try
     writetable(struct2table(vertcat(histories{:})),fullfile(out,"objective_histories.csv"));
     result=struct("status","complete","config",config,"records",records,"analysis",analysis, ...
         "gaWallSeconds",gaWallSeconds,"analysisSeconds",toc(analysisTimer), ...
+        "preparationSeconds",preparationSeconds,"gpuMetadata",gpuMetadata, ...
         "summedRunSeconds",sum([records.runtimeSeconds]),"reusedRuns",nnz([records.reused]), ...
         "totalElapsedSeconds",toc(totalTimer), ...
         "feAccounting","requested/capped callback counts and raw GA counts are distinct; raw overshoot is flagged", ...

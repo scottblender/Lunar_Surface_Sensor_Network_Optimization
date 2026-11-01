@@ -30,7 +30,7 @@ verifyEqual(testCase,r.status,"validated"); verifyEqual(testCase,r.plannedRuns,6
 verifyFalse(testCase,isfolder(config.outputDirectory));
 config.functionEvaluationBudgets=9;
 verifyError(testCase,@()runGaConvergenceStudy(config),'gaConvergence:Budget');
-config.functionEvaluationBudgets=8; config.parallelMode="gpu";
+config.functionEvaluationBudgets=8; config.parallelMode="invalid";
 verifyError(testCase,@()runGaConvergenceStudy(config),'gaConvergence:ParallelMode');
 verifyTrue(testCase,isfolder(folder));
 end
