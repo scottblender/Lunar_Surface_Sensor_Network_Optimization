@@ -143,11 +143,13 @@ try {
     Write-Host "Study: $Study | Request: $requestPath | Log: $logPath"
     Write-Host "Runs: $($RunCounts -join ', ') | FE budgets: $($FunctionEvaluationBudgets -join ', ') | Mode: $ParallelMode"
     # MATLAB owns the entire sweep. Never launch once per run/seed.
-    # Redirect all streams to a durable log while preserving MATLAB's process exit code.
-    & $MatlabExe -wait -batch "run('scripts/batch/run_ga_convergence_entry.m')" *> $logPath
+    # Let MATLAB write its log and stream progress directly to the console.
+    # PowerShell 5.1 converts redirected native stderr into terminating
+    # NativeCommandError records under ErrorActionPreference=Stop, masking
+    # MATLAB's assertion text and bypassing our process exit-code handling.
+    & $MatlabExe -wait -logfile $logPath -batch "run('scripts/batch/run_ga_convergence_entry.m')"
     $matlabExitCode = $LASTEXITCODE
     if ($null -eq $matlabExitCode) { $matlabExitCode = 1 }
-    Get-Content -LiteralPath $logPath | Out-Host
     if ($matlabExitCode -ne 0) { throw "MATLAB failed with exit code $matlabExitCode. See $logPath" }
     Write-Host "MATLAB completed successfully. Request: $requestPath"
 }
