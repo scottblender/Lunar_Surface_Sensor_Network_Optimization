@@ -6,6 +6,18 @@ function setupOnce(~)
 root = fileparts(fileparts(fileparts(mfilename("fullpath"))));
 addpath(root); setupProject;
 end
+function testDatabaseParallelOptions(testCase)
+base = struct("spacingKm",1800);
+a = planDomainDatabase("paper_shared",base);
+base.useParallel = true; base.maximumParallelWorkers = 2;
+b = planDomainDatabase("paper_shared",base);
+verifyEqual(testCase,b.latitudesRad,a.latitudesRad);
+verifyEqual(testCase,b.longitudesRad,a.longitudesRad);
+verifyTrue(testCase,b.options.useParallel);
+verifyEqual(testCase,b.options.maximumParallelWorkers,2);
+base.useParallel = "true";
+verifyError(testCase,@()planDomainDatabase("paper_shared",base),'planDomainDatabase:Parallel');
+end
 function testFixedSitesHaveNoDisplacement(testCase)
 plan = planDomainDatabase("clps_fixed");
 verifyEqual(testCase,plan.numberOfCandidates,height(plan.sites));

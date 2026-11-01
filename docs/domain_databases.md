@@ -32,3 +32,27 @@ master but is not an active CLPS anchor.
 Legacy `shared`, `clps`, `clps_fixed`, `south75` and `south0` builders/views remain
 for historical compatibility. Their separate/ring-sampling behavior is distinct
 from the paper workflow and is not used by `runRevisedPaperStudy`.
+
+## Parallel database construction
+
+Add `-UseParallel -MaxWorkers 2` to `scripts/batch/build_domain_databases.ps1`
+to parallelize the terrain, visibility and stored-Jacobian chunk phases with a
+bounded MATLAB process pool. Serial remains the default. Parallel Computing
+Toolbox is required. Preflight checks toolbox availability without opening a
+pool. The build closes only a pool it created; an existing pool must be a process
+pool with the requested worker count. The DEM and working arrays are copied to
+workers, so choose the worker count to fit available RAM.
+
+For example, from the repository root:
+
+```powershell
+.\scripts\batch\build_domain_databases.ps1 `
+  -Domains paper_shared -DemFile "data/Synthetic_Lunar_DEM.mat" `
+  -OutputRoot "results/paper_domains_parallel_v1" `
+  -SpacingKm 15 -MaxCandidatesPerChunk 500 -JacobianStorage on_demand `
+  -UseParallel -MaxWorkers 2
+```
+
+Use a fresh output root after this source change or a change to parallel settings;
+the immutable build request and source signatures reject incompatible resumes.
+The resulting views and database paths are the same as for a serial build.

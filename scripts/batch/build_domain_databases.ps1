@@ -13,6 +13,8 @@ param(
     [ValidateRange(0.001, 100)][double]$ClpsSpacingKm = 15,
     [ValidateRange(0, 2147483647)][int]$Seed = 1000,
     [ValidateRange(1, 10000)][int[]]$NetworkSizes = @(3),
+    [switch]$UseParallel,
+    [ValidateRange(1, 10000)][int]$MaxWorkers = 2,
     [switch]$PlanOnly,
     [switch]$PreflightOnly,
     # Explicit scientific tolerance, in meters. Zero uses the candidate spacing.
@@ -66,6 +68,7 @@ try {
                 clpsRadiusKm = $ClpsRadiusKm; clpsSpacingKm = $ClpsSpacingKm
                 seed = $Seed; networkSizes = @($NetworkSizes); planOnly = [bool]$PlanOnly
                 preflightOnly = ($Phase -eq "preflight"); requestedDomains = @($RequestedViews)
+                useParallel = [bool]$UseParallel; maximumParallelWorkers = $MaxWorkers
                 jacobianStorage = $JacobianStorage; localDemFile = $LocalDemFile
                 assessLocalFlatness = [bool]$AssessLocalFlatness
                 flatnessFootprintMeters = $FlatnessFootprintMeters
