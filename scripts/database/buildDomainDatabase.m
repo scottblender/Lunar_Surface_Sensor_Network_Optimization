@@ -1,5 +1,5 @@
 function outputFile = buildDomainDatabase(domain,userOptions)
-% BUILDDOMAINDATABASE - Build one resumable, serial, chunked domain database.
+% BUILDDOMAINDATABASE - Build one resumable, optionally parallel, chunked domain database.
 % Use planDomainDatabase for a data-free preview. Existing outputs are never overwritten.
 arguments
     domain (1,1) string
@@ -23,6 +23,10 @@ fprintf("Jacobian storage %s: %.2f GiB payload (legacy full estimate %.2f GiB).\
 fprintf("Visibility + horizon payload estimate: %.2f + %.2f GiB before compression/overhead.\n", ...
     plan.estimatedVisibilityDiskGiB,plan.estimatedTerrainDiskGiB);
 if options.planOnly, return; end
+if options.useParallel
+    assert(~isempty(ver('parallel')), "buildDomainDatabase:Toolbox", ...
+        "Parallel Computing Toolbox is required for useParallel=true.");
+end
 assert(isfile(options.demFile),"buildDomainDatabase:DemMissing", ...
     "DEM not found: %s",options.demFile);
 % Validate native coverage and granularity before creating output/chunk directories.
@@ -128,8 +132,8 @@ config.chunking.jacobianStorage = string(options.jacobianStorage);
 config.chunking.enabled = true;
 config.chunking.numberOfChunks = plan.numberOfChunks;
 config.chunking.directoryName = "candidate_chunks";
-config.chunking.useParallel = false;
-config.chunking.maximumParallelWorkers = 1;
+config.chunking.useParallel = options.useParallel;
+config.chunking.maximumParallelWorkers = options.maximumParallelWorkers;
 config.chunking.resumeExisting = true;
 config.domainComparison = struct("domain",domain,"sites",plan.sites, ...
     "prefilterSiteIds",plan.siteIds,"clpsRadiusKm",plan.options.clpsRadiusKm, ...
@@ -142,6 +146,21 @@ config.domainComparison = struct("domain",domain,"sites",plan.sites, ...
 previousRng = rng;
 cleanup = onCleanup(@()rng(previousRng)); %#ok<NASGU>
 rng(plan.options.seed,"twister");
+% Bound the process pool as well as the active parfor workers. Each worker
+% holds its own terrain data. Only close pools created by this builder.
+poolCleanup = []; %#ok<NASGU>
+if options.useParallel
+    pool = gcp('nocreate');
+    if isempty(pool)
+        pool = parpool('Processes',options.maximumParallelWorkers);
+        poolCleanup = onCleanup(@()delete(pool));
+    else
+        assert(~isa(pool,'parallel.ThreadPool') && ...
+            pool.NumWorkers==options.maximumParallelWorkers, ...
+            "buildDomainDatabase:Pool", ...
+            "Close the existing pool or use its process worker count.");
+    end
+end
 optimization.buildOptimizationDatabase(dem,config);
 finalizeDomainDatabase(outputFile);
 fprintf("Completed: %s\n",outputFile);

@@ -11,7 +11,7 @@ defaults = struct("spacingKm",15,"maximumCandidatesPerChunk",500, ...
     "clpsRadiusKm",100,"clpsSpacingKm",15, ...
     "siteFile",string(fullfile(root,"config","clps_sites.csv")), ...
     "seed",1000,"networkSizes",3,"jacobianStorage","on_demand", ...
-    "requestedDomains",["clps","global"]);
+    "requestedDomains",["clps","global"],"useParallel",false,"maximumParallelWorkers",2);
 options = utilities.overrideConfig(defaults,userOptions);
 % jsondecode returns cell arrays for JSON string lists. A cell-valued argument
 % to struct() would expand the saved domain metadata into a struct array.
@@ -26,6 +26,10 @@ validateattributes(options.clpsRadiusKm,{'numeric'},{'scalar','positive','finite
 validateattributes(options.clpsSpacingKm,{'numeric'},{'scalar','positive','finite'});
 validateattributes(options.seed,{'numeric'},{'scalar','integer','nonnegative','<=',2^32-1});
 validateattributes(options.networkSizes,{'numeric'},{'vector','integer','positive','finite'});
+assert(islogical(options.useParallel) && isscalar(options.useParallel), ...
+    "planDomainDatabase:Parallel","useParallel must be a scalar logical.");
+validateattributes(options.maximumParallelWorkers,{'numeric'}, ...
+    {'scalar','integer','positive','finite'});
 moonRadiusKm = 1737.4;
 siteIds = strings(0,1);
 sites = table();
