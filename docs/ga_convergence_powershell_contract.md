@@ -35,14 +35,14 @@ whole sweep and parallel pool. Do not create another outer parallel loop in PS.
 | `functionEvaluationBudgets` | Required positive integer array; each >= populationSize and divisible by it |
 | `populationSize` | Required integer >= 2 |
 | `baseSeed` | Required nonnegative integer; baseSeed + max(runCounts) - 1 must fit uint32 |
-| `parallelMode` | `serial` (default), `runs`, or `population` |
-| `maxWorkers` | Positive worker limit; default 2; applies to parallel modes |
+| `parallelMode` | `gpu` (default), `serial`, `runs`, or `population` |
+| `maxWorkers` | Positive CPU worker limit; default 7; GPU mode uses one device |
 | `resume` | Boolean, default true |
 | `validateOnly` | Boolean, default false; checks request/data/toolboxes, creates no output folders and runs no GA |
 
 Unknown fields and incorrect types fail. Relative paths resolve against the
 repository root. Keep numeric lists as JSON arrays even when they have one item.
-Use actual JSON booleans, not strings. No network-size or GPU switch is supported.
+Use actual JSON booleans, not strings. No network-size switch is supported. GPU mode is described in [GPU benchmark instructions](gpu_ga_benchmark.md).
 The example run counts/budgets are editable starting points, not proven settings.
 
 ## Work allocation and runtime
@@ -56,12 +56,15 @@ budgets can reuse existing checkpoints when the frozen inputs/settings match.
 - `runs`: process workers execute independent serial GAs concurrently.
 - `population`: one GA at a time, evaluating its population across CPU workers.
 
+- `gpu`: vectorized population batches use one selected NVIDIA GPU; exactly three
+  global observers and the existing `on_demand` database are required.
+
 Parallel modes require Parallel Computing Toolbox. Choose one level only.
 An existing pool must be a process pool with exactly maxWorkers workers; an owned
 pool is closed on completion. Start with a small serial test, then time the two
 parallel modes on representative data in separate output folders. More workers
 can increase RAM and chunk-I/O pressure, so speedup is measured, not assumed.
-MATLAB GPU computing exists, but this backend does not implement a GPU objective.
+GPU mode uses the batched double-precision information objective and creates no CPU pool.
 
 ## Checkpoints and ownership
 
@@ -111,3 +114,26 @@ RunIndex <= IndependentRuns selects each nested sample prefix requested in
 observer_location_summary.csv. The full requested count/budget lists and
 unaligned as well as aligned coordinates are retained in the MAT result.
 No rerun is needed to create either convergence plot later.
+
+## Default execution and progress
+
+The launcher and MATLAB request validator default to `gpu`. CPU execution must
+be requested explicitly for comparison. This GPU implementation supports the
+three-observer global information case with an `on_demand` database; it does not
+claim GPU support for other network sizes, constrained views or other solvers.
+The benchmark command deliberately compares CPU and GPU; use the convergence
+launcher for GPU-only optimization:
+
+```powershell
+.\scripts\batch\run_ga_convergence.ps1 `
+  -Study 1 `
+  -DatabaseFile "results/paper_domains_parallel_v1/global/optimization_database.mat" `
+  -OutputDirectory "results/ga_global_gpu_6000fe_20runs" `
+  -RunCounts 20 -FunctionEvaluationBudgets 6000 -ParallelMode gpu
+```
+
+The sweep prints the FE budget before the independent-run sequence and reports
+`Run 1 of 20`, with seed, completion time/objective, and checkpoint reuse when
+applicable. The one-run inner optimizer banner is suppressed for sweep jobs.
+Concurrent CPU runs can report out of order; multi-budget concurrent jobs also
+include their FE budget in the progress label to disambiguate them.

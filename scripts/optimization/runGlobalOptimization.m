@@ -1,4 +1,4 @@
-function studyState = runGlobalOptimization(userConfig)
+function studyState = runGlobalOptimization(userConfig,objectiveOverride)
 % RUNGLOBALOPTIMIZATION - Optimize sensor-site indices using a frozen database.
 %
 % Inputs:
@@ -12,6 +12,7 @@ function studyState = runGlobalOptimization(userConfig)
 
 arguments
     userConfig (1,1) struct = struct()
+    objectiveOverride = []
 end
 
 %% Project paths
@@ -47,11 +48,14 @@ defaultConfig.abcLimit = 20;
 defaultConfig.numberOfRuns = 1;
 defaultConfig.baseSeed = 1000;
 defaultConfig.useParallel = false;
+defaultConfig.useVectorizedObjective = false;
+defaultConfig.objectiveAgreementTolerance = 1e-10;
 defaultConfig.parallelRestartEachRun = false;
 defaultConfig.parallelRetryOnFailure = true;
 defaultConfig.closeParallelPoolAtEnd = false;
 defaultConfig.useParallelDatabaseConstant = true;
 defaultConfig.display = "iter";
+defaultConfig.quiet = false;
 defaultConfig.studyName = "lunar_surface_global_optimization";
 
 config = utilities.mergeConfig(defaultConfig,userConfig);
@@ -71,6 +75,8 @@ validateattributes(config.baseSeed,{'numeric'}, ...
 
 logicalFields = [ ...
     "useParallel", ...
+    "quiet", ...
+    "useVectorizedObjective", ...
     "parallelRestartEachRun", ...
     "parallelRetryOnFailure", ...
     "closeParallelPoolAtEnd", ...
@@ -89,12 +95,21 @@ assert(config.objectiveMode == "information", "runGlobalOptimization:Objective",
     "Only information gain may select production networks; coverage is a diagnostic.");
 
 
+assert(isempty(objectiveOverride) || isa(objectiveOverride,'function_handle'), ...
+    "runGlobalOptimization:Override","Objective override must be a function handle.");
+assert(~config.useVectorizedObjective || (~isempty(objectiveOverride) && ...
+    config.optimizer=="GA" && config.networkSize==3 && ~config.useParallel), ...
+    "runGlobalOptimization:Vectorized","Vectorized objective requires an override and serial three-observer GA dispatch.");
+validateattributes(config.objectiveAgreementTolerance,{'numeric'},{'scalar','positive','finite','<=',1e-8});
+
 %% Load frozen production database
 
 assert(isfile(config.databaseFile), ...
     "Optimization database not found:\n%s",config.databaseFile);
 
-fprintf("\nLoading optimization database:\n  %s\n",config.databaseFile);
+if ~config.quiet
+    fprintf("\nLoading optimization database:\n  %s\n",config.databaseFile);
+end
 
 databaseData = load(config.databaseFile,"database");
 assert(isfield(databaseData,"database"), ...
@@ -112,6 +127,7 @@ numberOfObjects = database.meta.numberOfObjects;
 assert(config.networkSize <= numberOfCandidates, ...
     "Requested network exceeds candidate-site count.");
 
+if ~config.quiet
 fprintf("\n");
 fprintf("============================================================\n");
 fprintf("Lunar surface global optimization\n");
@@ -124,10 +140,13 @@ fprintf("RSOs:                  %d\n",numberOfObjects);
 fprintf("FE budget / run:       %d\n",config.functionEvaluationBudget);
 fprintf("Independent runs:      %d\n",config.numberOfRuns);
 fprintf("Parallel objective:    %d\n",config.useParallel);
+fprintf("Vectorized objective:  %d\n",config.useVectorizedObjective);
 
 if config.useParallel
     fprintf("Restart pool each run: %d\n",config.parallelRestartEachRun);
     fprintf("Retry parallel failure:%d\n",config.parallelRetryOnFailure);
+end
+
 end
 
 %% Lightweight frozen database used only by the search objective
@@ -212,10 +231,13 @@ runTimes = NaN(config.numberOfRuns,1);
 
 for runIndex = 1:config.numberOfRuns
 
+    if ~config.quiet
     fprintf("\n");
     fprintf("============================================================\n");
     fprintf("Run %d of %d\n",runIndex,config.numberOfRuns);
     fprintf("============================================================\n");
+
+    end
 
     runSeed = config.baseSeed + runIndex - 1;
     rng(runSeed,"twister");
@@ -367,7 +389,7 @@ for runIndex = 1:config.numberOfRuns
         optimization.networkObjective( ...
             bestSensorIndices,database,config.objectiveMode);
 
-    objectiveTolerance = 1e-10*max(1,abs(bestObjective));
+    objectiveTolerance = config.objectiveAgreementTolerance*max(1,abs(bestObjective));
     assert(abs(diagnosticObjective-bestObjective) <= objectiveTolerance, ...
         "Final diagnostic objective does not match the optimizer incumbent.");
 
@@ -497,6 +519,7 @@ for runIndex = 1:config.numberOfRuns
 
     %% Console summary
 
+    if ~config.quiet
     fprintf("\nRun %d complete\n",runIndex);
     fprintf("----------------------------------\n");
     fprintf("Seed:                 %d\n",runSeed);
@@ -516,6 +539,7 @@ for runIndex = 1:config.numberOfRuns
     fprintf("Runtime:               %.2f min\n",runtimeSeconds/60);
     fprintf("\nBest sensor network\n");
     disp(bestSensorTable);
+    end
 end
 
 %% Release shared worker data and owned pool
@@ -562,6 +586,8 @@ save(summaryFile,"studyState","-v7.3");
 
 %% Final console summary
 
+if ~config.quiet
+
 fprintf("\n");
 fprintf("============================================================\n");
 fprintf("Global optimization study complete\n");
@@ -584,12 +610,16 @@ fprintf("\nOverall best network\n");
 disp(studyState.overallBestSensorTable);
 fprintf("Results saved to:\n  %s\n",studyDirectory);
 
+end
+
 %% Nested helpers for objective handles and pool cleanup
 
     function objectiveFunctionHandle = ...
             buildObjectiveFunction(databaseConstant)
 
-        if config.useParallel && config.useParallelDatabaseConstant
+        if ~isempty(objectiveOverride)
+            objectiveFunctionHandle = objectiveOverride;
+        elseif config.useParallel && config.useParallelDatabaseConstant
             assert(~isempty(databaseConstant), ...
                 "Parallel objective database constant is unavailable.");
 

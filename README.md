@@ -1,5 +1,9 @@
 # Lunar Surface Sensor Network Optimization
 
+For the experimental GPU information objective and a paired CPU/GPU benchmark
+(3 global observers, 6000 requested FE, 20 independent runs per backend), see
+[GPU benchmark instructions](docs/gpu_ga_benchmark.md).
+
 For the three-observer global GA location-repeatability sweep, see the
 [PowerShell interface](docs/ga_convergence_powershell_contract.md) and
 [Ava's launcher assignment](docs/ava_ga_powershell_instructions.md). The MATLAB

@@ -1,10 +1,15 @@
-function record = runGaConvergenceJob(job)
+function record = runGaConvergenceJob(job,objectiveOverride)
 % RUNGACONVERGENCEJOB - One seeded three-observer GA run, with a durable checkpoint.
+if nargin<2, objectiveOverride=[]; end
+label=string(sprintf("Run %d of %d",job.runIndex,job.runCount));
+if job.showBudgetInProgress, label=label+sprintf(" | FE %d",job.budget); end
+fprintf("%s | Seed %d\n",label,job.seed);
 checkpoint=fullfile(job.folder,"ga_checkpoint.mat");
 if isfile(checkpoint)
     saved=load(checkpoint,"record","identity");
     assert(isequaln(saved.identity,job.identity),"gaConvergence:CheckpointMismatch","Checkpoint settings differ: %s",job.folder);
-    record=saved.record; record.reused=true; return;
+    record=saved.record; record.reused=true;
+    fprintf("%s | Checkpoint reused\n",label); return;
 end
 if isfolder(job.folder)
     % Preserve interrupted work; never rerun into or delete a partial directory.
@@ -18,8 +23,11 @@ config=struct("databaseFile",job.databaseFile,"outputDirectory",fullfile(job.fol
     "optimizer","GA","networkSize",3,"objectiveMode","information", ...
     "populationSize",job.populationSize,"functionEvaluationBudget",job.budget, ...
     "numberOfRuns",1,"baseSeed",job.seed,"useParallel",job.parallelMode=="population", ...
-    "display","off","studyName","ga_global_location_convergence");
-state=runGlobalOptimization(config); run=state.runStates{1};
+    "display","off","quiet",true,"studyName","ga_global_location_convergence");
+if job.parallelMode=="gpu"
+    config.useVectorizedObjective=true; config.objectiveAgreementTolerance=1e-8;
+end
+state=runGlobalOptimization(config,objectiveOverride); run=state.runStates{1};
 assert(run.seed==job.seed && run.networkSize==3 && run.functionEvaluationBudget==job.budget, ...
     "gaConvergence:RunMismatch","Driver returned inconsistent run metadata.");
 record=struct("runIndex",job.runIndex,"seed",job.seed,"requestedBudget",job.budget, ...
@@ -32,4 +40,5 @@ record=struct("runIndex",job.runIndex,"seed",job.seed,"requestedBudget",job.budg
 identity=job.identity; %#ok<NASGU>
 temporary=string(tempname(job.folder))+".mat";
 save(temporary,"record","identity","-v7.3"); movefile(temporary,checkpoint,"f");
+fprintf("%s complete | Objective %.12g | %.2f min\n",label,record.objective,record.runtimeSeconds/60);
 end
