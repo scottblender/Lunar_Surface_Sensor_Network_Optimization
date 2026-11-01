@@ -1,0 +1,24 @@
+name: Windows PowerShell launcher
+on:
+  pull_request:
+    paths:
+      - 'scripts/batch/run_ga_convergence.ps1'
+      - 'tests/batch/testGaLauncher.ps1'
+      - '.github/workflows/powershell-launcher.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/batch/run_ga_convergence.ps1'
+      - 'tests/batch/testGaLauncher.ps1'
+      - '.github/workflows/powershell-launcher.yml'
+jobs:
+  windows-powershell:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate native process errors and logs on Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          if ($PSVersionTable.PSVersion.Major -ne 5) { throw 'Expected Windows PowerShell 5.1.' }
+          & ./tests/batch/testGaLauncher.ps1
