@@ -6,7 +6,7 @@ end
 root=fileparts(fileparts(fileparts(mfilename("fullpath"))));
 required=["schemaVersion","databaseFile","outputDirectory","runCounts", ...
     "functionEvaluationBudgets","populationSize","baseSeed"];
-defaults=struct("parallelMode","serial","maxWorkers",2,"resume",true,"validateOnly",false);
+defaults=struct("parallelMode","gpu","maxWorkers",7,"resume",true,"validateOnly",false);
 allowed=[required,string(fieldnames(defaults)).'];
 assert(all(isfield(request,cellstr(required))) && all(ismember(string(fieldnames(request)),allowed)), ...
     "gaConvergence:Config","Missing required fields or unknown request fields. See the PowerShell contract.");

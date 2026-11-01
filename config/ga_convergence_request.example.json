@@ -6,8 +6,8 @@
   "functionEvaluationBudgets": [1200, 6000, 12000],
   "populationSize": 60,
   "baseSeed": 1000,
-  "parallelMode": "serial",
-  "maxWorkers": 2,
+  "parallelMode": "gpu",
+  "maxWorkers": 7,
   "resume": true,
   "validateOnly": false
 }
