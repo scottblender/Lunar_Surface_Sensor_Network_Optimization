@@ -8,7 +8,7 @@ param(
     [Parameter(Mandatory=$true)][string]$DatabaseFile,
     [string]$OutputDirectory = 'results/gpu_ga_benchmark_6000fe_20runs',
     [ValidateSet('serial','population','runs')][string]$CpuParallelMode = 'population',
-    [ValidateRange(1,10000)][int]$MaxWorkers = 4,
+    [ValidateRange(1,10000)][int]$MaxWorkers = 7,
     [ValidateRange(0,4294967276)][long]$BaseSeed = 1000,
     [string]$MatlabExe = 'matlab'
 )

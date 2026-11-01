@@ -16,14 +16,14 @@ From the repository root in PowerShell:
 .\scripts\batch\run_gpu_ga_benchmark.ps1 `
   -DatabaseFile "results/paper_domains_parallel_v1/global/optimization_database.mat" `
   -OutputDirectory "results/gpu_ga_benchmark_6000fe_20runs" `
-  -CpuParallelMode population -MaxWorkers 4
+  -CpuParallelMode population -MaxWorkers 7
 ```
 
 This is **20 CPU runs plus 20 GPU runs**, each with 3 global observers, the
 information objective, population size 60 and a requested budget of 6000 FE.
-Both backends use seeds 1000 through 1019. CPU population parallelism uses four
+Both backends use seeds 1000 through 1019. CPU population parallelism uses seven
 workers; GPU evaluations use one selected GPU in the client process without a
-CPU worker pool. `-CpuParallelMode runs` instead measures four concurrent CPU
+CPU worker pool. `-CpuParallelMode runs` instead measures seven concurrent CPU
 GAs. Benchmark those alternatives in separate fresh output directories if useful.
 Stop other optimization processes before measuring. Do not update source or move
 chunks during a benchmark. Existing pools must match the requested CPU worker

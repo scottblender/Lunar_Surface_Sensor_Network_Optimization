@@ -6,6 +6,20 @@ function setupOnce(~)
 root=fileparts(fileparts(fileparts(mfilename("fullpath")))); addpath(root); setupProject;
 addpath(fullfile(root,"tests","fixtures"));
 end
+function testBenchmarkEntryBootstrapsFromCleanPath(testCase)
+root=fileparts(fileparts(fileparts(mfilename("fullpath"))));
+entry=fullfile(root,"scripts","batch","run_gpu_ga_benchmark_entry.m");
+previousPath=path; previousFolder=pwd; previousRequest=getenv('LUNAR_GPU_BENCHMARK_REQUEST');
+testCase.addTeardown(@()path(previousPath));
+testCase.addTeardown(@()cd(previousFolder));
+testCase.addTeardown(@()setenv('LUNAR_GPU_BENCHMARK_REQUEST',previousRequest));
+restoredefaultpath; cd(tempdir); setenv('LUNAR_GPU_BENCHMARK_REQUEST','');
+% Same run(absolute-entry-path) dispatch as a fresh -batch MATLAB process.
+% The expected request error must occur after project path initialization.
+verifyError(testCase,@()runBenchmarkEntry(entry),'gpuBenchmark:RequestFile');
+verifyEqual(testCase,string(which('setupProject')),fullfile(root,"setupProject.m"));
+verifyEqual(testCase,string(which('runGpuGaBenchmark')),fullfile(root,"scripts","optimization","runGpuGaBenchmark.m"));
+end
 function testKernelMatchesStackedJosephAcrossFullArc(testCase)
 [db,~]=fixture(testCase,(600:600:3*86400).');
 % Include correlated, candidate-specific measurement noise.
@@ -53,4 +67,9 @@ end
 function [db,folder]=fixture(testCase,times)
 folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
 [master,~]=createRevisedStudyFixture(folder,times); [views,~]=derivePaperDomains(master); db=views.global;
+end
+
+function runBenchmarkEntry(entry)
+% Give run() an ordinary caller workspace, as the real batch dispatch does.
+run(entry);
 end

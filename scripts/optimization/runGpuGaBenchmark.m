@@ -9,7 +9,7 @@ arguments
 end
 required=["databaseFile","outputDirectory"];
 assert(all(isfield(options,cellstr(required))),"gpuBenchmark:Config","Database and output paths are required.");
-defaults=struct("baseSeed",1000,"maxWorkers",4,"cpuParallelMode","population");
+defaults=struct("baseSeed",1000,"maxWorkers",7,"cpuParallelMode","population");
 assert(all(ismember(string(fieldnames(options)),[required string(fieldnames(defaults)).'])), ...
     "gpuBenchmark:Config","Unknown benchmark options.");
 options=utilities.overrideConfig(defaults,options);
