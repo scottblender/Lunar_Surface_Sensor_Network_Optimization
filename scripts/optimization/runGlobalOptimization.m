@@ -55,6 +55,7 @@ defaultConfig.parallelRetryOnFailure = true;
 defaultConfig.closeParallelPoolAtEnd = false;
 defaultConfig.useParallelDatabaseConstant = true;
 defaultConfig.display = "iter";
+defaultConfig.quiet = false;
 defaultConfig.studyName = "lunar_surface_global_optimization";
 
 config = utilities.mergeConfig(defaultConfig,userConfig);
@@ -74,6 +75,7 @@ validateattributes(config.baseSeed,{'numeric'}, ...
 
 logicalFields = [ ...
     "useParallel", ...
+    "quiet", ...
     "useVectorizedObjective", ...
     "parallelRestartEachRun", ...
     "parallelRetryOnFailure", ...
@@ -105,7 +107,9 @@ validateattributes(config.objectiveAgreementTolerance,{'numeric'},{'scalar','pos
 assert(isfile(config.databaseFile), ...
     "Optimization database not found:\n%s",config.databaseFile);
 
-fprintf("\nLoading optimization database:\n  %s\n",config.databaseFile);
+if ~config.quiet
+    fprintf("\nLoading optimization database:\n  %s\n",config.databaseFile);
+end
 
 databaseData = load(config.databaseFile,"database");
 assert(isfield(databaseData,"database"), ...
@@ -123,6 +127,7 @@ numberOfObjects = database.meta.numberOfObjects;
 assert(config.networkSize <= numberOfCandidates, ...
     "Requested network exceeds candidate-site count.");
 
+if ~config.quiet
 fprintf("\n");
 fprintf("============================================================\n");
 fprintf("Lunar surface global optimization\n");
@@ -140,6 +145,8 @@ fprintf("Vectorized objective:  %d\n",config.useVectorizedObjective);
 if config.useParallel
     fprintf("Restart pool each run: %d\n",config.parallelRestartEachRun);
     fprintf("Retry parallel failure:%d\n",config.parallelRetryOnFailure);
+end
+
 end
 
 %% Lightweight frozen database used only by the search objective
@@ -224,10 +231,13 @@ runTimes = NaN(config.numberOfRuns,1);
 
 for runIndex = 1:config.numberOfRuns
 
+    if ~config.quiet
     fprintf("\n");
     fprintf("============================================================\n");
     fprintf("Run %d of %d\n",runIndex,config.numberOfRuns);
     fprintf("============================================================\n");
+
+    end
 
     runSeed = config.baseSeed + runIndex - 1;
     rng(runSeed,"twister");
@@ -509,6 +519,7 @@ for runIndex = 1:config.numberOfRuns
 
     %% Console summary
 
+    if ~config.quiet
     fprintf("\nRun %d complete\n",runIndex);
     fprintf("----------------------------------\n");
     fprintf("Seed:                 %d\n",runSeed);
@@ -528,6 +539,7 @@ for runIndex = 1:config.numberOfRuns
     fprintf("Runtime:               %.2f min\n",runtimeSeconds/60);
     fprintf("\nBest sensor network\n");
     disp(bestSensorTable);
+    end
 end
 
 %% Release shared worker data and owned pool
@@ -574,6 +586,8 @@ save(summaryFile,"studyState","-v7.3");
 
 %% Final console summary
 
+if ~config.quiet
+
 fprintf("\n");
 fprintf("============================================================\n");
 fprintf("Global optimization study complete\n");
@@ -595,6 +609,8 @@ fprintf("Coverage score:         %.0f\n", ...
 fprintf("\nOverall best network\n");
 disp(studyState.overallBestSensorTable);
 fprintf("Results saved to:\n  %s\n",studyDirectory);
+
+end
 
 %% Nested helpers for objective handles and pool cleanup
 

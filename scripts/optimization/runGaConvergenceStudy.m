@@ -51,6 +51,12 @@ try
             "gpuInformation:Agreement","GPU warm-up does not match the CPU objective.");
     end
     preparationSeconds=toc(preparationTimer);
+    fprintf("\nThree-observer global information GA | Mode: %s\n",config.parallelMode);
+    fprintf("Independent runs per FE budget: %d\n",max(config.runCounts));
+    if config.parallelMode=="runs"
+        fprintf("FE budgets / run: %s | Runs execute concurrently\n", ...
+            strjoin(string(config.functionEvaluationBudgets),", "));
+    end
     jobs=cell(0,1);
     for budget=config.functionEvaluationBudgets
         for runIndex=1:max(config.runCounts)
@@ -60,7 +66,9 @@ try
             identity=struct("schemaVersion",1,"budget",budget,"seed",seed,"populationSize",config.populationSize);
             jobs{end+1,1}=struct("folder",folder,"outputDirectory",out,"databaseFile",config.databaseFile, ...
                 "populationSize",config.populationSize,"budget",budget,"seed",seed,"runIndex",runIndex, ...
-                "parallelMode",config.parallelMode,"identity",identity); %#ok<AGROW>
+                "parallelMode",config.parallelMode,"identity",identity, ...
+                "runCount",max(config.runCounts), ...
+                "showBudgetInProgress",config.parallelMode=="runs" && numel(config.functionEvaluationBudgets)>1); %#ok<AGROW>
         end
     end
     records=cell(numel(jobs),1); gaTimer=tic;
@@ -69,6 +77,9 @@ try
         parfor k=1:numel(jobs), records{k}=runGaConvergenceJob(jobs{k}); end
     else
         for k=1:numel(jobs)
+            if k==1 || jobs{k}.budget~=jobs{k-1}.budget
+                fprintf("\nFE budget / run: %d\n",jobs{k}.budget);
+            end
             records{k}=runGaConvergenceJob(jobs{k},objectiveOverride);
             manifest.completedRuns=k; saveManifest(manifestFile,manifest);
         end
