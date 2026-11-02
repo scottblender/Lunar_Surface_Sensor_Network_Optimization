@@ -1,9 +1,20 @@
-function terrainLimits = plotPolarSelectionMap(ax,frequency,latitudeEdges,longitudeEdges,dem,style)
-% PLOTPOLARSELECTIONMAP - Plot terrain and selection frequency on a south-pole map.
+function terrainLimits = plotPolarSelectionMap(ax,frequency,latitudeEdges,longitudeEdges,dem,style,hemisphere)
+% PLOTPOLARSELECTIONMAP - Plot terrain and frequency from either lunar pole.
+% The default remains the original south-pole manuscript projection.
+if nargin<7, hemisphere="south"; end
+hemisphere=string(hemisphere);
+assert(ismember(hemisphere,["south","north"]),"plotPolarSelectionMap:Hemisphere", ...
+    "Use south or north.");
+north=hemisphere=="north";
+latitudeGrid=linspace(-90,0,181);
+if north, latitudeGrid=linspace(0,90,181); end
+assert(all(latitudeEdges>=latitudeGrid(1) & latitudeEdges<=latitudeGrid(end)), ...
+    "plotPolarSelectionMap:Latitude","Latitude bins must lie in the selected hemisphere.");
 
 hold(ax,"on");
-[lon,lat] = meshgrid(linspace(0,360,361),linspace(-90,0,181));
+[lon,lat] = meshgrid(linspace(0,360,361),latitudeGrid);
 r = (lat+90)/90;
+if north, r=(90-lat)/90; end
 x = r.*sind(lon); y = r.*cosd(lon);
 z = double(dem(deg2rad(lat),deg2rad(lon)));
 limits = [min(z,[],"all") max(z,[],"all")];
@@ -22,6 +33,7 @@ anchors = [0.90 0.95 0.99; 0.67 0.81 0.91; 0.30 0.60 0.79; ...
 frequencyColors = interp1(linspace(0,1,size(anchors,1)),anchors,linspace(0,1,256));
 for i = 1:size(frequency,1)
     radii = (latitudeEdges(i:i+1)+90)/90;
+    if north, radii=(90-latitudeEdges(i:i+1))/90; end
     for j = 1:size(frequency,2)
         value = frequency(i,j);
         if value<=0, continue, end
@@ -34,15 +46,18 @@ for i = 1:size(frequency,1)
     end
 end
 angle = linspace(0,360,361);
-for latitude = [-60 -30 0]
+latitudeRings=[-60 -30 0]; hemisphereLabel="S";
+if north, latitudeRings=[60 30 0]; hemisphereLabel="N"; end
+for latitude = latitudeRings
     radius = (latitude+90)/90;
+    if north, radius=(90-latitude)/90; end
     lineStyle = ":"; lineWidth = 0.55;
     if latitude==0, lineStyle="-"; lineWidth=0.8; end
     plot3(ax,radius*sind(angle),radius*cosd(angle),2*ones(size(angle)), ...
         lineStyle,"Color",[0.40 0.43 0.47],"LineWidth",lineWidth);
-    if latitude<0
+    if latitude~=0
         % Only interior latitude labels; the equator is the outer rim.
-        text(ax,radius*sind(225),radius*cosd(225),3,sprintf('%d°S',abs(latitude)), ...
+        text(ax,radius*sind(225),radius*cosd(225),3,sprintf('%d°%s',abs(latitude),hemisphereLabel), ...
             "FontSize",style.axisFontSize,"FontWeight","bold", ...
             "BackgroundColor","white","Margin",0.5, ...
             "HorizontalAlignment","center");

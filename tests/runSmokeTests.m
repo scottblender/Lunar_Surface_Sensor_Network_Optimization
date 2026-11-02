@@ -8,6 +8,7 @@ testFiles = [
     "tests/setup/testAnalysisUtilities.m"
     "tests/optimization/testOptimizers.m"
     "tests/optimization/testBatchedInformationObjective.m"
+    "tests/optimization/testGaLocationPlots.m"
     "tests/optimization/testPaperWorkflow.m"
     "tests/optimization/testRevisedStudy.m"
     "tests/optimization/testGaConvergenceStudy.m"
