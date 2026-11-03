@@ -86,6 +86,11 @@ Medoids and best members are saved for illustration and optional path evaluation
 they do not define the reference-free convergence metric. Each budget's pairwise
 spread is computed independently of those representatives. Pairwise distances
 share runs: 4950 distances from 100 runs are NOT 4950 independent samples.
+The near-best subset can gain members as FE increases, so a change in its
+conditional spread need not mean that individual runs became less consistent.
+Inspect the saved subset sizes alongside its curves; the all-run curve keeps
+the full cohort at each budget.
+
 Likewise, the 400 paired-seed results across four budgets are not 400 independent
 replicates for between-budget inference. No p-values or confidence intervals
 based on those false sample sizes are reported.
@@ -109,7 +114,7 @@ checks endpoint scores against the saved scores and the independent CPU objectiv
 `ExecutionDevice="cpu"` exists for tiny regression fixtures/explicit validation.
 The original sweep manifest must be beside the completed sweep when the family
 report is generated. Database SHA-256 and frozen chunk path/size/modification
-metadata are checked before evaluating; the latter is the existing manifest's
+metadata and the original saved selection-source hashes are checked before evaluating; the latter is the existing manifest's
 metadata check, not a cryptographic chunk-content hash.
 
 This is **additional diagnostic work**, not a resumed GA or refinement of the

@@ -16,6 +16,13 @@ assert(isfield(report.sourceSignature,"databaseSha256"),"networkFamilies:Provena
     "Generate the family report beside the original ga_sweep_manifest.mat to verify the frozen database.");
 assert(analysisFileSha256(databaseFile)==report.sourceSignature.databaseSha256, ...
     "networkFamilies:DatabaseMismatch","Supplied database differs from the frozen sweep database.");
+if isfield(report.sourceSignature,"sourceHashes")
+    sourceHashes=string(report.sourceSignature.sourceHashes);
+    for k=1:size(sourceHashes,1)
+        assert(isfile(sourceHashes(k,1)) && analysisFileSha256(sourceHashes(k,1))==sourceHashes(k,2), ...
+            "networkFamilies:SourceMismatch","Frozen selection source changed: %s",sourceHashes(k,1));
+    end
+end
 % Check physical chunk metadata against the original frozen manifest as well.
 assert(isfield(report.sourceSignature,"chunkMetadata"),"networkFamilies:Provenance","Missing frozen chunk provenance.");
 for k=1:numel(report.sourceSignature.chunkMetadata)

@@ -14,8 +14,18 @@ end
 function testPermutationAndSeamDoNotCreateNewFamilies(testCase)
 a=[-30 359;0 120;30 240]; b=a([3 1 2],:); b(2,2)=-1;
 [~,d]=matchThreeObserverLocations(a,b); verifyEqual(testCase,mean(d),0,'AbsTol',1e-9);
+[~,maximum]=matchThreeObserverLocations(a,b,1737.4,"max");
+verifyEqual(testCase,max(maximum),0,'AbsTol',1e-9);
 labels=completeLinkNetworkFamilies([0 mean(d);mean(d) 0],1);
 verifyEqual(testCase,labels,[1;1]);
+end
+function testBottleneckMatchingDoesNotHideOneLargeMovement(testCase)
+a=[13 90;56 340;-53 68]; b=[-37 64;9 125;-3 82];
+[~,meanMatched]=matchThreeObserverLocations(a,b);
+[~,maxMatched]=matchThreeObserverLocations(a,b,1737.4,"max");
+verifyLessThan(testCase,max(maxMatched),max(meanMatched)-100);
+[~,permuted]=matchThreeObserverLocations(a([3 1 2],:),b([2 3 1],:),1737.4,"max");
+verifyEqual(testCase,max(permuted),max(maxMatched),'AbsTol',1e-9);
 end
 function testFixedFamiliesDeduplicateAndExportCorrectDenominators(testCase)
 folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
@@ -93,4 +103,7 @@ verifyTrue(testCase,all(isfinite(d.paths.Objective(d.paths.ValidDistinctSites)))
 verifyEqual(testCase,height(d.summary),1);
 report.sourceSignature.databaseSha256="wrong"; save(reportFile,"report");
 verifyError(testCase,@()evaluateFamilyTransitions(reportFile,file,ExecutionDevice="cpu"),'networkFamilies:DatabaseMismatch');
+report.sourceSignature.databaseSha256=analysisFileSha256(file);
+report.sourceSignature.sourceHashes=[reportFile,"wrong"]; save(reportFile,"report");
+verifyError(testCase,@()evaluateFamilyTransitions(reportFile,file,ExecutionDevice="cpu"),'networkFamilies:SourceMismatch');
 end

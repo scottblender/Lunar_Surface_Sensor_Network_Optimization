@@ -93,5 +93,9 @@ exportPair(fig,out,"unlabeled_geographic_frequency");
 end
 function exportPair(fig,out,stem)
 exportgraphics(fig,fullfile(out,stem+".png"),"Resolution",200);
-exportgraphics(fig,fullfile(out,stem+".pdf"),"ContentType","vector");
+contentType="vector";
+% DEM texture surfaces are raster context; avoid tessellating their dense mesh
+% into hundreds of thousands of vector polygons during PDF export.
+if stem=="unlabeled_geographic_frequency", contentType="image"; end
+exportgraphics(fig,fullfile(out,stem+".pdf"),"ContentType",contentType,"Resolution",200);
 end
