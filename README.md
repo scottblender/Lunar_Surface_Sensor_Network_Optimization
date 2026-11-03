@@ -1,5 +1,8 @@
 # Lunar Surface Sensor Network Optimization
 
+For shape, paired-seed movement, bootstrap uncertainty, and GPU conditional
+landscape/per-RSO diagnostics, see [geographic diagnostics](docs/ga_geographic_diagnostics.md).
+
 For reference-free geographic consistency, pooled solution families and optional
 GPU path diagnostics, see [solution-family analysis](docs/ga_solution_families.md).
 
