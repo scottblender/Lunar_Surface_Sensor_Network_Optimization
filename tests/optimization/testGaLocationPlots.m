@@ -19,17 +19,18 @@ end
 function testBestRunScatterAllowsSwapsAndExportsOnlyOneFigure(testCase)
 folder=fixture(testCase);
 report=plotGaLocationConvergence(folder);
-verifyEqual(testCase,report.requestedFE,12000);
+verifyEqual(testCase,report.requestedFE,[6000 12000]);
 verifyEqual(testCase,report.independentRuns,2);
 verifyEqual(testCase,report.referenceSeed,1001);
+verifyEqual(testCase,report.referenceRequestedFE,12000);
 verifyEqual(testCase,report.referenceObjective,-20);
 verifyEqual(testCase,report.referenceCandidateIds,[1;2;3]);
 verifyEqual(testCase,report.reference,[-85 359;0 0;90 180]);
-verifyEqual(testCase,height(report.locations),6);
-verifyEqual(testCase,report.locations.CandidateId,[1;2;3;1;2;3]);
-verifyEqual(testCase,report.locations.DistanceFromBestKm,zeros(6,1),'AbsTol',1e-9);
-verifyEqual(testCase,report.locations.Hemisphere,["south";"north";"north";"south";"north";"north"]);
-verifyEqual(testCase,report.locations.LongitudeDeg,[359;0;180;359;0;180]);
+verifyEqual(testCase,height(report.locations),12);
+verifyEqual(testCase,report.locations.CandidateId,repmat([1;2;3],4,1));
+verifyEqual(testCase,report.locations.DistanceFromBestKm,zeros(12,1),'AbsTol',1e-9);
+verifyEqual(testCase,report.locations.Hemisphere,repmat(["south";"north";"north"],4,1));
+verifyEqual(testCase,report.locations.LongitudeDeg,repmat([359;0;180],4,1));
 files=dir(report.outputDirectory); names=sort(string({files(~[files.isdir]).name}));
 verifyEqual(testCase,names,sort(["observer_locations.png","observer_locations.pdf"]));
 verifyGreaterThan(testCase,[files(~[files.isdir]).bytes],[0 0]);
@@ -53,7 +54,9 @@ verifyError(testCase,@()plotGaLocationConvergence(folder,"",3), ...
     'plotGaLocationConvergence:Runs');
 result.records(4).seed=result.records(3).seed; save(file,"result");
 verifyError(testCase,@()plotGaLocationConvergence(folder),'plotGaLocationConvergence:Runs');
-result.records(4).seed=1001; result.records(4).locations(1,1)=91; save(file,"result");
+result.records(4).seed=1001; result.records(1).seed=999; save(file,"result");
+verifyError(testCase,@()plotGaLocationConvergence(folder),'plotGaLocationConvergence:Runs');
+result.records(1).seed=1000; result.records(4).locations(1,1)=91; save(file,"result");
 verifyError(testCase,@()plotGaLocationConvergence(folder),'plotGaLocationConvergence:Network');
 end
 function folder=fixture(testCase)
