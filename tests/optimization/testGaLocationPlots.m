@@ -59,6 +59,42 @@ verifyError(testCase,@()plotGaLocationConvergence(folder),'plotGaLocationConverg
 result.records(1).seed=1000; result.records(4).locations(1,1)=91; save(file,"result");
 verifyError(testCase,@()plotGaLocationConvergence(folder),'plotGaLocationConvergence:Network');
 end
+function testObserverBoxplotsUseFixedReferenceAndKnownArcDistances(testCase)
+folder=fixture(testCase);
+reference=[-30 270;0 0;30 120]; offsets=[3 10 20 1 2 0];
+r=struct("requestedBudget",6000,"runIndex",1,"seed",1000,"objective",-1, ...
+    "candidateIds",[1;2;3],"locations",reference);
+records=repmat(r,6,1);
+for k=1:6
+    records(k).requestedBudget=6000*(1+(k>3));
+    records(k).runIndex=1+mod(k-1,3); records(k).seed=999+records(k).runIndex;
+    sites=reference; sites(:,1)=sites(:,1)+offsets(k);
+    order=circshift(1:3,k); ids=(3*k-2:3*k).';
+    records(k).locations=sites(order,:); records(k).candidateIds=ids(order);
+end
+records(6).objective=-2;
+result=struct("status","complete","records",records);
+save(fullfile(folder,"ga_convergence_study.mat"),"result","-v7.3");
+report=plotGaObserverSpread(folder);
+verifyEqual(testCase,report.requestedFE,[6000 12000]);
+verifyEqual(testCase,report.referenceSeed,1002);
+verifyEqual(testCase,report.referenceRequestedFE,12000);
+verifyEqual(testCase,report.reference,reference);
+verifyEqual(testCase,height(report.locations),18);
+expected=repelem(deg2rad(offsets(:))*1737.4,3);
+verifyEqual(testCase,report.locations.DistanceFromBestKm,expected,'AbsTol',1e-8);
+for observer=1:3
+    selected=report.locations.Observer==observer;
+    early=report.locations.DistanceFromBestKm(selected & report.locations.RequestedFE==6000);
+    late=report.locations.DistanceFromBestKm(selected & report.locations.RequestedFE==12000);
+    verifyGreaterThan(testCase,median(early),median(late));
+end
+saved=readtable(report.locationsCsvFile);
+verifyEqual(testCase,saved.DistanceFromBestKm,expected,'AbsTol',1e-8);
+for file=[report.pngFile report.pdfFile report.locationsCsvFile]
+    info=dir(file); verifyTrue(testCase,isscalar(info)); verifyGreaterThan(testCase,info.bytes,0);
+end
+end
 function folder=fixture(testCase)
 folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
 r=struct("requestedBudget",6000,"runIndex",1,"seed",1000,"objective",-30, ...
