@@ -1,5 +1,8 @@
 # Lunar Surface Sensor Network Optimization
 
+For reference-free geographic consistency, pooled solution families and optional
+GPU path diagnostics, see [solution-family analysis](docs/ga_solution_families.md).
+
 For paper-style polar selection-frequency plots across FE budgets from a saved
 convergence sweep, see [location-frequency post-processing](docs/ga_location_frequency_plots.md).
 
