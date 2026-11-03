@@ -95,7 +95,7 @@ for file=[report.pngFile report.pdfFile report.locationsCsvFile]
     info=dir(file); verifyTrue(testCase,isscalar(info)); verifyGreaterThan(testCase,info.bytes,0);
 end
 end
-function testObserverEfficiencyUsesMedianRuntimeAndSignedIqrGain(testCase)
+function testSimpleBudgetEfficiencyUsesCommonBaselineAndEqualObserverWeights(testCase)
 folder=fixture(testCase); reference=[-30 270;0 0;30 120];
 offsets=[0 0 10 10;0 0 4 4;0 0 8 8];
 timings=[100 10 10 10;20 20 20 100;40 40 40 100];
@@ -104,7 +104,7 @@ r=struct("requestedBudget",6000,"runIndex",1,"seed",1000,"objective",-1, ...
 records=repmat(r,12,1);
 for k=1:12
     b=ceil(k/4); run=1+mod(k-1,4); order=circshift(1:3,k);
-    sites=reference; sites(:,1)=sites(:,1)+offsets(b,run); ids=(3*k-2:3*k).';
+    sites=reference; sites(:,1)=sites(:,1)+offsets(b,run)*[1;0.5;0.25]; ids=(3*k-2:3*k).';
     records(k).requestedBudget=3000*(b+1); records(k).runIndex=run; records(k).seed=999+run;
     records(k).runtimeSeconds=timings(b,run);
     records(k).locations=sites(order,:); records(k).candidateIds=ids(order);
@@ -112,26 +112,23 @@ end
 records(9).objective=-2;
 result=struct("status","complete","records",records);
 file=fullfile(folder,"ga_convergence_study.mat"); save(file,"result");
-report=plotGaObserverEfficiency(folder); arc=deg2rad(1)*1737.4;
-verifyEqual(testCase,report.referenceSeed,1000);
-verifyEqual(testCase,report.summary.MedianRuntimeSeconds,repmat([10;20;40],3,1));
-verifyEqual(testCase,report.summary.IQRKm,repmat([10;4;8]*arc,3,1),'AbsTol',1e-8);
-verifyEqual(testCase,report.efficiency.AdditionalMedianRuntimeSeconds,repmat([10;20],3,1));
-verifyEqual(testCase,report.efficiency.IQRReductionKm,repmat([6;-4]*arc,3,1),'AbsTol',1e-8);
-verifyEqual(testCase,report.efficiency.IQRReductionKmPerSecond,repmat([0.6;-0.2]*arc,3,1),'AbsTol',1e-8);
-verifyTrue(testCase,all(report.efficiency.RuntimeIncreaseValid));
-verifyEqual(testCase,height(report.runTimings),12);
-saved=readtable(report.efficiencyCsvFile);
-verifyEqual(testCase,saved.IQRReductionKmPerSecond,report.efficiency.IQRReductionKmPerSecond,'AbsTol',1e-8);
-for fileName=[report.pngFile report.pdfFile report.summaryCsvFile report.efficiencyCsvFile report.timingsCsvFile]
-    info=dir(fileName); verifyTrue(testCase,isscalar(info)); verifyGreaterThan(testCase,info.bytes,0);
-end
+before=findall(groot,'Type','figure');
+efficiency=plotGaObserverEfficiency(folder); arc=deg2rad(1)*1737.4;
+verifyEqual(testCase,efficiency.Properties.VariableNames,{'FE','EfficiencyKmPerSecond'});
+verifyEqual(testCase,efficiency.FE,[6000;9000;12000]);
+verifyTrue(testCase,isnan(efficiency.EfficiencyKmPerSecond(1)));
+expected=[0.6;2/30]*arc*mean([1 0.5 0.25]);
+verifyEqual(testCase,efficiency.EfficiencyKmPerSecond(2:3),expected,'AbsTol',1e-8);
+verifyEqual(testCase,findall(groot,'Type','figure'),before);
+files=dir(fullfile(folder,'observer_location_plots','n_4','fe_6000_9000_12000'));
+verifyEqual(testCase,string({files(~[files.isdir]).name}),"fe_efficiency.csv");
+saved=readtable(fullfile(files(1).folder,'fe_efficiency.csv'));
+verifyEqual(testCase,saved.EfficiencyKmPerSecond(2:3),expected,'AbsTol',1e-8);
 % Equal and decreasing runtime changes must not turn into infinite/misleading ratios.
 for k=5:8, result.records(k).runtimeSeconds=10; end
 for k=9:12, result.records(k).runtimeSeconds=5; end
-save(file,"result"); report=plotGaObserverEfficiency(folder);
-verifyTrue(testCase,all(isnan(report.efficiency.IQRReductionKmPerSecond)));
-verifyFalse(testCase,any(report.efficiency.RuntimeIncreaseValid));
+save(file,"result"); efficiency=plotGaObserverEfficiency(folder);
+verifyTrue(testCase,all(isnan(efficiency.EfficiencyKmPerSecond)));
 result.records(1).runtimeSeconds=NaN; save(file,"result");
 verifyError(testCase,@()plotGaObserverEfficiency(folder),'observerEfficiency:Runtime');
 result.records=rmfield(result.records,'runtimeSeconds'); save(file,"result");

@@ -94,49 +94,24 @@ Outputs share the polar figure's directory: `observer_spread_vs_fe.png`,
 one row per observer, run and FE, including seed, candidate ID, coordinates and
 distance. `spread.locations` returns that same table.
 
-## IQR versus runtime and marginal efficiency
+## Final-budget efficiency table
 
 ```matlab
 setupProject;
 efficiency = plotGaObserverEfficiency("results/ga_convergence_study1_gpu");
-winopen(efficiency.pngFile);
 ```
 
-The new figure has three observer subplots of IQR in km versus measured median
-solver runtime per independent run in seconds. Point labels are requested FE
-budgets, connected in increasing FE order. It reuses the polar/boxplot reference
-and label matching. Titles remain limited to observer and run/reference metadata.
+This prints and returns only `FE` and `EfficiencyKmPerSecond`, and saves the same
+two-column table as `fe_efficiency.csv` beside the observer plots. No figure or
+other tables are generated. Previous outputs are retained.
 
-The command prints and returns `efficiency.summary` and `efficiency.efficiency`.
-The latter has one row per observer and adjacent displayed FE pair:
+Efficiency is the reduction in mean observer IQR divided by added median solver
+runtime per run, both relative to the lowest selected FE budget (normally 6000).
+The three observer IQRs have equal weight. All budgets use the same highest-FE
+best-run reference and site matching. The baseline and any nonpositive runtime
+increase have undefined efficiency, shown as NaN. This compares final budgets
+against a common baseline, rather than comparing adjacent increments.
 
-`IQRReductionKmPerSecond = (IQR_previous - IQR_next) / (runtime_next - runtime_previous)`
-
-Positive values mean narrower distance distributions per added second; zero
-means no IQR improvement; negative values mean widening despite extra runtime.
-When the measured median runtime is equal or lower at the next FE budget, the
-ratio is undefined for this interpretation: it is stored as NaN and
-`RuntimeIncreaseValid=false`. The signed IQR and time changes remain available.
-Do not interpret a negative time change as negative efficiency.
-
-Runtimes are original saved `runtimeSeconds` values around the solver call,
-including any in-call retry, but excluding shared GPU preparation/warm-up,
-post-processing and file export. A resumed sweep keeps the checkpoint's original
-timing; it does not use the near-zero checkpoint-load time. Median per-run runtime
-is not total sweep wall time or parallel throughput. Timing noise and hardware
-load can affect adjacent differences. These are descriptive trade-offs, not an
-automatic FE recommendation or a statistical significance test.
-
-The IQR uses MATLAB `iqr`, matching the printed summary from the boxplot data.
-A smaller IQR concerns variation in distances to the fixed sites and does not
-capture direction or imply that the median distance also decreases. Compare the
-boxplots and polar clouds alongside the runtime figure.
-
-Optional run prefixes and FE subsets are supported as in `plotGaObserverSpread`.
-Missing, nonfinite or nonpositive per-run timings raise an error; runtime is never
-estimated from FE. Files are saved beside the existing observer plots:
-
-- `observer_iqr_vs_runtime.png` and `.pdf`
-- `observer_iqr_runtime_summary.csv`
-- `observer_marginal_efficiency.csv`
-- `observer_run_timings.csv` (one original runtime per FE/run/seed)
+Optional run prefixes and `RequestedFE` subsets still apply. Runtimes use the
+original saved solver times, including reused checkpoints, excluding shared GPU
+preparation and post-processing. No optimization rerun is needed.
