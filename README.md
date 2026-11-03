@@ -1,13 +1,7 @@
 # Lunar Surface Sensor Network Optimization
 
-For shape, paired-seed movement, bootstrap uncertainty, and GPU conditional
-landscape/per-RSO diagnostics, see [geographic diagnostics](docs/ga_geographic_diagnostics.md).
-
-For reference-free geographic consistency, pooled solution families and optional
-GPU path diagnostics, see [solution-family analysis](docs/ga_solution_families.md).
-
-For paper-style polar selection-frequency plots across FE budgets from a saved
-convergence sweep, see [location-frequency post-processing](docs/ga_location_frequency_plots.md).
+For one polar figure showing independent-run observer locations relative to the
+best run, see [observer-location plotting](docs/ga_observer_location_plot.md).
 
 For the experimental GPU information objective and a paired CPU/GPU benchmark
 (3 global observers, 6000 requested FE, 20 independent runs per backend), see
