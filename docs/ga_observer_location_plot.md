@@ -31,7 +31,7 @@ Every other network is matched one-to-one to it by the permutation minimizing
 total great-circle distance, allowing observer labels to swap. Matching is a
 display convention: it does not imply physical observer identities or prove a
 single solution family. Each independent run contributes exactly one site to
-each observer column, across its two hemispheres. Equatorial sites appear north;
+each observer, across its two hemispheres. Equatorial sites appear north;
 longitudes wrap to [0,360).
 
 Select specific budgets or a prefix of independent runs explicitly:
@@ -55,3 +55,41 @@ network in km. `report.referenceRequestedFE` identifies the reference budget.
 For the four-budget, 100-run study, PNG and PDF exports are saved under:
 `<study>/observer_location_plots/n_100/fe_6000_9000_12000_15000/`.
 Each call creates one figure. Previous results remain available in their folders.
+
+## Box-and-whisker plot of observer distances
+
+```matlab
+setupProject;
+spread = plotGaObserverSpread("results/ga_convergence_study1_gpu");
+winopen(spread.pngFile);
+```
+
+This adds one figure with three observer subplots. Each FE budget has a box of
+spherical surface distances (km) from that observer's fixed best-run site.
+Matching and reference selection are identical to the polar plot: all selected
+FE budgets use the best network at the largest displayed budget. All runs from
+both hemispheres are included, including the reference run's zero distance.
+No DEM, database or optimization rerun is needed.
+
+The middle line is the median, the box spans the 25th to 75th percentiles, and
+whiskers extend to the furthest observations within 1.5 IQR of the box. Values
+beyond the whiskers remain visible as outlier points. Every subplot uses the same
+vertical scale, starting at zero. Titles contain only observer numbers and the
+shared run-count/reference information; there is no subtitle.
+
+A lower median means locations are generally closer to the best-run site.
+A shorter box means less variation in those distances. These are distributions
+of distance to a fixed reference, rather than latitude/longitude or pairwise
+network distances; they do not describe the direction of geographic spread.
+
+Optional run prefixes and FE subsets use the same conventions:
+
+```matlab
+spread = plotGaObserverSpread("results/ga_convergence_study1_gpu", 100, ...
+    RequestedFE=[6000 9000 12000 15000]);
+```
+
+Outputs share the polar figure's directory: `observer_spread_vs_fe.png`,
+`observer_spread_vs_fe.pdf`, and `observer_distances_vs_fe.csv`. The CSV contains
+one row per observer, run and FE, including seed, candidate ID, coordinates and
+distance. `spread.locations` returns that same table.
