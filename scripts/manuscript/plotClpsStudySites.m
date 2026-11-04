@@ -35,7 +35,7 @@ for hemisphere = ["south","north"]
     fig = figure("Color","white","Units","inches", ...
         "Position",[0.5 0.5 6.3 6.3],"Visible","off");
     closeFigure = onCleanup(@()close(fig));
-    ax = axes(fig,"Position",[0.04 0.04 0.92 0.92]);
+    ax = axes(fig,"Position",[0.10 0.10 0.80 0.80]);
     latitudeEdges = -90:10:0;
     selected = sites.LatitudeDeg<0;
     if hemisphere=="north"
@@ -43,8 +43,8 @@ for hemisphere = ["south","north"]
         selected = sites.LatitudeDeg>=0;
     end
     plotPolarSelectionMap(ax,zeros(9,12),latitudeEdges,0:30:360,dem,style,hemisphere);
-    % Keep the original geographic projection with lighter, smaller labels.
-    set(findall(ax,"Type","text"),"FontName",style.fontName,"FontWeight","normal");
+    % Use the shared font family and bold labels throughout.
+    set(findall(ax,"Type","text"),"FontName",style.fontName,"FontWeight","bold");
     current = sites(selected,:);
     radius = (90-abs(current.LatitudeDeg))/90;
     x = radius.*sind(current.LongitudeDeg);
@@ -75,10 +75,14 @@ for hemisphere = ["south","north"]
             "-","Color",[0.30 0.30 0.30],"LineWidth",0.65,"HandleVisibility","off");
         text(ax,tx,ty,5,label,"Interpreter","none", ...
             "HorizontalAlignment",align,"VerticalAlignment","middle", ...
-            "FontSize",17,"FontName",style.fontName,"FontWeight","normal", ...
+            "FontSize",17,"FontName",style.fontName,"FontWeight","bold", ...
             "BackgroundColor","white","Margin",1.3,"Clipping","off");
     end
     % The LaTeX caption explains marker colors. No panel titles or legend.
+    % Match reference-frame and measurement figures at half manuscript width.
+    setappdata(fig,"ManuscriptPlacementWidthInches",style.manuscriptHalfWidthInches);
+    applyManuscriptTypography(fig,"clps_study_sites_"+hemisphere+".eps",6.3);
+    fitTextInsideFigure(fig,ax,style.exportPaddingInches);
     setappdata(fig,"ManuscriptTypographyFinalized",true);
     stem = fullfile(outputDirectory,"clps_study_sites_"+hemisphere);
     files = struct("pngFile",stem+".png","pdfFile",stem+".pdf","epsFile",stem+".eps");
@@ -88,4 +92,36 @@ for hemisphere = ["south","north"]
     report.(hemisphere) = files;
     clear closeFigure
 end
+end
+
+function fitTextInsideFigure(fig,ax,paddingInches)
+% Measure rendered text after typography is final, including exterior labels.
+% Shrink the map symmetrically until every text box fits the export canvas.
+fig.Units = "pixels";
+figSize = fig.Position(3:4);
+padding = paddingInches*get(groot,"ScreenPixelsPerInch");
+ax.Units = "normalized";
+for attempt = 1:40
+    drawnow;
+    origin = getpixelposition(ax,true);
+    labels = findall(ax,"Type","text");
+    fits = true;
+    for n = 1:numel(labels)
+        if isempty(labels(n).String), continue, end
+        originalUnits = labels(n).Units;
+        labels(n).Units = "pixels";
+        box = labels(n).Extent;
+        labels(n).Units = originalUnits;
+        % Include a small allowance for background margins and font metrics.
+        lower = origin(1:2)+box(1:2)-4;
+        upper = origin(1:2)+box(1:2)+box(3:4)+4;
+        fits = fits && all(lower>=padding) && all(upper<=figSize-padding);
+    end
+    if fits, return, end
+    position = ax.Position;
+    sizeNew = position(3:4)*0.94;
+    ax.Position = [(1-sizeNew)/2 sizeNew];
+end
+error("plotClpsStudySites:TextClipping", ...
+    "Text does not fit the export canvas. Increase figure size or shorten labels.");
 end
