@@ -48,7 +48,8 @@ for hemisphere = ["south","north"]
     % Replace the helper's independently normalized RGB terrain with scalar
     % elevations. Both maps and colorbars now use one global elevation scale.
     [mapLon,mapLat] = meshgrid(deg2rad(0:360),deg2rad(latitudeEdges(1):0.5:latitudeEdges(end)));
-    terrain = findobj(ax,"Type","surface");
+    % The shared helper hides terrain handles from legends and findobj.
+    terrain = findall(ax,"Type","surface");
     assert(isscalar(terrain),"Expected one DEM surface.");
     terrain.CData = double(dem(mapLat,mapLon));
     terrain.CDataMapping = "scaled";
