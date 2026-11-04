@@ -1,7 +1,7 @@
 # Lunar Surface Sensor Network Optimization
 
-For one polar figure showing independent-run observer locations relative to the
-best run, see [observer-location plotting](docs/ga_observer_location_plot.md).
+For observer polar plots and boxplots across FE budgets (Study 1) or independent
+run counts (Study 2), see [observer-location plotting](docs/ga_observer_location_plot.md).
 
 For the experimental GPU information objective and a paired CPU/GPU benchmark
 (3 global observers, 6000 requested FE, 20 independent runs per backend), see

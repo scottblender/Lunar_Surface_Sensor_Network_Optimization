@@ -134,6 +134,65 @@ verifyError(testCase,@()plotGaObserverEfficiency(folder),'observerEfficiency:Run
 result.records=rmfield(result.records,'runtimeSeconds'); save(file,"result");
 verifyError(testCase,@()plotGaObserverEfficiency(folder),'observerEfficiency:Runtime');
 end
+function testStudy2RunCountPlotsKeepOneReferenceAndNestedSamples(testCase)
+folder=fixture(testCase); reference=[-30 359;0 0;30 120]; offsets=[8 6 4 2 1 0];
+r=struct("requestedBudget",9000,"runIndex",1,"seed",1000,"objective",-1, ...
+    "candidateIds",[1;2;3],"locations",reference);
+records=repmat(r,6,1);
+for k=1:6
+    sites=reference; sites(:,1)=sites(:,1)+offsets(k); sites(1,2)=-1;
+    order=circshift(1:3,k); ids=(3*k-2:3*k).';
+    records(k).runIndex=k; records(k).seed=999+k;
+    records(k).locations=sites(order,:); records(k).candidateIds=ids(order);
+end
+records(6).objective=-2;
+result=struct("status","complete","records",records,"config",struct("runCounts",[2 4 6]));
+save(fullfile(folder,"ga_convergence_study.mat"),"result","-v7.3");
+plots=plotGaRunCountConvergence(folder);
+a=plots.polar; b=plots.spread;
+verifyEqual(testCase,a.runCounts,[2 4 6]);
+verifyEqual(testCase,a.requestedFE,9000);
+verifyEqual(testCase,a.referenceSeed,1005);
+verifyEqual(testCase,a.reference,reference);
+verifyEqual(testCase,a.locations,b.locations);
+verifyEqual(testCase,a.referenceCandidateIds,b.referenceCandidateIds);
+verifyEqual(testCase,height(a.locations),3*(2+4+6));
+for n=[2 4 6]
+    t=a.locations(a.locations.IndependentRuns==n,:);
+    verifyEqual(testCase,height(t),3*n);
+    verifyEqual(testCase,unique(t.RunIndex),(1:n).');
+    verifyEqual(testCase,t.DistanceFromBestKm,repelem(deg2rad(offsets(1:n).')*1737.4,3),'AbsTol',1e-8);
+    verifyEqual(testCase,nnz(t.Observer==1 & t.Hemisphere=="south"),n);
+    if n<6, verifyFalse(testCase,any(t.Seed==a.referenceSeed)); end
+end
+small=a.locations(a.locations.IndependentRuns==2,:);
+large=a.locations(a.locations.IndependentRuns==6 & a.locations.RunIndex<=2,:);
+verifyEqual(testCase,small(:,1:9),large(:,1:9)); % Same coordinates AND distances in each prefix.
+verifyEqual(testCase,min(a.locations.DistanceFromBestKm(a.locations.RunIndex==6)),0,'AbsTol',1e-9);
+saved=readtable(b.locationsCsvFile);
+verifyEqual(testCase,saved.IndependentRuns,a.locations.IndependentRuns);
+verifyEqual(testCase,saved.DistanceFromBestKm,a.locations.DistanceFromBestKm,'AbsTol',1e-8);
+for file=[a.pngFile a.pdfFile b.pngFile b.pdfFile b.locationsCsvFile]
+    info=dir(file); verifyTrue(testCase,isscalar(info)); verifyGreaterThan(testCase,info.bytes,0);
+end
+% The comparison path is separate from Study 1's FE plots.
+verifyTrue(testCase,contains(plots.outputDirectory,"observer_run_count_plots"));
+end
+function testRunCountPlotValidation(testCase)
+folder=fixture(testCase);
+verifyError(testCase,@()loadGaObserverPlotData(folder,Inf,[6000 12000],"runs",[2]), ...
+    'observerPlots:FixedFE');
+verifyError(testCase,@()loadGaObserverPlotData(folder,Inf,12000,"runs",[2 3]), ...
+    'plotGaLocationConvergence:Runs');
+verifyError(testCase,@()loadGaObserverPlotData(folder,2,12000,"runs",[2]), ...
+    'observerPlots:RunCounts');
+verifyError(testCase,@()loadGaObserverPlotData(folder,Inf,12000,"runs",[]), ...
+    'observerPlots:RunCounts');
+a=loadGaObserverPlotData(folder,Inf,12000,"runs",[2]);
+verifyEqual(testCase,height(a.locations),6);
+verifyEqual(testCase,a.groupRunCounts,2);
+verifyEqual(testCase,a.referenceSeed,1001);
+end
 function folder=fixture(testCase)
 folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
 r=struct("requestedBudget",6000,"runIndex",1,"seed",1000,"objective",-30, ...
