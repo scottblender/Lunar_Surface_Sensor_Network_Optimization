@@ -3,13 +3,23 @@ function report = plotGeographicDesignDomains(databaseFile,demFile,outputDirecto
 % Uses the built paper_shared database, including its active polar-site choice.
 % Run setupProject first. No optimization or database rebuild is performed.
 arguments
-    databaseFile (1,1) string
-    demFile (1,1) string
+    databaseFile (1,1) string = ""
+    demFile (1,1) string = ""
     outputDirectory (1,1) string = "figures/design_domains"
 end
-assert(isfile(databaseFile) && isfile(demFile),"Supply the shared database and global DEM.");
+repoRoot = fileparts(fileparts(fileparts(mfilename("fullpath"))));
+databaseFile = resolvePlotInput(databaseFile, ...
+    "Select the paper_shared optimization_database.mat",fullfile(repoRoot,"results"),repoRoot);
+demFile = resolvePlotInput(demFile, ...
+    "Select the global DEM MAT-file",fullfile(repoRoot,"data"),repoRoot);
 saved = load(databaseFile,"database");
+assert(isfield(saved,"database"),"plotGeographicDesignDomains:DatabaseVariable", ...
+    "The selected file must contain the saved database structure: %s",databaseFile);
 database = saved.database;
+assert(isfield(database,"config") && isfield(database.config,"domainComparison") && ...
+    database.config.domainComparison.domain=="paper_shared", ...
+    "plotGeographicDesignDomains:DatabaseDomain", ...
+    "Select the paper_shared master database, not a domain view or study result.");
 [views,polar] = derivePaperDomains(database);
 [dem,~] = digitalElevationModel.loadTriaxialLunarDem(demFile);
 style = publicationPlotStyle();
@@ -154,4 +164,30 @@ phi = deg2rad(lat); lambda = deg2rad(lon); delta = radius/moonRadius;
 p = asin(sin(phi)*cos(delta)+cos(phi)*sin(delta)*cos(bearing));
 l = lambda+atan2(sin(bearing)*sin(delta)*cos(phi),cos(delta)-sin(phi)*sin(p));
 latitude = rad2deg(p); longitude = wrapLongitude(rad2deg(l));
+end
+
+function file = resolvePlotInput(file,prompt,startFolder,repoRoot)
+% Resolve relative paths from the current folder or repository root.
+if strlength(file)>0
+    if isfile(file), return, end
+    rooted = fullfile(repoRoot,file);
+    if isfile(rooted), file=rooted; return, end
+end
+if ~usejava("desktop")
+    error("plotGeographicDesignDomains:MissingInput", ...
+        "%s. File not found: '%s'. Current folder: %s. Supply an existing absolute path.", ...
+        prompt,file,pwd);
+end
+if strlength(file)>0
+    warning("plotGeographicDesignDomains:SelectInput", ...
+        "File not found: %s. Select the actual file in the dialog.",file);
+end
+if ~isfolder(startFolder), startFolder=repoRoot; end
+[name,folder] = uigetfile({'*.mat','MAT-files (*.mat)'},char(prompt), ...
+    char(startFolder+filesep));
+if isequal(name,0)
+    error("plotGeographicDesignDomains:SelectionCancelled", ...
+        "%s. File selection was cancelled.",prompt);
+end
+file = string(fullfile(folder,name));
 end
