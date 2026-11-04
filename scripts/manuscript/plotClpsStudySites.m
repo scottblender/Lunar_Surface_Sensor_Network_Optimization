@@ -27,15 +27,17 @@ assert(all(isfinite(sites.LatitudeDeg) & abs(sites.LatitudeDeg)<=90 & ...
 z = double(dem(lat,lon));
 assert(all(isfinite(z),"all"),"The DEM must cover both lunar hemispheres.");
 assert(max(z,[],"all")>min(z,[],"all"),"The DEM contains no elevation variation.");
+elevationLimits = [min(z,[],"all") max(z,[],"all")];
 if ~isfolder(outputDirectory), mkdir(outputDirectory); end
 style = publicationPlotStyle();
 style.axisFontSize = 17;
-report = struct("sites",sites,"demFile",demFile,"hasTerrainBackdrop",true);
+report = struct("sites",sites,"demFile",demFile,"hasTerrainBackdrop",true, ...
+    "elevationLimitsKm",elevationLimits);
 for hemisphere = ["south","north"]
     fig = figure("Color","white","Units","inches", ...
         "Position",[0.5 0.5 6.3 6.3],"Visible","off");
     closeFigure = onCleanup(@()close(fig));
-    ax = axes(fig,"Position",[0.10 0.10 0.80 0.80]);
+    ax = axes(fig,"Position",[0.10 0.25 0.80 0.66]);
     latitudeEdges = -90:10:0;
     selected = sites.LatitudeDeg<0;
     if hemisphere=="north"
@@ -43,6 +45,23 @@ for hemisphere = ["south","north"]
         selected = sites.LatitudeDeg>=0;
     end
     plotPolarSelectionMap(ax,zeros(9,12),latitudeEdges,0:30:360,dem,style,hemisphere);
+    % Replace the helper's independently normalized RGB terrain with scalar
+    % elevations. Both maps and colorbars now use one global elevation scale.
+    [mapLon,mapLat] = meshgrid(deg2rad(0:360),deg2rad(latitudeEdges(1):0.5:latitudeEdges(end)));
+    terrain = findobj(ax,"Type","surface");
+    assert(isscalar(terrain),"Expected one DEM surface.");
+    terrain.CData = double(dem(mapLat,mapLon));
+    terrain.CDataMapping = "scaled";
+    colormap(ax,repmat(linspace(0.30,0.96,256).',1,3));
+    clim(ax,elevationLimits);
+    elevationBar = colorbar(ax,"southoutside");
+    elevationBar.Units = "normalized";
+    elevationBar.Position = [0.22 0.12 0.56 0.025];
+    elevationBar.Ticks = linspace(elevationLimits(1),elevationLimits(2),5);
+    elevationBar.TickLabels = compose("%.1f",elevationBar.Ticks);
+    elevationBar.Label.String = "Elevation (km)";
+    % Lock the map position after colorbar creation reserves its own space.
+    ax.Position = [0.10 0.25 0.80 0.66];
     % Use the shared font family and bold labels throughout.
     set(findall(ax,"Type","text"),"FontName",style.fontName,"FontWeight","bold");
     current = sites(selected,:);
@@ -115,12 +134,14 @@ for attempt = 1:40
         % Include a small allowance for background margins and font metrics.
         lower = origin(1:2)+box(1:2)-4;
         upper = origin(1:2)+box(1:2)+box(3:4)+4;
-        fits = fits && all(lower>=padding) && all(upper<=figSize-padding);
+        fits = fits && all(lower>=[padding 0.23*figSize(2)]) && ...
+            all(upper<=figSize-padding);
     end
     if fits, return, end
     position = ax.Position;
     sizeNew = position(3:4)*0.94;
-    ax.Position = [(1-sizeNew)/2 sizeNew];
+    center = position(1:2)+position(3:4)/2;
+    ax.Position = [center-sizeNew/2 sizeNew];
 end
 error("plotClpsStudySites:TextClipping", ...
     "Text does not fit the export canvas. Increase figure size or shorten labels.");

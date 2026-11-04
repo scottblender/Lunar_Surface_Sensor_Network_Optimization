@@ -25,11 +25,12 @@ exports two separate, square figures with matching dimensions:
 - `clps_study_sites_north.png`, `.pdf`, and `.eps`
 
 Both reuse the selection-frequency projection and grayscale DEM background.
-Neither has a title or legend. Red stars denote mission anchors and orange
+Neither has a title or marker legend. Each has a grayscale elevation colorbar. Red stars denote mission anchors and orange
 stars denote representative regional sites. The caption supplies this key.
 Short labels and leader lines keep text clear of the stars and map boundaries.
-Terrain shading is contextual and is normalized separately by hemisphere by
-the shared map helper. It is not a common quantitative elevation color scale.
+Both terrain surfaces and colorbars use identical elevation limits sampled
+across the global DEM. The colorbar is labeled Elevation (km). The map and
+its text are positioned above a reserved colorbar area.
 No optimization needs to be rerun.
 
 `docs/clps_deployment_section.tex` includes a 1-by-2 layout with subcaptions.
