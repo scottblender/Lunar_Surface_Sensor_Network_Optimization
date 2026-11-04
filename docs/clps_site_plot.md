@@ -1,4 +1,4 @@
-# CLPS study-site figure
+# CLPS study-site figures
 
 From the repository root, update your checkout:
 
@@ -10,20 +10,30 @@ Then run in MATLAB:
 
 ```matlab
 setupProject;
-report = plotClpsStudySites(pwd, "", fullfile(pwd,"figures","clps_sites"));
+report = plotClpsStudySites(pwd, "data/Full_Resolution_DEM.mat", ...
+    fullfile(pwd,"figures","clps_sites"));
 ```
 
-This reads the enabled candidates from `config/paper_clps_sites.csv` and writes
-`clps_study_sites.png`, `clps_study_sites.pdf`, and `clps_study_sites.eps`.
-An empty second argument gives a neutral background. For the terrain backdrop,
-replace it with the path to the global DEM MAT-file used for the existing
-selection-frequency figures. No optimization needs to be rerun.
+Use the actual path to the global DEM MAT-file used by your study. Terrain is
+required. An empty path, missing file, constant DEM, or incomplete global
+coverage produces an error instead of a flat gray background.
 
-Both lunar hemispheres use `plotPolarSelectionMap` and the shared publication
-typography and EPS export helpers. Red stars show mission anchors; orange stars
-show regional study proxies. Labels use study IDs from the candidate file.
+The function reads enabled candidates from `config/paper_clps_sites.csv` and
+exports two separate, square figures with matching dimensions:
 
-`docs/clps_deployment_section.tex` contains the manuscript subsection and figure
-environment. Copy the EPS beside the manuscript or add its directory to the
-manuscript's graphics search path. The subsection uses the existing bibliography
-key `BlenderHodorowskiSinghAAS` and section labels from the manuscript.
+- `clps_study_sites_south.png`, `.pdf`, and `.eps`
+- `clps_study_sites_north.png`, `.pdf`, and `.eps`
+
+Both reuse the selection-frequency projection and grayscale DEM background.
+Neither has a title or legend. Red stars denote mission anchors and orange
+stars denote representative regional sites. The caption supplies this key.
+Short labels and leader lines keep text clear of the stars and map boundaries.
+Terrain shading is contextual and is normalized separately by hemisphere by
+the shared map helper. It is not a common quantitative elevation color scale.
+No optimization needs to be rerun.
+
+`docs/clps_deployment_section.tex` includes a 1-by-2 layout with subcaptions.
+Add `\usepackage{subcaption}` to the manuscript preamble and place the EPS
+files in the manuscript graphics search path. Use either these subfigure
+environments or a compatible subfigure mechanism supported by your journal.
+The existing bibliography key and section references are retained.
