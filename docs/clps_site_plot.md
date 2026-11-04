@@ -25,7 +25,7 @@ exports two separate, square figures with matching dimensions:
 - `clps_study_sites_north.png`, `.pdf`, and `.eps`
 
 Both reuse the selection-frequency projection and grayscale DEM background.
-Neither has a title or marker legend. Each has a grayscale elevation colorbar. Red stars denote mission anchors and orange
+Neither has a title or marker legend. Each has a grayscale elevation colorbar. Red stars denote mission anchors and blue
 stars denote representative regional sites. The caption supplies this key.
 Short labels and leader lines keep text clear of the stars and map boundaries.
 Both terrain surfaces and colorbars use identical elevation limits sampled

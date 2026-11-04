@@ -72,7 +72,7 @@ for hemisphere = ["south","north"]
     representative = current.Role=="south_pole_option";
     for k = 1:height(current)
         color = style.sensorColor;
-        if representative(k), color = style.orangeColor; end
+        if representative(k), color = style.blueColor; end
         scatter3(ax,x(k),y(k),4,115,color,"p","filled", ...
             "MarkerEdgeColor","white","LineWidth",0.9,"HandleVisibility","off");
         label = strrep(current.SiteId(k),"BGM","BG-");
