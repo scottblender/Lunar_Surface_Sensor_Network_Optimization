@@ -1,24 +1,42 @@
 \subsection{CLPS Deployment Sites and Candidate Locations}
 \label{subsec:clps_sites}
 
-NASA's CLPS initiative provides opportunities to deliver optical sensing instruments to the lunar surface through commercial landers. Blender, Hodorowski, and Singh used CLPS destination regions to contextualize terrain-informed observer placement over the lunar southern hemisphere, with a restricted south-polar domain retained for comparison \cite{BlenderHodorowskiSinghAAS}. The present study extends this deployment context by adopting representative CLPS locations as candidate sites for a fixed three-sensor network and as reference locations for geographically constrained sensor relocation. The candidate set includes mission anchors associated with Intuitive Machines IM-3 and Firefly Blue Ghost Missions 1, 2, and 3, together with representative south-polar locations near Mons Mouton and Schr\"odinger Basin. These candidates comprise an as-landed coordinate, published mission targets, and representative regional sites, and therefore represent deployment reference locations with differing levels of positional specificity. Each candidate is defined by its planetocentric latitude, east-positive longitude, and DEM-derived terrain elevation, with observation availability evaluated using the constraints introduced in Section~\ref{sec:preliminaries}. Figure~\ref{fig:clps_study_sites} illustrates the candidate locations, which also define the centers of the 100-km circular placement regions considered in Section~\ref{subsec:design_domains}.
+NASA's CLPS initiative provides opportunities to deliver optical sensing instruments to the lunar surface through commercial landers. Blender, Hodorowski, and Singh used CLPS destination regions to contextualize terrain-informed observer placement over the lunar southern hemisphere, with a restricted south-polar domain retained for comparison \cite{BlenderHodorowskiSinghAAS}. The present study adopts representative deployment locations from this broader mission context to define candidate sites for an initial LSO network. The mission anchors include the IM-3 target near Reiner Gamma, the Blue Ghost Mission 1 landing location, the planned Blue Ghost Mission 2 location on the lunar farside, and the Blue Ghost Mission 3 target near Mons Gruithuisen Gamma. Two additional representative sites near Mons Mouton and Schr\"odinger Basin are considered as alternatives for a south-polar deployment reference. The candidate set therefore includes an as-landed coordinate, published mission targets, and approximate regional locations. These distinctions are retained because the candidates do not represent confirmed landing points with a common level of positional accuracy. Each site is defined by its planetocentric latitude, east-positive longitude, and DEM-derived terrain elevation, with observation availability evaluated using the constraints introduced in Section~\ref{sec:preliminaries}. The fixed-site panel in Figure~\ref{fig:geographic_design_domains} illustrates the active candidate locations. Sensors placed at these reference locations provide a fixed-site baseline, although delivery locations may not coincide with favorable terrain clearance or observation geometry. Rovers and lunar hopper concepts provide motivation for considering sensor transport or deployment away from the initial landing location \cite{NASAVIPER2025,NASAMicroNova2025}. The geographic placement domains and assumptions used to represent this potential mobility are defined in Section~\ref{subsec:design_domains}.
 
 % Add \usepackage{subcaption} to the manuscript preamble.
+
+
+\subsection{Geographic Design Domains and Mobility Assumptions}
+\label{subsec:design_domains}
+
+Three geographic design domains are compared in this study to show how sensor arrangements may evolve as the lunar surface becomes more accessible. The first study performs sequential optimization over a population of fixed CLPS sites for a three-sensor network, with the south-polar reference site preselected based on measurement availability for the RSO database. This reference site remains eligible for selection but is not required to appear in the selected network. Afterwards, CLPS-constrained placement is considered, where the active CLPS reference sites define the centers of 100-km radius circular regions that are discretely indexed for sensor relocation. The three sensors are assigned to distinct reference sites, and locations within overlapping regions retain their association with each applicable site. This relocation is represented by a geographic mobility assumption motivated by rovers and hoppers \cite{NASAVIPER2025,NASAMicroNova2025}. The 100-km radius is not treated as a demonstrated transport capability, and traverse accessibility, energy requirements, payload capacity, and installation feasibility are not evaluated. After the CLPS-constrained study is performed, a global optimization domain over the entire lunar surface is studied for networks of 3, 5, 7, 10, 25, and 100 observers. This domain assesses the information gain available at sites that have fewer geographic constraints rather than assuming that sensors can be transported from a CLPS site to any location on the Moon.
+
+The main assumption in the CLPS-constrained and global studies is the use of a discretized grid of possible sensor locations. A common global grid with a nominal spacing of $15~\mathrm{km}\times15~\mathrm{km}$ is generated based on computational limitations and the resolution of the adopted DEM. The exact CLPS reference coordinates are added to this grid, and duplicate locations at the poles and longitude seam are removed. A precomputed database stores candidate terrain elevations, terrain horizons, and observation availability using the same RSO population, observation epochs, and Sun and Earth exclusion constraints. The database is built in bounded groups of candidates to limit memory requirements. Each domain then references the applicable entries in this common database. The fixed-site domain uses the active reference coordinates, the CLPS-constrained domain uses grid locations within a 100-km surface distance of those coordinates, and the global domain uses the full candidate set, including locations with no accepted observations. The precomputed data are queried during optimization without rebuilding the observation geometry for each domain, network size, or optimization algorithm. These domains quantify the performance differences between fixed deployment, nearby relocation, and unrestricted placement. Figure~\ref{fig:geographic_design_domains} illustrates the domains, and Table~\ref{tab:domain_settings} summarizes the settings.
+
 \begin{figure}[htbp]
     \centering
-    \begin{subfigure}[t]{0.49\linewidth}
-        \centering
-        \includegraphics[width=\linewidth]{clps_study_sites_south.eps}
-        \caption{Southern hemisphere.}
-        \label{fig:clps_sites_south}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[t]{0.49\linewidth}
-        \centering
-        \includegraphics[width=\linewidth]{clps_study_sites_north.eps}
-        \caption{Northern hemisphere.}
-        \label{fig:clps_sites_north}
-    \end{subfigure}
-    \caption{Representative CLPS deployment locations over the lunar DEM. Red stars denote mission anchors. Blue stars denote representative regional sites near Mons Mouton and Schr\"odinger Basin.}
-    \label{fig:clps_study_sites}
+    \includegraphics[width=\linewidth]{geographic_design_domains.eps}
+    \caption{Fixed CLPS, CLPS-constrained, and global placement domains. Red stars mark mission anchors and blue stars mark the active representative regional site. The inset shows a 100-km region. Global grid points are thinned for display only.}
+    \label{fig:geographic_design_domains}
 \end{figure}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Geographic design-domain settings.}
+    \label{tab:domain_settings}
+    \small
+    \begin{tabular}{@{}p{0.22\linewidth}p{0.49\linewidth}p{0.19\linewidth}@{}}
+        \toprule
+        Domain & Candidate locations & Observers \\
+        \midrule
+        Fixed CLPS & Exact active reference coordinates & 3 \\
+        CLPS-constrained & Shared grid within 100 km of active reference sites & 3 \\
+        Global & Full shared grid and exact reference coordinates & 3, 5, 7, 10, 25, 100 \\
+        \bottomrule
+    \end{tabular}
+    \par\smallskip
+    \begin{minipage}{0.94\linewidth}
+        \footnotesize
+        The shared grid has a nominal surface spacing of $15~\mathrm{km}\times15~\mathrm{km}$. Exact reference coordinates supplement the grid. The CLPS-constrained network assigns each observer to a distinct reference site.
+    \end{minipage}
+\end{table}
