@@ -110,9 +110,18 @@ setappdata(fig,"ManuscriptPlacementWidthInches",style.manuscriptWidthInches);
 applyManuscriptTypography(fig,"geographic_design_domains.eps",width);
 drawnow;
 % Magnify one actual 100-km domain without changing the global map extent.
+% Keep the inset labels clear of the BG-1 site marker to its left.
 position = axesHandles(2).Position;
-inset = axes(fig,"Position",[position(1)+0.70*position(3), ...
-    position(2)+0.48*position(4),0.27*position(3),0.46*position(4)]);
+% A single opaque panel reserves room for every tick, label, and title.
+insetBounds = [position(1)+0.70*position(3),position(2)+0.32*position(4), ...
+    0.29*position(3),0.66*position(4)];
+insetBackdrop = axes(fig,"Units","normalized","Position",insetBounds);
+rectangle(insetBackdrop,"Position",[0 0 1 1],"FaceColor","white", ...
+    "EdgeColor",[0.65 0.65 0.65],"LineWidth",0.5);
+xlim(insetBackdrop,[0 1]); ylim(insetBackdrop,[0 1]); axis(insetBackdrop,"off");
+inset = axes(fig,"Units","normalized","Position", ...
+    [insetBounds(1)+0.27*insetBounds(3),insetBounds(2)+0.23*insetBounds(4), ...
+    0.66*insetBounds(3),0.65*insetBounds(4)]);
 hold(inset,"on");
 anchor = 1;
 membership = views.clps.config.domainComparison.anchorMembership(:,anchor);
@@ -129,8 +138,10 @@ plot(inset,100*sin(angle),100*cos(angle),"Color",style.blueColor,"LineWidth",1);
 scatter(inset,0,0,55,style.sensorColor,"p","filled","MarkerEdgeColor","white");
 axis(inset,"equal"); xlim(inset,[-115 115]); ylim(inset,[-115 115]);
 xticks(inset,[-100 0 100]); yticks(inset,[-100 0 100]); box(inset,"on");
-title(inset,sites.SiteId(anchor)+": 100-km region","FontSize",9);
-xlabel(inset,"East (km)"); ylabel(inset,"North (km)");
+insetLabel = strrep(sites.SiteId(anchor),"IM3","IM-3");
+title(inset,insetLabel+": 100-km region","FontSize",9);
+xlabel(inset,"East (km)");
+ylabel(inset,"North (km)");
 set(findall(inset,"-property","FontName"),"FontName",style.fontName);
 set(findall(inset,"-property","FontWeight"),"FontWeight","bold");
 set(findall(inset,"-property","FontSize"),"FontSize",9);
