@@ -115,3 +115,48 @@ against a common baseline, rather than comparing adjacent increments.
 Optional run prefixes and `RequestedFE` subsets still apply. Runtimes use the
 original saved solver times, including reused checkpoints, excluding shared GPU
 preparation and post-processing. No optimization rerun is needed.
+
+## Study 2: increasing the number of independent runs
+
+After Study 2 finishes, generate the same two figure types with one command:
+
+```matlab
+setupProject;
+plots = plotGaRunCountConvergence( ...
+    "results/ga_convergence_study2_gpu_9000fe", ...
+    "data/Synthetic_Lunar_DEM.mat");
+winopen(plots.outputDirectory);
+```
+
+This reads the completed study and uses the saved run counts, normally
+20, 50, 100, 250, 500, and 1000, at the largest saved FE budget (9000 for Study 2).
+The polar figure has run-count columns and south/north rows for each observer.
+The boxplot figure has one observer per subplot, with run counts on the x-axis.
+Both show the same actual sites/distances as the Study 1 plot types, allowing
+observer labels to swap. Titles contain only counts, observer/hemisphere and
+fixed reference metadata; there are no subtitles.
+
+Run counts are nested prefixes of the existing independent runs. Alignment is
+computed once against the best network in the largest displayed prefix and
+reused in every panel and both figures. Smaller prefixes retain that same
+reference even when they do not contain the best run. No optimization rerun,
+GPU or database is needed for plotting. The DEM is optional.
+
+To choose prefixes or a fixed FE explicitly:
+
+```matlab
+plots = plotGaRunCountConvergence( ...
+    "results/ga_convergence_study2_gpu_9000fe", ...
+    "data/Synthetic_Lunar_DEM.mat", [20 50 100 250 500 1000], RequestedFE=9000);
+```
+
+Outputs are under `<study>/observer_run_count_plots/fe_9000/n_20_50_100_250_500_1000/`:
+
+- `observer_locations.png` and `.pdf`: polar site clouds across run counts.
+- `observer_spread_vs_runs.png` and `.pdf`: distance boxplots across run counts.
+- `observer_distances_vs_runs.csv`: aligned distances with `IndependentRuns`
+  identifying the prefix. Runs intentionally appear once per prefix containing
+  them. Each prefix has exactly one site per run per observer, across hemispheres.
+
+The returned `plots.polar` and `plots.spread` contain the file paths, shared
+reference and aligned table. Existing Study 1 commands retain their FE behavior.
