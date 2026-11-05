@@ -95,7 +95,7 @@ for file=[report.pngFile report.pdfFile report.locationsCsvFile]
     info=dir(file); verifyTrue(testCase,isscalar(info)); verifyGreaterThan(testCase,info.bytes,0);
 end
 end
-function testSimpleBudgetEfficiencyUsesCommonBaselineAndEqualObserverWeights(testCase)
+function testManuscriptEfficiencyNormalizesThreeComponents(testCase)
 folder=fixture(testCase); reference=[-30 270;0 0;30 120];
 offsets=[0 0 10 10;0 0 4 4;0 0 8 8];
 timings=[100 10 10 10;20 20 20 100;40 40 40 100];
@@ -113,22 +113,18 @@ records(9).objective=-2;
 result=struct("status","complete","records",records);
 file=fullfile(folder,"ga_convergence_study.mat"); save(file,"result");
 before=findall(groot,'Type','figure');
-efficiency=plotGaObserverEfficiency(folder); arc=deg2rad(1)*1737.4;
-verifyEqual(testCase,efficiency.Properties.VariableNames,{'FE','EfficiencyKmPerSecond'});
+efficiency=plotGaObserverEfficiency(folder);
+verifyEqual(testCase,efficiency.Properties.VariableNames,{'FE','Efficiency'});
 verifyEqual(testCase,efficiency.FE,[6000;9000;12000]);
-verifyTrue(testCase,isnan(efficiency.EfficiencyKmPerSecond(1)));
-expected=[0.6;2/30]*arc*mean([1 0.5 0.25]);
-verifyEqual(testCase,efficiency.EfficiencyKmPerSecond(2:3),expected,'AbsTol',1e-8);
+expected=[1/3;5/9;4/9];
+verifyEqual(testCase,efficiency.Efficiency,expected,'AbsTol',1e-8);
 verifyEqual(testCase,findall(groot,'Type','figure'),before);
-files=dir(fullfile(folder,'observer_location_plots','n_4','fe_6000_9000_12000'));
-verifyEqual(testCase,string({files(~[files.isdir]).name}),"fe_efficiency.csv");
-saved=readtable(fullfile(files(1).folder,'fe_efficiency.csv'));
-verifyEqual(testCase,saved.EfficiencyKmPerSecond(2:3),expected,'AbsTol',1e-8);
-% Equal and decreasing runtime changes must not turn into infinite/misleading ratios.
-for k=5:8, result.records(k).runtimeSeconds=10; end
-for k=9:12, result.records(k).runtimeSeconds=5; end
+saved=readtable(fullfile(folder,"observer_location_plots","n_4","fe_6000_9000_12000","fe_efficiency.csv"));
+verifyEqual(testCase,saved.Efficiency,expected,'AbsTol',1e-8);
+% A constant runtime contributes zero loss, without changing the weights.
+for k=1:12, result.records(k).runtimeSeconds=10; end
 save(file,"result"); efficiency=plotGaObserverEfficiency(folder);
-verifyTrue(testCase,all(isnan(efficiency.EfficiencyKmPerSecond)));
+verifyEqual(testCase,efficiency.Efficiency,[1/3;2/3;7/9],'AbsTol',1e-8);
 result.records(1).runtimeSeconds=NaN; save(file,"result");
 verifyError(testCase,@()plotGaObserverEfficiency(folder),'observerEfficiency:Runtime');
 result.records=rmfield(result.records,'runtimeSeconds'); save(file,"result");
@@ -192,6 +188,43 @@ a=loadGaObserverPlotData(folder,Inf,12000,"runs",[2]);
 verifyEqual(testCase,height(a.locations),6);
 verifyEqual(testCase,a.groupRunCounts,2);
 verifyEqual(testCase,a.referenceSeed,1001);
+end
+function testManuscriptPostprocessPairsCheckpointsAndExportsFigures(testCase)
+folder=fixture(testCase);
+saved=load(fullfile(folder,"ga_convergence_study.mat"),"result");
+result=saved.result;
+for k=1:4, result.records(k).runtimeSeconds=10*k; end
+save(fullfile(folder,"ga_convergence_study.mat"),"result");
+benchmarkDirectory=fullfile(folder,"benchmark");
+study2Directory=fullfile(folder,"study2");
+mkdir(study2Directory);
+result.records=result.records(1:2);
+result.config.runCounts=2;
+result.totalElapsedSeconds=35;
+save(fullfile(study2Directory,"ga_convergence_study.mat"),"result");
+mkdir(fullfile(benchmarkDirectory,"cpu"));
+mkdir(fullfile(benchmarkDirectory,"gpu"));
+result.records(1).history=struct("fe",[2 4 6000],"bestJ",[-1 -2 -4]);
+result.records(2).history=struct("fe",[4 6000],"bestJ",[-4 -6]);
+result.records(1).rawFE=6001;
+result.records(2).rawFE=6002;
+save(fullfile(benchmarkDirectory,"cpu","ga_convergence_study.mat"),"result");
+result.records=flipud(result.records);
+result.records(1).history.bestJ=[-6 -8];
+save(fullfile(benchmarkDirectory,"gpu","ga_convergence_study.mat"),"result");
+benchmark=struct("status","complete","agreement",table(true,'VariableNames',{'Passed'}), ...
+    "timing",table(["cpu";"gpu"],'VariableNames',{'Backend'}));
+save(fullfile(benchmarkDirectory,"gpu_ga_benchmark.mat"),"benchmark");
+out=fullfile(folder,"manuscript");
+report=postprocessGaManuscript(benchmarkDirectory,folder,study2Directory,out);
+verifyEqual(testCase,report.benchmarkCheckpoints.RecordedFE,[4;6000]);
+verifyEqual(testCase,report.benchmarkCheckpoints.MeanCPUObjective,[-3;-5]);
+verifyEqual(testCase,report.benchmarkCheckpoints.MeanGPUObjective,[-4;-6]);
+verifyEqual(testCase,report.runSummary.CumulativeSolverSeconds,30);
+verifyEqual(testCase,report.runSummary.RecordedCampaignWallSeconds,35);
+for file=[report.benchmarkFigure,report.feFigure,report.runFigure]
+    verifyTrue(testCase,isfile(file));
+end
 end
 function folder=fixture(testCase)
 folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
