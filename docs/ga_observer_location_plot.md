@@ -101,20 +101,11 @@ setupProject;
 efficiency = plotGaObserverEfficiency("results/ga_convergence_study1_gpu");
 ```
 
-This prints and returns only `FE` and `EfficiencyKmPerSecond`, and saves the same
-two-column table as `fe_efficiency.csv` beside the observer plots. No figure or
-other tables are generated. Previous outputs are retained.
-
-Efficiency is the reduction in mean observer IQR divided by added median solver
-runtime per run, both relative to the lowest selected FE budget (normally 6000).
-The three observer IQRs have equal weight. All budgets use the same highest-FE
-best-run reference and site matching. The baseline and any nonpositive runtime
-increase have undefined efficiency, shown as NaN. This compares final budgets
-against a common baseline, rather than comparing adjacent increments.
-
-Optional run prefixes and `RequestedFE` subsets still apply. Runtimes use the
-original saved solver times, including reused checkpoints, excluding shared GPU
-preparation and post-processing. No optimization rerun is needed.
+This prints FE and the manuscript's dimensionless efficiency score, and saves
+`fe_efficiency.csv`. Mean final objective, mean solver runtime per run, and mean
+observer IQR are each normalized across the selected budgets. A constant
+component contributes zero loss. Efficiency is one minus the mean of the
+three normalized losses.
 
 ## Study 2: increasing the number of independent runs
 
@@ -160,3 +151,25 @@ Outputs are under `<study>/observer_run_count_plots/fe_9000/n_20_50_100_250_500_
 
 The returned `plots.polar` and `plots.spread` contain the file paths, shared
 reference and aligned table. Existing Study 1 commands retain their FE behavior.
+
+
+## Manuscript search figures and tables
+
+```matlab
+setupProject;
+paper = postprocessGaManuscript( ...
+    "results/gpu_ga_benchmark_6000fe_20runs", ...
+    "results/ga_convergence_study1_gpu", ...
+    "results/ga_convergence_study2_gpu_9000fe");
+```
+
+The command reads the saved benchmark and sweep MAT files and exports
+`cpu_gpu_comparison.eps`, `fe_budget_comparison.eps`, and
+`independent_run_comparison.eps` to `results/manuscript_search` by default.
+The figures use panel letters, axis labels, and legends. The CSVs provide the
+benchmark agreement, throughput, raw solver FE, and mean objectives at
+checkpoints recorded by every CPU and GPU run. Study 1 tables contain the
+efficiency components and observer quartiles. Study 2 tables report the same
+distance summaries over nested run prefixes at the saved budget. Prefix cost
+is the sum of recorded per-run solver times. The saved total wall time is
+reported separately for the full campaign when available.

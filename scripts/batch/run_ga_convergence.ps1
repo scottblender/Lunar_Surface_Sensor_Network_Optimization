@@ -8,19 +8,15 @@ Launch one MATLAB GA convergence request for three global observers.
 .\scripts\batch\run_ga_convergence.ps1 -Study 1 -DatabaseFile 'D:\Lunar Data\optimization_database.mat' -RunCounts 2 -FunctionEvaluationBudgets 120,240 -PopulationSize 60 -OutputDirectory 'results/ga_smoke'
 .EXAMPLE
 .\scripts\batch\run_ga_convergence.ps1 -Study 2 -DatabaseFile 'D:\Lunar Data\optimization_database.mat' -SelectedBudget 12000
-.EXAMPLE
-.\scripts\batch\run_ga_convergence.ps1 -Study 3 -DatabaseFile 'D:\Lunar Data\optimization_database.mat' -SelectedBudget 12000 -HigherBudget 15000 -ConfirmationRuns 1000
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('1','2','3','Custom')][string]$Study = '1',
+    [ValidateSet('1','2','Custom')][string]$Study = '1',
     [Parameter(Mandatory=$true)][string]$DatabaseFile,
     [string]$OutputDirectory,
     [int[]]$RunCounts,
     [int[]]$FunctionEvaluationBudgets,
     [int]$SelectedBudget,
-    [int]$HigherBudget,
-    [int]$ConfirmationRuns = 1000,
     [int]$PopulationSize = 60,
     [long]$BaseSeed = 1000,
     [ValidateSet('serial','runs','population','gpu')][string]$ParallelMode = 'gpu',
@@ -52,7 +48,6 @@ try {
         switch ($Study) {
             '1' { $RunCounts = @(100) }
             '2' { $RunCounts = @(20,50,100,250,500,1000) }
-            '3' { $RunCounts = @($ConfirmationRuns) }
             'Custom' { throw 'Custom study requires -RunCounts.' }
         }
     }
@@ -63,12 +58,6 @@ try {
                 if ($SelectedBudget -le 0) { throw 'Study 2 requires -SelectedBudget, chosen after reviewing Study 1.' }
                 $FunctionEvaluationBudgets = @($SelectedBudget)
             }
-            '3' {
-                if ($SelectedBudget -le 0 -or $HigherBudget -le $SelectedBudget) {
-                    throw 'Study 3 requires -SelectedBudget and -HigherBudget greater than the selected budget.'
-                }
-                $FunctionEvaluationBudgets = @($SelectedBudget,$HigherBudget)
-            }
             'Custom' { throw 'Custom study requires -FunctionEvaluationBudgets.' }
         }
     }
@@ -76,7 +65,6 @@ try {
         switch ($Study) {
             '1' { $OutputDirectory = 'results/ga_convergence_study1' }
             '2' { $OutputDirectory = 'results/ga_convergence_study2' }
-            '3' { $OutputDirectory = 'results/ga_convergence_study3' }
             'Custom' { throw 'Custom study requires -OutputDirectory.' }
         }
     }
