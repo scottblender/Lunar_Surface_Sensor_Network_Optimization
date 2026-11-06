@@ -31,7 +31,8 @@ end
 if ~isfolder(outputDirectory), mkdir(outputDirectory); end
 feSummary.Properties.VariableNames{1}='RequestedFE';
 feObservers.Properties.VariableNames{1}='RequestedFE';
-runSummary=removevars(runSummary,["Setting","ObjectiveLoss","RuntimeLoss","SpreadLoss","Efficiency"]);
+runSummary=removevars(runSummary,["Setting","PreviousSetting","RelativeObjectiveImprovement", ...
+    "RelativeIQRImprovement","RelativeRuntimeIncrease","Efficiency"]);
 runObservers.Properties.VariableNames{1}='IndependentRuns';
 writetable(feSummary,fullfile(outputDirectory,"fe_budget_summary.csv"));
 writetable(feObservers,fullfile(outputDirectory,"fe_observer_distances.csv"));
@@ -105,13 +106,13 @@ end
 
 function file=plotBudgets(t,out)
 [fig,layout,cleanup]=paperLayout(2,2,5.6); %#ok<ASGLU>
-labels=["Mean final objective","Mean runtime per run (s)","Mean distance IQR (km)","Efficiency"];
+labels=["Mean final objective","Mean runtime per run (s)","Mean distance IQR (km)","Marginal efficiency"];
 values=[t.MeanFinalObjective,t.MeanSolverSecondsPerRun,t.MeanIQRKm,t.Efficiency];
 for k=1:numel(labels)
     ax=nexttile(layout);
     plotSeries(ax,t.RequestedFE,values(:,k),"Requested FE per run",labels(k));
     panel(ax,"("+string(char('a'+k-1))+")");
-    if k==4, ylim(ax,[0 1]); end
+    if k==4, yline(ax,0,":"); end
 end
 file=exportPaper(fig,out,"fe_budget_comparison",5.6);
 end
