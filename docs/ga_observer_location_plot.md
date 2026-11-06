@@ -101,11 +101,19 @@ setupProject;
 efficiency = plotGaObserverEfficiency("results/ga_convergence_study1_gpu");
 ```
 
-This prints FE and the manuscript's dimensionless efficiency score, and saves
-`fe_efficiency.csv`. Mean final objective, mean solver runtime per run, and mean
-observer IQR are each normalized across the selected budgets. A constant
-component contributes zero loss. Efficiency is one minus the mean of the
-three normalized losses.
+This prints FE and dimensionless marginal efficiency and saves `fe_efficiency.csv`.
+Each score compares the listed budget with the preceding selected budget.
+It is the equally weighted mean of the fractional decreases in mean final
+objective and mean observer IQR, divided by the fractional increase in mean
+solver runtime per run. The objective change is divided by the absolute
+preceding objective because the objective can be negative.
+
+The first budget and transitions with zero or negative added runtime have
+undefined scores (NaN). A quality metric that stays at zero contributes zero
+improvement. A change from zero has undefined relative improvement. Negative
+scores indicate that quality worsened on average. The manuscript CSV includes
+the preceding budget and all three relative changes. IQRs use the common
+reference selected for the sweep.
 
 ## Study 2: increasing the number of independent runs
 

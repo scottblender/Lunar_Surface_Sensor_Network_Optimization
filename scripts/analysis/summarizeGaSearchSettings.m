@@ -31,16 +31,30 @@ for k=1:n
     observerRows{k}=table(repmat(settings(k),3,1),(1:3).',quartiles(:,1),quartiles(:,2), ...
         quartiles(:,3),widths,'VariableNames',{'Setting','Observer','Q25Km','MedianKm','Q75Km','IQRKm'});
 end
-values=[meanObjective,meanRuntime,spread];
-minima=min(values,[],1);
-ranges=max(values,[],1)-minima;
-loss=zeros(size(values));
-varying=ranges>0;
-loss(:,varying)=(values(:,varying)-minima(varying))./ranges(varying);
-efficiency=1-mean(loss,2);
+previousObjective=meanObjective(1:end-1);
+previousSpread=spread(1:end-1);
+previousRuntime=meanRuntime(1:end-1);
+objectiveGain=relativeDecrease(previousObjective,meanObjective(2:end));
+spreadGain=relativeDecrease(previousSpread,spread(2:end));
+runtimeIncrease=(meanRuntime(2:end)-previousRuntime)./previousRuntime;
+
+% Each score belongs to the transition into the setting on that row.
+score=NaN(size(runtimeIncrease));
+valid=runtimeIncrease>0 & isfinite(objectiveGain) & isfinite(spreadGain);
+score(valid)=(objectiveGain(valid)+spreadGain(valid))./(2*runtimeIncrease(valid));
 summary=table(settings,counts,meanObjective,meanRuntime,campaignRuntime,spread, ...
-    loss(:,1),loss(:,2),loss(:,3),efficiency,'VariableNames',{'Setting','IndependentRuns', ...
+    [NaN;settings(1:end-1)],[NaN;objectiveGain],[NaN;spreadGain], ...
+    [NaN;runtimeIncrease],[NaN;score],'VariableNames',{'Setting','IndependentRuns', ...
     'MeanFinalObjective','MeanSolverSecondsPerRun','CumulativeSolverSeconds','MeanIQRKm', ...
-    'ObjectiveLoss','RuntimeLoss','SpreadLoss','Efficiency'});
+    'PreviousSetting','RelativeObjectiveImprovement','RelativeIQRImprovement', ...
+    'RelativeRuntimeIncrease','Efficiency'});
 observers=vertcat(observerRows{:});
+end
+
+
+function improvement=relativeDecrease(previous,current)
+improvement=NaN(size(previous));
+nonzero=previous~=0;
+improvement(nonzero)=(previous(nonzero)-current(nonzero))./abs(previous(nonzero));
+improvement(previous==0 & current==0)=0;
 end

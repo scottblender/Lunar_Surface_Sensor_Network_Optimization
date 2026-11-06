@@ -1,6 +1,6 @@
 function efficiency=plotGaObserverEfficiency(studyDirectory,independentRuns,options)
-% PLOTGAOBSERVEREFFICIENCY - Print FE and the manuscript efficiency score.
-% Equal weighting of normalized mean objective, mean runtime and mean IQR.
+% PLOTGAOBSERVEREFFICIENCY - Print FE and marginal efficiency by FE budget.
+% Mean relative improvement in objective and IQR per relative runtime increase.
 arguments
     studyDirectory (1,1) string
     independentRuns (1,1) double = Inf

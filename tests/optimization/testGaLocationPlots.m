@@ -95,7 +95,7 @@ for file=[report.pngFile report.pdfFile report.locationsCsvFile]
     info=dir(file); verifyTrue(testCase,isscalar(info)); verifyGreaterThan(testCase,info.bytes,0);
 end
 end
-function testManuscriptEfficiencyNormalizesThreeComponents(testCase)
+function testManuscriptEfficiencyMeasuresAdjacentGainsPerRelativeCost(testCase)
 folder=fixture(testCase); reference=[-30 270;0 0;30 120];
 offsets=[0 0 10 10;0 0 4 4;0 0 8 8];
 timings=[100 10 10 10;20 20 20 100;40 40 40 100];
@@ -116,15 +116,18 @@ before=findall(groot,'Type','figure');
 efficiency=plotGaObserverEfficiency(folder);
 verifyEqual(testCase,efficiency.Properties.VariableNames,{'FE','Efficiency'});
 verifyEqual(testCase,efficiency.FE,[6000;9000;12000]);
-expected=[1/3;5/9;4/9];
-verifyEqual(testCase,efficiency.Efficiency,expected,'AbsTol',1e-8);
+% Mean runtimes are 32.5, 40, and 55 s. Mean objectives are -1, -1,
+% and -1.25. The IQRs scale with the widths 10, 4, and 8.
+expected=[0.6/(2*(7.5/32.5)); (0.25-1)/(2*(15/40))];
+verifyTrue(testCase,isnan(efficiency.Efficiency(1)));
+verifyEqual(testCase,efficiency.Efficiency(2:end),expected,'AbsTol',1e-8);
 verifyEqual(testCase,findall(groot,'Type','figure'),before);
 saved=readtable(fullfile(folder,"observer_location_plots","n_4","fe_6000_9000_12000","fe_efficiency.csv"));
-verifyEqual(testCase,saved.Efficiency,expected,'AbsTol',1e-8);
-% A constant runtime contributes zero loss, without changing the weights.
+verifyEqual(testCase,saved.Efficiency(2:end),expected,'AbsTol',1e-8);
+% A ratio requires a positive increase in runtime.
 for k=1:12, result.records(k).runtimeSeconds=10; end
 save(file,"result"); efficiency=plotGaObserverEfficiency(folder);
-verifyEqual(testCase,efficiency.Efficiency,[1/3;2/3;7/9],'AbsTol',1e-8);
+verifyTrue(testCase,all(isnan(efficiency.Efficiency)));
 result.records(1).runtimeSeconds=NaN; save(file,"result");
 verifyError(testCase,@()plotGaObserverEfficiency(folder),'observerEfficiency:Runtime');
 result.records=rmfield(result.records,'runtimeSeconds'); save(file,"result");
