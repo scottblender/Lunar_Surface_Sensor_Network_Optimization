@@ -70,6 +70,22 @@ f=createBatchedInformationObjective(db,"cpu");
 verifyEqual(testCase,f([1 2 3]),optimization.networkObjective([1 2 3],db,"information"),'AbsTol',1e-8);
 verifyEqual(testCase,f([1 2 4]),db.objective.infeasiblePenalty);
 end
+function testProductionLargeNetworks(testCase)
+folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
+[master,~]=createRevisedStudyFixture(folder,[600;1200;1800],500);
+[views,~]=derivePaperDomains(master); db=views.global;
+score=createBatchedInformationObjective(db,"cpu",2,[25 100]);
+for count=[25 100]
+    networks=[1:count;2:count+1;count:-1:1];
+    observed=score(networks);
+    for row=1:size(networks,1)
+        verifyEqual(testCase,observed(row),optimization.networkObjective(networks(row,:),db,"information"), ...
+            'AbsTol',1e-8,'RelTol',1e-9);
+    end
+    verifyEqual(testCase,score(networks(1,:).'),observed(1));
+end
+end
+
 function testAllSolversSaveCpuCheckedWinner(testCase)
 [db,folder]=fixture(testCase,[600;1200;1800]);
 file=fullfile(folder,"global.mat"); database=db; save(file,"database","-v7.3");

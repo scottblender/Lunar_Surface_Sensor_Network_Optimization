@@ -96,7 +96,7 @@ The launcher finds a unique `paper_shared/optimization_database.mat` under
 `results`. Use `-DatabaseFile` if there are multiple masters or yours is
 outside that directory. Paths supplied to the launcher can be relative to
 the repository root. The default output directory is
-`results/paper_study_selected_anchors`, and logs are in
+`results/paper_study_global_25_100`, and logs are in
 `results/paper_study_logs`. The console and `sequential_stages.csv` show the
 three sequential selections and their scores.
 
@@ -106,7 +106,7 @@ From MATLAB:
 setupProject;
 config = paperStudyConfiguration( ...
     "results/paper_domains/paper_shared/optimization_database.mat", ...
-    "results/paper_study_selected_anchors");
+    "results/paper_study_global_25_100");
 % Preflight the production case plan without creating output files.
 config.validateOnly = true;
 plan = runRevisedPaperStudy(config);
@@ -128,7 +128,7 @@ The fixed CLPS case scores each eligible addition at each sequential stage
 joint three-observer CLPS neighborhood searches restricted to the 100-km disks
 around the three sequentially selected sites, with one observer assigned
 to each selected anchor. They also run joint global searches
-at 3, 5, 7, and 10 observers, for 20 optimized cases and 1,000 solver runs.
+at 3, 5, 7, 10, 25, and 100 observers, for 28 optimized cases and 1,400 solver runs.
 `case_plan.csv` records the matrix. Reuse the same output directory and
 settings to resume completed runs and cases. Remove a stale `study.lock`
 only after verifying that the MATLAB process has exited.

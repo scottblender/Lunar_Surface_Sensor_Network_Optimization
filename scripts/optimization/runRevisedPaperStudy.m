@@ -67,7 +67,6 @@ if config.objectiveBackend=="gpu"
     assert(~isempty(ver('parallel')) && canUseGPU,"runRevisedPaperStudy:GPU","A supported NVIDIA GPU is required.");
     assert(master.meta.measurementJacobianStorage=="on_demand", ...
         "runRevisedPaperStudy:Storage","GPU mode requires an on_demand database.");
-    assert(max(sizes)<=10,"runRevisedPaperStudy:GPUSize","GPU mode supports at most ten observers.");
 end
 fixed=runFixedClpsSequential(views.clps_fixed,string(config.sideOrder));
 % Each stage supplies one anchor for the neighborhood search. Retain all

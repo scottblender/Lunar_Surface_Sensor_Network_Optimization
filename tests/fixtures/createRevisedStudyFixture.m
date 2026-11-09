@@ -1,6 +1,7 @@
-function [database,file] = createRevisedStudyFixture(folder,times)
+function [database,file] = createRevisedStudyFixture(folder,times,spacingKm)
 % CREATEREVISEDSTUDYFIXTURE - Tiny physical two-body/chunked database with a flat test DEM.
-plan=planPaperDatabase(struct("spacingKm",1800,"maximumCandidatesPerChunk",500));
+if nargin<3, spacingKm=1800; end
+plan=planPaperDatabase(struct("spacingKm",spacingKm,"maximumCandidatesPerChunk",500));
 lat=plan.latitudesRad; lon=plan.longitudesRad; n=numel(lat);
 if nargin<2, times=[600;1200;1800]; end
 times=times(:); nt=numel(times); no=2; radius=1737.4; mu=4902.800066;

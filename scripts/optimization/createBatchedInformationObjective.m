@@ -1,5 +1,5 @@
 function [objective,metadata] = createBatchedInformationObjective(database,device,batchSize,networkSizes)
-% CREATEBATCHEDINFORMATIONOBJECTIVE - Double-precision information score for up to ten sites.
+% CREATEBATCHEDINFORMATIONOBJECTIVE - Double-precision information score for discrete sensor networks.
 % 'gpu' uses MATLAB GPU arrayfun: one thread per network/object, with epochs
 % sequential within a thread. No CUDA compiler or custom MEX is required.
 % 'cpu' executes the exact same scalar kernel for data-free numerical tests.
@@ -10,7 +10,7 @@ arguments
     database (1,1) struct
     device (1,1) string {mustBeMember(device,["cpu","gpu"])} = "gpu"
     batchSize (1,1) double {mustBeInteger,mustBePositive} = 60
-    networkSizes (1,:) double {mustBeInteger,mustBePositive,mustBeLessThanOrEqual(networkSizes,10)} = 3
+    networkSizes (1,:) double {mustBeInteger,mustBePositive} = 3
 end
 domain=database.config.domainComparison;
 assert(ismember(domain.domain,["global","clps","clps_fixed"]), ...
@@ -19,6 +19,8 @@ assert(database.meta.measurementJacobianStorage=="on_demand", ...
     "gpuInformation:Storage","Use the existing on_demand database.");
 n=database.meta.numberOfCandidates; nt=database.meta.numberOfOptimizationEpochs;
 no=database.meta.numberOfObjects; penalty=database.objective.infeasiblePenalty;
+assert(~isempty(networkSizes) && all(networkSizes<=n), ...
+    "gpuInformation:NetworkSize","Configure at least one network size within the candidate count.");
 prior=double(database.prior.initialCovariances);
 transitions=double(database.tracking.stateTransitionHistories);
 noise=double(database.tracking.processNoiseHistories);
@@ -52,10 +54,11 @@ xyz=double([radius.*cos(lat).*cos(lon),radius.*cos(lat).*sin(lon),radius.*sin(la
 angle=database.config.moon.theta0Rad+2*pi/database.config.moon.siderealPeriodSeconds*database.tracking.times(:);
 cosine=cos(angle); sine=sin(angle);
 estimatedBytes=n*nt*no+8*(numel(prior)+numel(transitions)+numel(noise)+ ...
-    numel(reference)+numel(measurement)+numel(xyz)+numel(scales)+numel(weights)+numel(angle)*2);
+    numel(reference)+numel(measurement)+numel(xyz)+numel(scales)+numel(weights)+numel(angle)*2 + ...
+    batchSize*(max(networkSizes)+1+no));
 metadata=struct("device",device,"precision","double","batchSize",batchSize, ...
     "estimatedResidentBytes",estimatedBytes,"numberOfCandidates",n,"numberOfObjects",no, ...
-    "numberOfEpochs",nt,"updateRule","sequential independent 2x2 Joseph updates");
+    "numberOfEpochs",nt,"networkSizes",networkSizes,"updateRule","sequential independent 2x2 Joseph updates");
 if device=="gpu"
     g=gpuDevice;
     assert(estimatedBytes*1.3+512*2^20<g.AvailableMemory,"gpuInformation:Memory", ...
@@ -103,20 +106,9 @@ objective=@evaluate;
         values=repmat(penalty,size(networks,1),1); rows=find(valid);
         for first=1:batchSize:numel(rows)
             selected=rows(first:min(first+batchSize-1,numel(rows)));
-            sites=zeros(numel(selected),10);
-            sites(:,1:size(networks,2))=networks(selected,:);
-            if device=="gpu"
-                sites=gpuArray(sites);
-                objectIds=objects;
-            else
-                objectIds=repmat(objects,numel(selected),1);
-            end
-            columns=cell(1,10);
-            for slot=1:10, columns{slot}=sites(:,slot); end
-            if device=="cpu"
-                columns=cellfun(@(column) repmat(column,1,no),columns,'UniformOutput',false);
-            end
-            byObject=arrayfun(@trajectory,columns{:},objectIds);
+            sites=networks(selected,:);
+            if device=="gpu", sites=gpuArray(sites); end
+            byObject=scoreBatch(sites);
             scores=-sum(byObject.*weights,2);
             if device=="gpu", scores=gather(scores); end
             assert(all(isfinite(scores)),"gpuInformation:Numerics", ...
@@ -125,8 +117,19 @@ objective=@evaluate;
         end
     end
 
+    function byObject=scoreBatch(batchSites)
+        % Pass only row and object indices to the kernel. Each thread reads
+        % its sites from the parent batch, with no fixed sensor argument list.
+        sensorCount=size(batchSites,2);
+        batchRows=(1:size(batchSites,1)).';
+        if device=="gpu"
+            byObject=arrayfun(@trajectory,gpuArray(batchRows),objects);
+        else
+            byObject=arrayfun(@trajectory,repmat(batchRows,1,no),repmat(objects,numel(batchRows),1));
+        end
+
 % BEGIN GENERATED KERNEL
-        function score = trajectory(n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,object)
+        function score = trajectory(networkRow,object)
         % One CUDA thread per network/object; double scalar registers only.
         p11 = 0.5*(prior(1,1,object)+prior(1,1,object));
         p12 = 0.5*(prior(1,2,object)+prior(2,1,object));
@@ -244,18 +247,8 @@ objective=@evaluate;
         p55 = 0.5*(t51*f51 + t52*f52 + t53*f53 + t54*f54 + t55*f55 + t56*f56 + t51*f51 + t52*f52 + t53*f53 + t54*f54 + t55*f55 + t56*f56 + noise(5,5,epoch,object)+noise(5,5,epoch,object));
         p56 = 0.5*(t51*f61 + t52*f62 + t53*f63 + t54*f64 + t55*f65 + t56*f66 + t61*f51 + t62*f52 + t63*f53 + t64*f54 + t65*f55 + t66*f56 + noise(5,6,epoch,object)+noise(6,5,epoch,object));
         p66 = 0.5*(t61*f61 + t62*f62 + t63*f63 + t64*f64 + t65*f65 + t66*f66 + t61*f61 + t62*f62 + t63*f63 + t64*f64 + t65*f65 + t66*f66 + noise(6,6,epoch,object)+noise(6,6,epoch,object));
-        for sensor = 1:10
-        if sensor==1, site=n1;
-        elseif sensor==2, site=n2;
-        elseif sensor==3, site=n3;
-        elseif sensor==4, site=n4;
-        elseif sensor==5, site=n5;
-        elseif sensor==6, site=n6;
-        elseif sensor==7, site=n7;
-        elseif sensor==8, site=n8;
-        elseif sensor==9, site=n9;
-        else, site=n10; end
-        if site==0, break; end
+        for sensor = 1:sensorCount
+        site=batchSites(networkRow,sensor);
         x = reference(1,epoch,object)-(xyz(site,1)*cosine(epoch)-xyz(site,2)*sine(epoch));
         y = reference(2,epoch,object)-(xyz(site,1)*sine(epoch)+xyz(site,2)*cosine(epoch));
         z = reference(3,epoch,object)-xyz(site,3);
@@ -453,4 +446,5 @@ objective=@evaluate;
         score=score/nt;
         end
 % END GENERATED KERNEL
+    end
 end

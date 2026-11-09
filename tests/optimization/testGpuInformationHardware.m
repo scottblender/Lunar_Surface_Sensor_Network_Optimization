@@ -48,3 +48,18 @@ for k=1:4
 end
 reused=runGaConvergenceStudy(request); verifyEqual(testCase,reused.reusedRuns,4);
 end
+
+function testLargeGlobalNetworksOnGpu(testCase)
+folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
+[master,~]=createRevisedStudyFixture(folder,[600;1200;1800],500);
+[views,~]=derivePaperDomains(master); database=views.global;
+gpuObjective=createBatchedInformationObjective(database,"gpu",2,[25 100]);
+for count=[25 100]
+    networks=[1:count;2:count+1;count:-1:1];
+    observed=gpuObjective(networks);
+    for row=1:size(networks,1)
+        verifyEqual(testCase,observed(row),optimization.networkObjective(networks(row,:),database,"information"), ...
+            'AbsTol',1e-8,'RelTol',1e-9);
+    end
+end
+end
