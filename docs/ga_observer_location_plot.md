@@ -174,10 +174,19 @@ paper = postprocessGaManuscript( ...
 The command reads the saved benchmark and sweep MAT files and exports
 `cpu_gpu_comparison.eps`, `fe_budget_comparison.eps`, and
 `independent_run_comparison.eps` to `results/manuscript_search` by default.
-The figures use panel letters, axis labels, and legends. The CSVs provide the
+The figures use axis labels and legends. Supply panel lettering in LaTeX. The CSVs provide the
 benchmark agreement, throughput, raw solver FE, and mean objectives at
 checkpoints recorded by every CPU and GPU run. Study 1 tables contain the
 efficiency components and observer quartiles. Study 2 tables report the same
 distance summaries over nested run prefixes at the saved budget. Prefix cost
 is the sum of recorded per-run solver times. The saved total wall time is
 reported separately for the full campaign when available.
+
+The Study 2 summary also reports marginal efficiency across run-count
+increases. The largest saved prefix is the reference (1,000 runs for the
+production sweep). Objective error is the absolute difference in mean final
+objective. Distance error is the maximum absolute difference across the
+three observers' median, upper quartile, and IQR distances. The score is
+the average fractional reduction of those two errors divided by the
+fractional increase in cumulative solver time. The first and reference
+rows have undefined scores. The reference errors are zero by construction.

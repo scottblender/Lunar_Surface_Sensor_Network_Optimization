@@ -136,7 +136,7 @@ end
 function testStudy2RunCountPlotsKeepOneReferenceAndNestedSamples(testCase)
 folder=fixture(testCase); reference=[-30 359;0 0;30 120]; offsets=[8 6 4 2 1 0];
 r=struct("requestedBudget",9000,"runIndex",1,"seed",1000,"objective",-1, ...
-    "candidateIds",[1;2;3],"locations",reference);
+    "runtimeSeconds",10,"candidateIds",[1;2;3],"locations",reference);
 records=repmat(r,6,1);
 for k=1:6
     sites=reference; sites(:,1)=sites(:,1)+offsets(k); sites(1,2)=-1;
@@ -164,6 +164,12 @@ for n=[2 4 6]
     verifyEqual(testCase,nnz(t.Observer==1 & t.Hemisphere=="south"),n);
     if n<6, verifyFalse(testCase,any(t.Seed==a.referenceSeed)); end
 end
+summary=summarizeGaSearchSettings(a,records);
+verifyEqual(testCase,summary.MeanObjectiveError,[1;1;0]/6,'AbsTol',1e-12);
+verifyEqual(testCase,summary.MaxDistanceStatisticErrorKm,deg2rad([4;2;0])*1737.4,'AbsTol',1e-8);
+verifyEqual(testCase,summary.CumulativeSolverSeconds,[20;40;60]);
+verifyEqual(testCase,summary.Efficiency(2),0.25,'AbsTol',1e-12);
+verifyTrue(testCase,all(isnan(summary.Efficiency([1 end]))));
 small=a.locations(a.locations.IndependentRuns==2,:);
 large=a.locations(a.locations.IndependentRuns==6 & a.locations.RunIndex<=2,:);
 verifyEqual(testCase,small(:,1:9),large(:,1:9)); % Same coordinates AND distances in each prefix.
