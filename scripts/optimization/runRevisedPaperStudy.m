@@ -50,9 +50,6 @@ saved=load(config.masterDatabaseFile,"database"); master=saved.database;
 [views,polarSelection]=derivePaperDomains(master);
 sizes=unique(config.globalNetworkSizes(:).',"stable");
 assert(max(sizes)<=views.global.meta.numberOfCandidates,"runRevisedPaperStudy:Size","Global network exceeds candidate count.");
-[feasible,clpsProbe]=optimization.canAssignDistinctAnchors(views.clps.config.domainComparison.anchorMembership.');
-assert(feasible && numel(clpsProbe)>=3, ...
-    "runRevisedPaperStudy:Anchors","No distinct physical candidates for the active CLPS anchors.");
 demFile=string(master.meta.demSource);
 if isfield(config.ekf,"demFile") && strlength(string(config.ekf.demFile))>0, demFile=string(config.ekf.demFile); end
 assert(isfile(demFile),"runRevisedPaperStudy:Dem","Post-processing requires the master DEM or an explicit EKF DEM.");
@@ -73,11 +70,31 @@ if config.objectiveBackend=="gpu"
     assert(max(sizes)<=10,"runRevisedPaperStudy:GPUSize","GPU mode supports at most ten observers.");
 end
 fixed=runFixedClpsSequential(views.clps_fixed,string(config.sideOrder));
+% Each stage supplies one anchor for the neighborhood search. Retain all
+% memberships among those anchors so overlapping disks still allow matching.
+selectedAnchorIds=views.clps_fixed.meta.sharedSourceCandidateIds(fixed.selectionOrder);
+[found,anchorColumns]=ismember(selectedAnchorIds,polarSelection.anchorMasterIds);
+assert(all(found),"runRevisedPaperStudy:Anchors","A sequential site is missing from the active anchor list.");
+neighborhoodAnchors=polarSelection.activeSites(anchorColumns,:);
+neighborhoodAnchors.MasterCandidateId=selectedAnchorIds(:);
+membership=views.global.config.domainComparison.anchorMembership(:,anchorColumns);
+views.clps=optimization.createPaperDomainView(master,find(any(membership,2)), ...
+    "clps",membership,neighborhoodAnchors);
+[found,clpsProbe]=ismember(selectedAnchorIds,views.clps.meta.sharedSourceCandidateIds);
+assert(all(found) && optimization.canAssignDistinctAnchors( ...
+    views.clps.config.domainComparison.anchorMembership(clpsProbe,:)), ...
+    "runRevisedPaperStudy:Anchors","The sequential anchors cannot form a feasible neighborhood network.");
+sequentialStages=table((1:3).',fixed.sideOrder(:),neighborhoodAnchors.SiteId, ...
+    selectedAnchorIds(:),fixed.stageObjectives(:), ...
+    'VariableNames',{'Stage','Side','SiteId','MasterCandidateId','Objective'});
+fprintf("Sequential CLPS selections and neighborhood centers:\n");
+disp(sequentialStages);
 if config.validateOnly
     studyIdentity(config,master);
     disp(casePlan);
     study=struct("status","validated","config",config,"casePlan",casePlan, ...
-        "plannedRuns",(height(casePlan)-1)*config.numberOfRuns);
+        "plannedRuns",(height(casePlan)-1)*config.numberOfRuns, ...
+        "sequentialStages",sequentialStages,"neighborhoodAnchors",neighborhoodAnchors);
     return
 end
 out=config.outputDirectory;
@@ -106,7 +123,8 @@ else
     study=struct("version","revised_paper_study_v2","status","running", ...
         "config",config,"masterDatabaseFile",config.masterDatabaseFile, ...
         "identity",identity,"casePlan",casePlan,"polarSelection",polarSelection, ...
-        "fixedSelection",fixed,"cases",{{}},"gpuMetadata",struct());
+        "fixedSelection",fixed,"sequentialStages",sequentialStages, ...
+        "neighborhoodAnchors",neighborhoodAnchors,"cases",{{}},"gpuMetadata",struct());
 end
 study.status="running";
 saveStudyCheckpoint(studyFile,"study",study);
@@ -117,6 +135,8 @@ try
     writetable(casePlan,fullfile(out,"case_plan.csv"));
     writetable(polarSelection.comparison,fullfile(out,"polar_visibility_comparison.csv"));
     writetable(polarSelection.activeSites,fullfile(out,"active_clps_anchors.csv"));
+    writetable(sequentialStages,fullfile(out,"sequential_stages.csv"));
+    writetable(neighborhoodAnchors,fullfile(out,"clps_neighborhood_anchors.csv"));
     for index=1:numel(study.cases)
         current=study.cases{index};
         key=sprintf("n%d",current.networkSize);
@@ -143,7 +163,7 @@ try
             if config.objectiveBackend=="gpu" && domain~=preparedDomain
                 objectiveOverride=[]; % Release the prior view before allocating the next one.
                 if domain=="clps"
-                    probeNetworks={clpsProbe(1:3).'};
+                    probeNetworks={clpsProbe(:).'};
                     gpuSizes=3;
                 else
                     gpuSizes=sizes;
