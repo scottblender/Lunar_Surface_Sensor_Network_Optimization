@@ -96,7 +96,7 @@ The launcher finds a unique `paper_shared/optimization_database.mat` under
 `results`. Use `-DatabaseFile` if there are multiple masters or yours is
 outside that directory. Paths supplied to the launcher can be relative to
 the repository root. The default output directory is
-`results/paper_study_global_25_100`, and logs are in
+`results/paper_study_global_25_100_no_surrogate`, and logs are in
 `results/paper_study_logs`. The console and `sequential_stages.csv` show the
 three sequential selections and their scores.
 
@@ -106,7 +106,7 @@ From MATLAB:
 setupProject;
 config = paperStudyConfiguration( ...
     "results/paper_domains/paper_shared/optimization_database.mat", ...
-    "results/paper_study_global_25_100");
+    "results/paper_study_global_25_100_no_surrogate");
 % Preflight the production case plan without creating output files.
 config.validateOnly = true;
 plan = runRevisedPaperStudy(config);
@@ -118,17 +118,15 @@ study = runRevisedPaperStudy(config);
 
 Production defaults use the GPU, 50 paired seeds (1000--1049), 18,000
 requested evaluations per run, and a population/swarm size of 60 where
-applicable. The surrogate solver uses its own sampling rules. GA, PSO, and
-ABC dispatch batches to the GPU. The surrogate wrapper calls the same GPU
-objective one network at a time, so it may see less acceleration.
+applicable. GA, PSO, and ABC dispatch batches to the GPU.
 Set `config.objectiveBackend = "cpu"` for a CPU-only test.
 
 The fixed CLPS case scores each eligible addition at each sequential stage
-(nearside, farside, nearside by default). The four stochastic solvers run
+(nearside, farside, nearside by default). The three stochastic solvers run
 joint three-observer CLPS neighborhood searches restricted to the 100-km disks
 around the three sequentially selected sites, with one observer assigned
 to each selected anchor. They also run joint global searches
-at 3, 5, 7, 10, 25, and 100 observers, for 28 optimized cases and 1,400 solver runs.
+at 3, 5, 7, 10, 25, and 100 observers, for 21 optimized cases and 1,050 solver runs.
 `case_plan.csv` records the matrix. Reuse the same output directory and
 settings to resume completed runs and cases. Remove a stale `study.lock`
 only after verifying that the MATLAB process has exited.

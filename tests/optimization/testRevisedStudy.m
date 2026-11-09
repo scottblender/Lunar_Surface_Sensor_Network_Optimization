@@ -101,13 +101,13 @@ folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'
 config=paperStudyConfiguration(file,fullfile(folder,"study"));
 config.objectiveBackend="cpu"; config.validateOnly=true;
 study=runRevisedPaperStudy(config);
-verifyEqual(testCase,study.plannedRuns,1400);
-verifyEqual(testCase,height(study.casePlan),29);
+verifyEqual(testCase,study.plannedRuns,1050);
+verifyEqual(testCase,height(study.casePlan),22);
 verifyEqual(testCase,study.casePlan.Optimizer(1),"SEQUENTIAL");
-verifyEqual(testCase,study.casePlan.Optimizer(2:5),["GA";"SURROGATE";"PSO";"ABC"]);
-verifyEqual(testCase,study.casePlan.Domain(2:5),repmat("clps",4,1));
-verifyEqual(testCase,study.casePlan.NetworkSize(6:29),repelem([3;5;7;10;25;100],4));
-verifyEqual(testCase,study.casePlan.Optimizer(22:29),repmat(["GA";"SURROGATE";"PSO";"ABC"],2,1));
+verifyEqual(testCase,study.casePlan.Optimizer(2:4),["GA";"PSO";"ABC"]);
+verifyEqual(testCase,study.casePlan.Domain(2:4),repmat("clps",3,1));
+verifyEqual(testCase,study.casePlan.NetworkSize(5:22),repelem([3;5;7;10;25;100],3));
+verifyEqual(testCase,study.casePlan.Optimizer(5:22),repmat(["GA";"PSO";"ABC"],6,1));
 verifyFalse(testCase,isfolder(config.outputDirectory));
 end
 function testBenchmarkIsReproducibleAndRestoresRng(testCase)

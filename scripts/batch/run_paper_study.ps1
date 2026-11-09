@@ -6,7 +6,7 @@ Run or resume the three-domain paper study with live MATLAB progress and a log.
 [CmdletBinding()]
 param(
     [string]$DatabaseFile = '',
-    [string]$OutputDirectory = 'results/paper_study_global_25_100',
+    [string]$OutputDirectory = 'results/paper_study_global_25_100_no_surrogate',
     [string]$MatlabExe = 'matlab',
     [switch]$ValidateOnly
 )
