@@ -12,7 +12,7 @@ def generate():
     def emit(s): lines.append('        ' + s)
     def p(i,j): return f'p{min(i,j)}{max(i,j)}'
     def dot(xs): return ' + '.join(xs)
-    emit('function score = trajectory(n1,n2,n3,object)')
+    emit('function score = trajectory(n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,object)')
     emit('% One CUDA thread per network/object; double scalar registers only.')
     for i in range(1,7):
         for j in range(i,7): emit(f'{p(i,j)} = 0.5*(prior({i},{j},object)+prior({j},{i},object));')
@@ -27,8 +27,11 @@ def generate():
             a=dot([f't{i}{k}*f{j}{k}' for k in range(1,7)])
             b=dot([f't{j}{k}*f{i}{k}' for k in range(1,7)])
             emit(f'{p(i,j)} = 0.5*({a} + {b} + noise({i},{j},epoch,object)+noise({j},{i},epoch,object));')
-    emit('for sensor = 1:3')
-    emit('if sensor==1, site=n1; elseif sensor==2, site=n2; else, site=n3; end')
+    emit('for sensor = 1:10')
+    emit('if sensor==1, site=n1;')
+    for slot in range(2,10): emit(f'elseif sensor=={slot}, site=n{slot};')
+    emit('else, site=n10; end')
+    emit('if site==0, break; end')
     emit('x = reference(1,epoch,object)-(xyz(site,1)*cosine(epoch)-xyz(site,2)*sine(epoch));')
     emit('y = reference(2,epoch,object)-(xyz(site,1)*sine(epoch)+xyz(site,2)*cosine(epoch));')
     emit('z = reference(3,epoch,object)-xyz(site,3);')

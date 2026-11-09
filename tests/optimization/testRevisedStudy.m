@@ -44,7 +44,8 @@ function testCompleteThreeDomainWorkflow(testCase)
 folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
 [db,file]=createRevisedStudyFixture(folder);
 config=paperStudyConfiguration(file,fullfile(folder,"study"));
-config.optimizer="ABC"; config.populationSize=8; config.functionEvaluationBudget=24;
+config.optimizer="ABC"; config.objectiveBackend="cpu";
+config.populationSize=8; config.functionEvaluationBudget=24;
 config.numberOfRuns=1; config.globalNetworkSizes=[3 5]; config.monteCarloSamples=12;
 config.makePlots=true;
 before=rng;
@@ -66,8 +67,35 @@ for k=1:numel(study.cases)
     verifyTrue(testCase,all(isfinite(saved.validation.covarianceHistories),"all"));
     verifyTrue(testCase,all(isfinite(saved.validation.rmsPositionErrorKm)));
 end
+last=study.cases{end};
+checkpoint=fullfile(last.folder,"seed_1000","checkpoint.mat");
+checkpointBefore=dir(checkpoint);
+study.cases(end)=[]; study.status="failed";
+save(fullfile(config.outputDirectory,"study.mat"),"study","-v7.3");
+resumed=runRevisedPaperStudy(config);
+verifyEqual(testCase,resumed.status,"complete");
+verifyEqual(testCase,resumed.cases{end}.masterCandidateIds,last.masterCandidateIds);
+after=dir(checkpoint);
+verifyEqual(testCase,after.datenum,checkpointBefore.datenum);
+changed=config; changed.baseSeed=config.baseSeed+1;
+verifyError(testCase,@()runRevisedPaperStudy(changed),'runRevisedPaperStudy:ResumeMismatch');
+config.resume=false;
 verifyError(testCase,@()runRevisedPaperStudy(config),'runRevisedPaperStudy:OutputExists');
 rng(before);
+end
+function testProductionCasePlan(testCase)
+folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
+[~,file]=createRevisedStudyFixture(folder);
+config=paperStudyConfiguration(file,fullfile(folder,"study"));
+config.objectiveBackend="cpu"; config.validateOnly=true;
+study=runRevisedPaperStudy(config);
+verifyEqual(testCase,study.plannedRuns,1000);
+verifyEqual(testCase,height(study.casePlan),21);
+verifyEqual(testCase,study.casePlan.Optimizer(1),"SEQUENTIAL");
+verifyEqual(testCase,study.casePlan.Optimizer(2:5),["GA";"SURROGATE";"PSO";"ABC"]);
+verifyEqual(testCase,study.casePlan.Domain(2:5),repmat("clps",4,1));
+verifyEqual(testCase,study.casePlan.NetworkSize(18:21),repmat(10,4,1));
+verifyFalse(testCase,isfolder(config.outputDirectory));
 end
 function testBenchmarkIsReproducibleAndRestoresRng(testCase)
 folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));

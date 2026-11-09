@@ -90,21 +90,31 @@ setupProject;
 config = paperStudyConfiguration( ...
     "results/paper_domains/paper_shared/optimization_database.mat", ...
     "results/paper_study_001");
-% Review these explicit starting settings before a production campaign:
-config.globalNetworkSizes = [3 5 7 10];
-config.optimizer = "GA"; % GA, SURROGATE, PSO, or ABC
-config.numberOfRuns = 1;
-config.functionEvaluationBudget = 12000;
-config.monteCarloSamples = 1000;
+% Preflight the production case plan without creating output files.
+config.validateOnly = true;
+plan = runRevisedPaperStudy(config);
+
+% Use the same configuration to start or resume the campaign.
+config.validateOnly = false;
 study = runRevisedPaperStudy(config);
 ```
 
-Those run/FE values preserve existing driver defaults. The Monte Carlo sample
-count is an editable starting setting. None is a convergence finding. Output
-folders must be new; partial cases and failure metadata are checkpointed.
+Production defaults use the GPU, 50 paired seeds (1000--1049), 18,000
+requested evaluations per run, and a population/swarm size of 60 where
+applicable. The surrogate solver uses its own sampling rules. GA, PSO, and
+ABC dispatch batches to the GPU. The surrogate wrapper calls the same GPU
+objective one network at a time, so it may see less acceleration.
+Set `config.objectiveBackend = "cpu"` for a CPU-only test.
 
-The runner performs fixed-site sequential selection, three-sensor CLPS search,
-and global search at each requested size. It then evaluates every selected
+The fixed CLPS case scores each eligible addition at each sequential stage
+(nearside, farside, nearside by default). The four stochastic solvers run
+joint three-observer CLPS neighborhood searches and joint global searches
+at 3, 5, 7, and 10 observers, for 20 optimized cases and 1,000 solver runs.
+`case_plan.csv` records the matrix. Reuse the same output directory and
+settings to resume completed runs and cases. Remove a stale `study.lock`
+only after verifying that the MATLAB process has exited.
+
+The driver then evaluates every selected
 network with the global view and verifies objective equality. Random networks
 are uniform subsets of the same global candidates, evaluated with that exact
 information objective. The same saved random samples are reused across cases
