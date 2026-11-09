@@ -31,26 +31,55 @@ for k=1:n
     observerRows{k}=table(repmat(settings(k),3,1),(1:3).',quartiles(:,1),quartiles(:,2), ...
         quartiles(:,3),widths,'VariableNames',{'Setting','Observer','Q25Km','MedianKm','Q75Km','IQRKm'});
 end
-previousObjective=meanObjective(1:end-1);
-previousSpread=spread(1:end-1);
-previousRuntime=meanRuntime(1:end-1);
-objectiveGain=relativeDecrease(previousObjective,meanObjective(2:end));
-spreadGain=relativeDecrease(previousSpread,spread(2:end));
-runtimeIncrease=(meanRuntime(2:end)-previousRuntime)./previousRuntime;
-
-% Each score belongs to the transition into the setting on that row.
-score=NaN(size(runtimeIncrease));
-valid=runtimeIncrease>0 & isfinite(objectiveGain) & isfinite(spreadGain);
-score(valid)=(objectiveGain(valid)+spreadGain(valid))./(2*runtimeIncrease(valid));
-summary=table(settings,counts,meanObjective,meanRuntime,campaignRuntime,spread, ...
-    [NaN;settings(1:end-1)],[NaN;objectiveGain],[NaN;spreadGain], ...
-    [NaN;runtimeIncrease],[NaN;score],'VariableNames',{'Setting','IndependentRuns', ...
-    'MeanFinalObjective','MeanSolverSecondsPerRun','CumulativeSolverSeconds','MeanIQRKm', ...
-    'PreviousSetting','RelativeObjectiveImprovement','RelativeIQRImprovement', ...
-    'RelativeRuntimeIncrease','Efficiency'});
 observers=vertcat(observerRows{:});
+summary=table(settings,counts,meanObjective,meanRuntime,campaignRuntime,spread, ...
+    'VariableNames',{'Setting','IndependentRuns','MeanFinalObjective', ...
+    'MeanSolverSecondsPerRun','CumulativeSolverSeconds','MeanIQRKm'});
+
+qualityObjective=meanObjective;
+qualityDistance=spread;
+cost=meanRuntime;
+isRunStudy=report.groupSuffix=="runs";
+if isRunStudy
+    % Compare each nested prefix with the largest prefix using all nine
+    % observer statistics (three observers times median, Q75, and IQR).
+    qualityObjective=abs(meanObjective-meanObjective(end));
+    qualityDistance=zeros(n,1);
+    columns=["MedianKm","Q75Km","IQRKm"];
+    referenceRows=observerRows{end};
+    reference=referenceRows{:,columns};
+    for k=1:n
+        rows=observerRows{k};
+        qualityDistance(k)=max(abs(rows{:,columns}-reference),[],"all");
+    end
+    cost=campaignRuntime;
+    summary.MeanObjectiveError=qualityObjective;
+    summary.MaxDistanceStatisticErrorKm=qualityDistance;
 end
 
+objectiveGain=relativeDecrease(qualityObjective(1:end-1),qualityObjective(2:end));
+distanceGain=relativeDecrease(qualityDistance(1:end-1),qualityDistance(2:end));
+previousCost=cost(1:end-1);
+runtimeIncrease=(cost(2:end)-previousCost)./previousCost;
+score=NaN(size(runtimeIncrease));
+valid=runtimeIncrease>0 & isfinite(objectiveGain) & isfinite(distanceGain);
+score(valid)=(objectiveGain(valid)+distanceGain(valid))./(2*runtimeIncrease(valid));
+
+summary.PreviousSetting=[NaN;settings(1:end-1)];
+if isRunStudy
+    summary.RelativeObjectiveErrorReduction=[NaN;objectiveGain];
+    summary.RelativeDistanceErrorReduction=[NaN;distanceGain];
+else
+    summary.RelativeObjectiveImprovement=[NaN;objectiveGain];
+    summary.RelativeIQRImprovement=[NaN;distanceGain];
+end
+summary.RelativeRuntimeIncrease=[NaN;runtimeIncrease];
+summary.Efficiency=[NaN;score];
+if isRunStudy
+    % The reference errors are zero by construction.
+    summary.Efficiency(end)=NaN;
+end
+end
 
 function improvement=relativeDecrease(previous,current)
 improvement=NaN(size(previous));

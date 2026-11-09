@@ -31,8 +31,8 @@ end
 if ~isfolder(outputDirectory), mkdir(outputDirectory); end
 feSummary.Properties.VariableNames{1}='RequestedFE';
 feObservers.Properties.VariableNames{1}='RequestedFE';
-runSummary=removevars(runSummary,["Setting","PreviousSetting","RelativeObjectiveImprovement", ...
-    "RelativeIQRImprovement","RelativeRuntimeIncrease","Efficiency"]);
+runSummary=removevars(runSummary,"Setting");
+runSummary=renamevars(runSummary,"PreviousSetting","PreviousIndependentRuns");
 runObservers.Properties.VariableNames{1}='IndependentRuns';
 writetable(feSummary,fullfile(outputDirectory,"fe_budget_summary.csv"));
 writetable(feObservers,fullfile(outputDirectory,"fe_observer_distances.csv"));
@@ -49,6 +49,7 @@ results.benchmarkFigure=plotBenchmark(benchmarkRuns,checkpoints,outputDirectory)
 results.feFigure=plotBudgets(feSummary,outputDirectory);
 results.runFigure=plotRunCounts(runSummary,runObservers,outputDirectory);
 disp(feSummary(:,["RequestedFE","Efficiency"]));
+disp(runSummary(:,["IndependentRuns","MeanObjectiveError","MaxDistanceStatisticErrorKm","Efficiency"]));
 end
 
 function result=loadSweep(directory)
