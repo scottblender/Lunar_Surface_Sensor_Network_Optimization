@@ -95,13 +95,13 @@ ax=nexttile(layout);
 group=[ones(height(paired),1);2*ones(height(paired),1)];
 boxchart(ax,group,[paired.CPUSolverSeconds;paired.GPUSolverSeconds],"BoxFaceColor",style.blueColor);
 xticks(ax,[1 2]); xticklabels(ax,["CPU","GPU"]);
-ylabel(ax,"Solver runtime per run (s)"); panel(ax,"(a)");
+ylabel(ax,"Solver runtime per run (s)"); stylePanel(ax);
 ax=nexttile(layout);
 hold(ax,"on");
 plot(ax,checkpoints.RecordedFE,checkpoints.MeanCPUObjective,"-","Color",style.blueColor,"LineWidth",1.4);
 plot(ax,checkpoints.RecordedFE,checkpoints.MeanGPUObjective,"--","Color",style.orangeColor,"LineWidth",1.4);
 xlabel(ax,"Recorded FE"); ylabel(ax,"Mean best objective");
-legend(ax,["CPU","GPU"],"Location","best","Box","off"); panel(ax,"(b)");
+legend(ax,["CPU","GPU"],"Location","best","Box","off"); stylePanel(ax);
 file=exportPaper(fig,out,"cpu_gpu_comparison",3.4);
 end
 
@@ -112,7 +112,7 @@ values=[t.MeanFinalObjective,t.MeanSolverSecondsPerRun,t.MeanIQRKm,t.Efficiency]
 for k=1:numel(labels)
     ax=nexttile(layout);
     plotSeries(ax,t.RequestedFE,values(:,k),"Requested FE per run",labels(k));
-    panel(ax,"("+string(char('a'+k-1))+")");
+    stylePanel(ax);
     if k==4, yline(ax,0,":"); end
 end
 file=exportPaper(fig,out,"fe_budget_comparison",5.6);
@@ -122,9 +122,9 @@ function file=plotRunCounts(t,observers,out)
 [fig,layout,cleanup]=paperLayout(3,2,7.8); %#ok<ASGLU>
 x=t.IndependentRuns;
 ax=nexttile(layout);
-plotSeries(ax,x,t.MeanFinalObjective,"Independent runs","Mean final objective"); panel(ax,"(a)");
+plotSeries(ax,x,t.MeanFinalObjective,"Independent runs","Mean final objective"); stylePanel(ax);
 ax=nexttile(layout);
-plotSeries(ax,x,t.CumulativeSolverSeconds/3600,"Independent runs","Cumulative solver time (h)"); panel(ax,"(b)");
+plotSeries(ax,x,t.CumulativeSolverSeconds/3600,"Independent runs","Cumulative solver time (h)"); stylePanel(ax);
 labels=["Median distance (km)","Upper distance quartile (km)","Distance IQR (km)"];
 variables=["MedianKm","Q75Km","IQRKm"];
 style=publicationPlotStyle();
@@ -140,7 +140,7 @@ for k=1:numel(variables)
     end
     xlabel(ax,"Independent runs"); ylabel(ax,labels(k));
     setRunTicks(ax,x);
-    panel(ax,"("+string(char('c'+k-1))+")");
+    stylePanel(ax);
 end
 key=legend(ax,["Observer 1","Observer 2","Observer 3"],"Box","off");
 key.Layout.Tile=6;
@@ -166,11 +166,10 @@ xticks(ax,x);
 xticklabels(ax,string(x));
 end
 
-function panel(ax,label)
+function stylePanel(ax)
 ax.TickDir="out";
 ax.Box="off";
 grid(ax,"on");
-text(ax,0.02,0.98,label,"Units","normalized","VerticalAlignment","top","FontWeight","bold");
 end
 
 function file=exportPaper(fig,out,stem,height)

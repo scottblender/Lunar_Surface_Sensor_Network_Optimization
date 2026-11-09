@@ -174,7 +174,7 @@ paper = postprocessGaManuscript( ...
 The command reads the saved benchmark and sweep MAT files and exports
 `cpu_gpu_comparison.eps`, `fe_budget_comparison.eps`, and
 `independent_run_comparison.eps` to `results/manuscript_search` by default.
-The figures use panel letters, axis labels, and legends. The CSVs provide the
+The figures use axis labels and legends. Supply panel lettering in LaTeX. The CSVs provide the
 benchmark agreement, throughput, raw solver FE, and mean objectives at
 checkpoints recorded by every CPU and GPU run. Study 1 tables contain the
 efficiency components and observer quartiles. Study 2 tables report the same
