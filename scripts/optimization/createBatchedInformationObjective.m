@@ -1,5 +1,5 @@
-function [objective,metadata] = createBatchedInformationObjective(database,device,batchSize)
-% CREATEBATCHEDINFORMATIONOBJECTIVE - Double-precision three-site global score.
+function [objective,metadata] = createBatchedInformationObjective(database,device,batchSize,networkSizes)
+% CREATEBATCHEDINFORMATIONOBJECTIVE - Double-precision information score for up to ten sites.
 % 'gpu' uses MATLAB GPU arrayfun: one thread per network/object, with epochs
 % sequential within a thread. No CUDA compiler or custom MEX is required.
 % 'cpu' executes the exact same scalar kernel for data-free numerical tests.
@@ -10,10 +10,11 @@ arguments
     database (1,1) struct
     device (1,1) string {mustBeMember(device,["cpu","gpu"])} = "gpu"
     batchSize (1,1) double {mustBeInteger,mustBePositive} = 60
+    networkSizes (1,:) double {mustBeInteger,mustBePositive,mustBeLessThanOrEqual(networkSizes,10)} = 3
 end
-assert(database.config.domainComparison.domain=="global" && ...
-    ~database.config.domainComparison.enforceSiteGroups, ...
-    "gpuInformation:Domain","Only the unconstrained global view is supported.");
+domain=database.config.domainComparison;
+assert(ismember(domain.domain,["global","clps","clps_fixed"]), ...
+    "gpuInformation:Domain","Use a paper domain view.");
 assert(database.meta.measurementJacobianStorage=="on_demand", ...
     "gpuInformation:Storage","Use the existing on_demand database.");
 n=database.meta.numberOfCandidates; nt=database.meta.numberOfOptimizationEpochs;
@@ -80,23 +81,42 @@ end
 objective=@evaluate;
 
     function values=evaluate(networks)
-        if isvector(networks) && numel(networks)==3, networks=reshape(networks,1,3); end
-        assert(ismatrix(networks) && size(networks,2)==3,"gpuInformation:NetworkSize", ...
-            "Expected one three-observer network per row.");
+        if iscolumn(networks) && ~ismember(1,networkSizes) && ismember(numel(networks),networkSizes)
+            networks=networks.';
+        end
+        assert(ismatrix(networks) && ismember(size(networks,2),networkSizes), ...
+            "gpuInformation:NetworkSize","Expected one network per row with a configured network size.");
         networks=sort(double(networks),2);
         valid=all(isfinite(networks) & networks==round(networks) & networks>=1 & networks<=n,2) & ...
             all(diff(networks,1,2)>0,2);
+        if domain.enforceSiteGroups
+            for row=find(valid).'
+                ids=networks(row,:);
+                if isfield(domain,"anchorMembership")
+                    valid(row)=optimization.canAssignDistinctAnchors(domain.anchorMembership(ids,:));
+                else
+                    groups=domain.prefilterSiteIds(database.candidates.originalIndices(ids));
+                    valid(row)=all(strlength(groups)>0) && numel(unique(groups))==numel(ids);
+                end
+            end
+        end
         values=repmat(penalty,size(networks,1),1); rows=find(valid);
         for first=1:batchSize:numel(rows)
             selected=rows(first:min(first+batchSize-1,numel(rows)));
-            sites=networks(selected,:);
-            if device=="gpu", sites=gpuArray(sites); end
+            sites=zeros(numel(selected),10);
+            sites(:,1:size(networks,2))=networks(selected,:);
             if device=="gpu"
-                byObject=arrayfun(@trajectory,sites(:,1),sites(:,2),sites(:,3),objects);
+                sites=gpuArray(sites);
+                objectIds=objects;
             else
-                byObject=arrayfun(@trajectory,repmat(sites(:,1),1,no),repmat(sites(:,2),1,no), ...
-                    repmat(sites(:,3),1,no),repmat(objects,numel(selected),1));
+                objectIds=repmat(objects,numel(selected),1);
             end
+            columns=cell(1,10);
+            for slot=1:10, columns{slot}=sites(:,slot); end
+            if device=="cpu"
+                columns=cellfun(@(column) repmat(column,1,no),columns,'UniformOutput',false);
+            end
+            byObject=arrayfun(@trajectory,columns{:},objectIds);
             scores=-sum(byObject.*weights,2);
             if device=="gpu", scores=gather(scores); end
             assert(all(isfinite(scores)),"gpuInformation:Numerics", ...
@@ -106,7 +126,7 @@ objective=@evaluate;
     end
 
 % BEGIN GENERATED KERNEL
-        function score = trajectory(n1,n2,n3,object)
+        function score = trajectory(n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,object)
         % One CUDA thread per network/object; double scalar registers only.
         p11 = 0.5*(prior(1,1,object)+prior(1,1,object));
         p12 = 0.5*(prior(1,2,object)+prior(2,1,object));
@@ -224,8 +244,18 @@ objective=@evaluate;
         p55 = 0.5*(t51*f51 + t52*f52 + t53*f53 + t54*f54 + t55*f55 + t56*f56 + t51*f51 + t52*f52 + t53*f53 + t54*f54 + t55*f55 + t56*f56 + noise(5,5,epoch,object)+noise(5,5,epoch,object));
         p56 = 0.5*(t51*f61 + t52*f62 + t53*f63 + t54*f64 + t55*f65 + t56*f66 + t61*f51 + t62*f52 + t63*f53 + t64*f54 + t65*f55 + t66*f56 + noise(5,6,epoch,object)+noise(6,5,epoch,object));
         p66 = 0.5*(t61*f61 + t62*f62 + t63*f63 + t64*f64 + t65*f65 + t66*f66 + t61*f61 + t62*f62 + t63*f63 + t64*f64 + t65*f65 + t66*f66 + noise(6,6,epoch,object)+noise(6,6,epoch,object));
-        for sensor = 1:3
-        if sensor==1, site=n1; elseif sensor==2, site=n2; else, site=n3; end
+        for sensor = 1:10
+        if sensor==1, site=n1;
+        elseif sensor==2, site=n2;
+        elseif sensor==3, site=n3;
+        elseif sensor==4, site=n4;
+        elseif sensor==5, site=n5;
+        elseif sensor==6, site=n6;
+        elseif sensor==7, site=n7;
+        elseif sensor==8, site=n8;
+        elseif sensor==9, site=n9;
+        else, site=n10; end
+        if site==0, break; end
         x = reference(1,epoch,object)-(xyz(site,1)*cosine(epoch)-xyz(site,2)*sine(epoch));
         y = reference(2,epoch,object)-(xyz(site,1)*sine(epoch)+xyz(site,2)*cosine(epoch));
         z = reference(3,epoch,object)-xyz(site,3);

@@ -52,17 +52,39 @@ verifyEqual(testCase,f(invalid),repmat(db.objective.infeasiblePenalty,5,1));
 verifyEqual(testCase,f(zeros(0,3)),zeros(0,1));
 verifyError(testCase,@()f([1 2]),'gpuInformation:NetworkSize');
 end
-function testVectorizedGaSavesCpuCheckedWinner(testCase)
+function testLargerNetworksAndClpsAnchorMatching(testCase)
+[db,~]=fixture(testCase,[600;1200;1800]);
+f=createBatchedInformationObjective(db,"cpu",2,[3 5 7 10]);
+for count=[3 5 7 10]
+    rows=[1:count;count:-1:1];
+    expected=[optimization.networkObjective(rows(1,:),db,"information"); ...
+        optimization.networkObjective(rows(2,:),db,"information")];
+    verifyEqual(testCase,f(rows),expected,'AbsTol',1e-8,'RelTol',1e-9);
+end
+db.config.domainComparison.domain="clps";
+db.config.domainComparison.enforceSiteGroups=true;
+membership=false(db.meta.numberOfCandidates,3);
+membership(1:4,:)=[1 1 0;1 0 0;0 0 1;1 0 0];
+db.config.domainComparison.anchorMembership=membership;
+f=createBatchedInformationObjective(db,"cpu");
+verifyEqual(testCase,f([1 2 3]),optimization.networkObjective([1 2 3],db,"information"),'AbsTol',1e-8);
+verifyEqual(testCase,f([1 2 4]),db.objective.infeasiblePenalty);
+end
+function testAllSolversSaveCpuCheckedWinner(testCase)
 [db,folder]=fixture(testCase,[600;1200;1800]);
 file=fullfile(folder,"global.mat"); database=db; save(file,"database","-v7.3");
 f=createBatchedInformationObjective(db,"cpu");
 config=struct("databaseFile",file,"outputDirectory",fullfile(folder,"ga"),"optimizer","GA", ...
-    "networkSize",3,"populationSize",4,"functionEvaluationBudget",12, ...
+    "networkSize",3,"populationSize",8,"functionEvaluationBudget",120, ...
     "numberOfRuns",1,"baseSeed",1000,"useParallel",false,"useVectorizedObjective",true,"display","off");
-a=runGlobalOptimization(config,f); r=a.runStates{1};
-verifyEqual(testCase,r.bestObjective,optimization.networkObjective(r.bestSensorIndices,db,"information"),'AbsTol',1e-8);
-verifyGreaterThanOrEqual(testCase,r.solverFunctionEvaluations,r.searchFunctionEvaluations);
-verifyLessThanOrEqual(testCase,r.searchFunctionEvaluations,12);
+for solver=["GA","PSO","ABC","SURROGATE"]
+    config.useVectorizedObjective=solver~="SURROGATE";
+    config.optimizer=solver; config.outputDirectory=fullfile(folder,lower(solver));
+    a=runGlobalOptimization(config,f); r=a.runStates{1};
+    verifyEqual(testCase,r.bestObjective,optimization.networkObjective(r.bestSensorIndices,db,"information"),'AbsTol',1e-8);
+    verifyGreaterThanOrEqual(testCase,r.solverFunctionEvaluations,r.searchFunctionEvaluations);
+    verifyLessThanOrEqual(testCase,r.searchFunctionEvaluations,120);
+end
 end
 function [db,folder]=fixture(testCase,times)
 folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));

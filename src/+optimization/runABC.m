@@ -142,7 +142,9 @@ result = struct("x",bestX(:),"fval",bestJ,"exitflag",0, ...
     function values = evaluate(points)
         count = min(size(points,1),budget-fe);
         values = zeros(count,1);
-        if config.useParallel
+        if isfield(config,"useVectorizedObjective") && config.useVectorizedObjective
+            values = objectiveFcn(points(1:count,:));
+        elseif config.useParallel
             parfor row = 1:count
                 values(row) = objectiveFcn(points(row,:));
             end

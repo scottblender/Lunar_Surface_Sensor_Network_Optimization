@@ -11,7 +11,7 @@ function testGpuMatchesCpuAndRunsVectorizedGa(testCase)
 folder=string(tempname); mkdir(folder); testCase.addTeardown(@()rmdir(folder,'s'));
 [db,~]=createRevisedStudyFixture(folder,(600:600:3*86400).');
 [views,~]=derivePaperDomains(db); database=views.global;
-[gpuObjective,metadata]=createBatchedInformationObjective(database,"gpu",2);
+[gpuObjective,metadata]=createBatchedInformationObjective(database,"gpu",2,[3 5 7 10]);
 networks=[1 2 3;4 5 6;2 8 10;10 2 8]; values=gpuObjective(networks);
 for k=1:height(networks)
     expected=optimization.networkObjective(networks(k,:),database,"information");
@@ -20,6 +20,19 @@ end
 verifyEqual(testCase,gpuObjective([1 1 2]),database.objective.infeasiblePenalty);
 verifyEqual(testCase,gpuObjective([3;2;1]),values(1),'AbsTol',1e-10);
 verifyEqual(testCase,metadata.precision,"double");
+for count=[5 7 10]
+    ids=1:count;
+    verifyEqual(testCase,gpuObjective(ids),optimization.networkObjective(ids,database,"information"), ...
+        'AbsTol',1e-8,'RelTol',1e-9);
+end
+clps=views.clps;
+[feasible,ids]=optimization.canAssignDistinctAnchors(clps.config.domainComparison.anchorMembership.');
+verifyTrue(testCase,feasible);
+ids=ids(1:3).';
+clpsObjective=createBatchedInformationObjective(clps,"gpu",2);
+verifyEqual(testCase,clpsObjective(ids),optimization.networkObjective(ids,clps,"information"), ...
+    'AbsTol',1e-8,'RelTol',1e-9);
+clear clpsObjective
 file=fullfile(folder,"global.mat"); save(file,"database","-v7.3");
 request=struct("schemaVersion",1,"databaseFile",file,"outputDirectory",fullfile(folder,"sweep"), ...
     "runCounts",2,"functionEvaluationBudgets",[8 12],"populationSize",4,"baseSeed",1000, ...

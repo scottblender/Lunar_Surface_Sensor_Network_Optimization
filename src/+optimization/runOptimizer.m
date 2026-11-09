@@ -20,8 +20,12 @@ switch upper(string(config.optimizer))
     case "PSO"
         % MATLAB particleswarm uses continuous variables. Round candidates,
         % penalize duplicates; never repair or deduplicate the particles.
-        discreteObjective = @(x) optimization.roundAndPenalize( ...
-            x,objectiveFcn,problem);
+        if isfield(config,"useVectorizedObjective") && config.useVectorizedObjective
+            % The vectorized information override applies the same bounds and duplicate penalties.
+            discreteObjective = @(x) objectiveFcn(round(double(x)));
+        else
+            discreteObjective = @(x) optimization.roundAndPenalize(x,objectiveFcn,problem);
+        end
         result = optimization.runPSO(discreteObjective,problem,config);
     case "ABC"
         result = optimization.runABC(objectiveFcn,problem,config);
