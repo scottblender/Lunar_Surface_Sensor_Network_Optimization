@@ -148,6 +148,21 @@ so views reuse the same noise without allocating noise for the entire global
 grid. The policy is versioned in validation output and differs from historical
 noise draws. Estimation does not change the selected network.
 
+## Plot final sensor locations by case
+
+```matlab
+setupProject;
+summary = plotPaperStudyLocations("results/paper_study_global_25_100_no_surrogate");
+disp(summary)
+```
+
+The function writes `paper_case_polar_locations.png` and
+`paper_case_polar_locations.pdf` in the completed study directory. Each case
+has south and north polar panels. Blue points show final sensor locations
+from all saved runs, and red stars mark the selected network. The fixed-site
+case shows its deterministic selection. An optional second argument supplies
+the DEM path if the saved DEM path is unavailable.
+
 ## Outputs and requirements
 
 The study folder contains `study.mat`, `study_summary.csv`,
